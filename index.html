@@ -650,7 +650,7 @@
       tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(quote.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
       const guestInfo = [{text:'Guest: ',bold:true},(quote.guestName||'')+'\n',{text:'Phone: ',bold:true},(quote.phone||'-')+'\n',{text:'Email: ',bold:true},(quote.email||'-')+'\n'];
       if(quote.customerTIN)guestInfo.push({text:'TIN: ',bold:true},quote.customerTIN+'\n');
-      const doc = {content:[{text:'MRI HOTEL - QUOTATION',style:'hdr',alignment:'center'},{text:'Quote #'+(quote.quoteId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
+      const doc = {content:[{text:'QUOTATION',style:'hdr',alignment:'center'},{text:'Quote #'+(quote.quoteId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
         {columns:[{text:guestInfo},{text:[{text:'Date: ',bold:true},fmtDate(quote.createdDate)+'\n',{text:'Valid Until: ',bold:true},fmtDate(quote.validUntil)+'\n',{text:'Status: ',bold:true},(quote.status||'Draft')+'\n']}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         quote.notes?{text:'\nNotes: '+quote.notes,margin:[0,10,0,0],italics:true}:{text:''},
@@ -688,7 +688,7 @@
       tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(inv.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
       const guestInfo = [{text:'Bill To:\n',bold:true,fontSize:13},(inv.guestName||'')+'\n',{text:'Phone: ',bold:true},(inv.phone||'-')+'\n',{text:'Email: ',bold:true},(inv.email||'-')+'\n'];
       if(inv.customerTIN)guestInfo.push({text:'TIN: ',bold:true},inv.customerTIN+'\n');
-      const doc = {content:[{text:'MRI HOTEL - INVOICE',style:'hdr',alignment:'center'},{text:'Invoice #'+(inv.invoiceId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
+      const doc = {content:[{text:'INVOICE',style:'hdr',alignment:'center'},{text:'Invoice #'+(inv.invoiceId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
         {columns:[{text:guestInfo},{text:[{text:'Invoice Date: ',bold:true},fmtDate(inv.createdDate)+'\n',{text:'Due Date: ',bold:true},fmtDate(inv.dueDate)+'\n',{text:'Status: ',bold:true},(inv.status||'Draft')+'\n']}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         inv.notes?{text:'\nNotes: '+inv.notes,margin:[0,10,0,0],italics:true}:{text:''},
@@ -727,7 +727,7 @@
       tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(record.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
       const id = type==='invoice'?record.invoiceId:record.quoteId;
       const title = type==='invoice'?'INVOICE':'QUOTATION';
-      const doc = {content:[{text:'MRI HOTEL - '+title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
+      const doc = {content:[{text:title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
         {columns:[{text:[{text:'Guest: ',bold:true},(record.guestName||'')+'\n',{text:'Phone: ',bold:true},(record.phone||'-')+'\n',{text:'Email: ',bold:true},(record.email||'-')]},{text:[{text:'Date: ',bold:true},fmtDate(record.createdDate)+'\n',{text:'Status: ',bold:true},(record.status||'Draft')]}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         record.notes?{text:'\nNotes: '+record.notes,margin:[0,10,0,0],italics:true}:{text:''}],
@@ -1494,8 +1494,8 @@
 
     function HotelInvoiceModal({data,onClose}){
       const d=data;
-      const fmtD=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});};
-      const fmtDShort=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});};
+      const fmtD=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-IN',{timeZone: 'Asia/Kolkata', day:'2-digit',month:'2-digit',year:'numeric'});};
+      const fmtDShort=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-IN',{timeZone: 'Asia/Kolkata', day:'2-digit',month:'short'});};
       const n2=(v)=>(parseFloat(v)||0).toFixed(2);
       const cats=['extraBed','foodBev','miniBar','earlyClean','xerox','laundry','fax','spbuc','travels','misc'];
 const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fax','SP/BUC','Travels','Misc'];
@@ -2354,7 +2354,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
 
       const suggestions=isAdmin?['Monthly revenue breakdown','Total income vs expenses','Show all bookings','Show overdue invoices']:['What are my bookings?','My checkout details','My booking status','My payment summary'];
 
-      const fmtTime=(d)=>{if(!d)return '';return new Date(d).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});};
+      const fmtTime=(d)=>{if(!d)return '';return new Date(d).toLocaleTimeString('en-IN',{timeZone: 'Asia/Kolkata', hour:'2-digit',minute:'2-digit',hour12:true});};
 
       return(<div className="chat-container">
         <div className="chat-header">
