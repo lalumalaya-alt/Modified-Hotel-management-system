@@ -965,7 +965,7 @@
 
     function Sidebar({activeMenu,setActiveMenu,role,user,onLogout,isOpen,setIsOpen}){
       const adm=role==='admin';
-      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'rooms',i:'fa-bed',l:'Rooms',a:true},{k:'quotes',i:'fa-file-invoice',l:'Quotes',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'finance',i:'fa-coins',l:'Finance',a:true},{k:'reports',i:'fa-chart-bar',l:'Reports',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'aichat',i:'fa-robot',l:'AI Assistant',a:false},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
+      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'rooms',i:'fa-bed',l:'Rooms',a:true},{k:'quotes',i:'fa-file-invoice',l:'Quotes',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'finance',i:'fa-coins',l:'Finance',a:true},{k:'reports',i:'fa-chart-bar',l:'Reports',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
       const click=(k)=>{setActiveMenu(k);setIsOpen(false);};
       return(<><div className={`sidebar-overlay ${isOpen?'open':''}`} onClick={()=>setIsOpen(false)}></div><div className={`sidebar ${isOpen?'open':''}`}><div style={{padding:'24px',borderBottom:'1px solid rgba(255,255,255,0.1)',textAlign:'center'}}><div style={{color:'white',fontSize:'20px',fontWeight:'700'}}><i className="fas fa-hotel"></i> Hill View Eco Retreat</div></div><div className="sidebar-user-info"><div className="sidebar-user-name">{user}</div><div className="sidebar-user-role">{role}</div></div><div className="sidebar-menu-section"><div className="sidebar-menu-title">Navigation</div><ul className="sidebar-menu">{items.filter(m=>adm||!m.a).map(m=>(<li key={m.k}><button className={activeMenu===m.k?'active':''} onClick={()=>click(m.k)}><i className={`fas ${m.i}`}></i><span>{m.l}</span></button></li>))}</ul></div><div className="sidebar-logout"><button onClick={onLogout}><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div></div></>);
     }
@@ -2688,13 +2688,13 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const items=adm?[
         {k:'dashboard',i:'fa-chart-line',l:'Home'},
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
-        {k:'aichat',i:'fa-robot',l:'AI Chat'},
+
         {k:'checkout',i:'fa-sign-out-alt',l:'Checkout'},
         {k:'more',i:'fa-ellipsis-h',l:'More'}
       ]:[
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
         {k:'calendar',i:'fa-calendar-alt',l:'Calendar'},
-        {k:'aichat',i:'fa-robot',l:'AI Chat'},
+
         {k:'account',i:'fa-user-circle',l:'Account'},
         {k:'about',i:'fa-info-circle',l:'About'}
       ];
@@ -2820,85 +2820,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       </div>);
     }
 
-    function AIChatView({user,role}){
-      const chatKey='mri_chat_'+user;
-      const [msgs,setMsgs]=useState(()=>{try{const s=localStorage.getItem(chatKey);return s?JSON.parse(s):[];}catch(e){return[];}});
-      const [input,setInput]=useState('');
-      const [loading,setLoading]=useState(false);
-      const msgEnd=useRef(null);
-      const scrollBottom=()=>{setTimeout(()=>{if(msgEnd.current)msgEnd.current.scrollIntoView({behavior:'smooth'});},100);};
-      const isAdmin=role==='admin';
-
-      // Save msgs to localStorage whenever they change
-      useEffect(()=>{try{localStorage.setItem(chatKey,JSON.stringify(msgs));}catch(e){}},[msgs]);
-      // Scroll to bottom on load if there are messages
-      useEffect(()=>{if(msgs.length>0)scrollBottom();},[]);
-
-      const send=(q)=>{
-        const question=(q||input).trim();
-        if(!question||loading)return;
-        const newMsgs=[...msgs,{role:'user',text:question,time:new Date()}];
-        setMsgs(newMsgs);setInput('');setLoading(true);scrollBottom();
-        // Build chat history for context (strip time, keep role+text only)
-        const history=msgs.map(m=>({role:m.role,text:m.text}));
-        google.script.run.withSuccessHandler((r)=>{
-          setLoading(false);
-          const updated=r.success
-            ?[...newMsgs,{role:'ai',text:r.reply,time:new Date()}]
-            :[...newMsgs,{role:'ai',text:'<span style="color:#ea4335">'+(r.message||'Something went wrong.')+'</span>',time:new Date()}];
-          setMsgs(updated);
-          scrollBottom();
-        }).withFailureHandler((e)=>{
-          setLoading(false);
-          setMsgs([...newMsgs,{role:'ai',text:'<span style="color:#ea4335">Connection error: '+e.message+'</span>',time:new Date()}]);
-          scrollBottom();
-        }).askAIAssistant(question,user,role,history);
-      };
-
-      const clearChat=()=>{Swal.fire({title:'Clear Conversation?',text:'This will remove all messages from this chat.',icon:'question',showCancelButton:true,confirmButtonColor:'#001f3f',cancelButtonColor:'#6c757d',confirmButtonText:'Yes, clear it'}).then(r=>{if(r.isConfirmed){setMsgs([]);try{localStorage.removeItem(chatKey);}catch(e){}}});};
-
-      const handleKey=(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}};
-
-      const suggestions=isAdmin?['Monthly revenue breakdown','Total income vs expenses','Show all bookings','Show overdue invoices']:['What are my bookings?','My checkout details','My booking status','My payment summary'];
-
-      const fmtTime=(d)=>{if(!d)return '';return new Date(d).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});};
-
-      return(<div className="chat-container">
-        <div className="chat-header">
-          <div className="chat-header-avatar"><i className="fas fa-robot"></i></div>
-          <div className="chat-header-info"><h3>AI Assistant</h3><span>{isAdmin?'Full access to hotel data':'Access to your bookings'}</span></div>
-          {msgs.length>0&&<button className="chat-clear-btn" onClick={clearChat} title="Clear Conversation"><i className="fas fa-trash-alt"></i></button>}
-        </div>
-        <div className="chat-messages">
-          {msgs.length===0&&<div className="chat-welcome">
-            <i className="fas fa-robot"></i>
-            <h4>Hello, {user}!</h4>
-            <p className="chat-subtitle">{isAdmin?'Your AI-powered hotel management assistant. Ask me anything about your hotel data.':'I\'m here to help you with your booking information and stay details.'}</p>
-            <div className="chat-capabilities">
-              {isAdmin?<>
-                <div className="chat-cap-card"><i className="fas fa-bed"></i><div><strong>Bookings & Rooms</strong>View occupancy, guest details, and booking status</div></div>
-                <div className="chat-cap-card"><i className="fas fa-chart-line"></i><div><strong>Revenue & Finance</strong>Monthly income, expenses, profit breakdowns</div></div>
-                <div className="chat-cap-card"><i className="fas fa-file-invoice-dollar"></i><div><strong>Invoices & Quotes</strong>Track payments, overdue invoices, and quotations</div></div>
-                <div className="chat-cap-card"><i className="fas fa-users"></i><div><strong>Users & Budgets</strong>Staff info, monthly budgets, and spending</div></div>
-              </>:<>
-                <div className="chat-cap-card"><i className="fas fa-calendar-check"></i><div><strong>My Bookings</strong>Check-in/out dates, room info, and status</div></div>
-                <div className="chat-cap-card"><i className="fas fa-receipt"></i><div><strong>Payment Details</strong>Amount due, payment status, and balance</div></div>
-              </>}
-            </div>
-            <div className="chat-divider">Try asking</div>
-            <div className="chat-suggestions">{suggestions.map((s,i)=><button key={i} onClick={()=>send(s)}>{s}</button>)}</div>
-            <p style={{fontSize:'11px',color:'#aaa',marginTop:'16px'}}>Your conversation is saved locally and remembered across sessions. Use <i className="fas fa-trash-alt" style={{fontSize:'10px'}}></i> to clear.</p>
-          </div>}
-          {msgs.map((m,i)=><div key={i} className={`chat-bubble ${m.role}`}>{m.role==='ai'?<div dangerouslySetInnerHTML={{__html:m.text}}/>:m.text}<div className="chat-bubble-time">{fmtTime(m.time)}</div></div>)}
-          {loading&&<div className="typing-indicator"><div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div></div>}
-          <div ref={msgEnd}/>
-        </div>
-        <div className="chat-input-bar">
-          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} placeholder={isAdmin?'Ask about hotel data...':'Ask about your bookings...'} disabled={loading}/>
-          <button onClick={()=>send()} disabled={loading||!input.trim()}><i className={loading?'fas fa-spinner fa-spin':'fas fa-paper-plane'}></i></button>
-        </div>
-      </div>);
-    }
 
     function MainContent({activeMenu,user,role}){
       switch(activeMenu){
@@ -2918,7 +2839,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         case 'users': return <UsersView user={user}/>;
         case 'account': return <AccountView user={user}/>;
         case 'about': return <AboutView/>;
-        case 'aichat': return <AIChatView user={user} role={role}/>;
         default: return null;
       }
     }
