@@ -4,14 +4,13 @@
 
 /***************************************************
  * GLOBAL CONSTANTS
- ***************************************************/
+/***************************************************/
 const SS_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
 
 // SHEET NAMES
 const LOGIN_SHEET_NAME      = "Login";
 const ROOMS_SHEET_NAME      = "Rooms";
 const BOOKINGS_SHEET_NAME   = "Bookings";
-const QUOTES_SHEET_NAME     = "Quotes";
 const FINANCE_SHEET_NAME    = "Finance";
 const INVOICES_SHEET_NAME   = "Invoices";
 const SETTINGS_SHEET_NAME   = "Settings";
@@ -72,34 +71,6 @@ const LOGIN_ROLE_COL       = 2;
 const LOGIN_OTP_COL        = 3;
 const LOGIN_OTP_EXPIRY_COL = 4;
 
-// QUOTES sheet columns (0-based) — cols 0-13 original, 14-25 new
-const QUOTE_ID_COL              = 0;
-const QUOTE_GUEST_NAME_COL      = 1;
-const QUOTE_PHONE_COL           = 2;
-const QUOTE_EMAIL_COL           = 3;
-const QUOTE_CREATED_COL         = 4;
-const QUOTE_VALID_COL           = 5;
-const QUOTE_STATUS_COL          = 6;
-const QUOTE_ITEMS_COL           = 7;
-const QUOTE_SUBTOTAL_COL        = 8;
-const QUOTE_TAX_COL             = 9;
-const QUOTE_DISCOUNT_COL        = 10;
-const QUOTE_TOTAL_COL           = 11;
-const QUOTE_NOTES_COL           = 12;
-const QUOTE_CREATED_BY_COL      = 13;
-const QUOTE_CURRENCY_COL        = 14;
-const QUOTE_GST_ENABLED_COL     = 15;
-const QUOTE_GST_PERCENT_COL     = 16;
-const QUOTE_GST_AMOUNT_COL      = 17;
-const QUOTE_GREENTAX_ENABLED_COL= 18;
-const QUOTE_GREENTAX_RATE_COL   = 19;
-const QUOTE_GREENTAX_PAX_COL    = 20;
-const QUOTE_GREENTAX_NIGHTS_COL = 21;
-const QUOTE_GREENTAX_AMOUNT_COL = 22;
-const QUOTE_CUSTOMER_TIN_COL    = 23;
-const QUOTE_CONVERTED_COL       = 24;
-const QUOTE_PDF_LINK_COL        = 25;
-
 // FINANCE sheet columns (0-based) — cols 0-8 original, 9-11 new
 const FIN_ID_COL           = 0;
 const FIN_DATE_COL         = 1;
@@ -137,10 +108,9 @@ const INV_GREENTAX_AMOUNT_COL = 18;
 const INV_DISCOUNT_COL        = 19;
 const INV_TOTAL_COL           = 20;
 const INV_NOTES_COL           = 21;
-const INV_SOURCE_QUOTE_COL    = 22;
-const INV_PDF_LINK_COL        = 23;
-const INV_CREATED_BY_COL      = 24;
-const INV_UPDATED_AT_COL      = 25;
+const INV_PDF_LINK_COL        = 22;
+const INV_CREATED_BY_COL      = 23;
+const INV_UPDATED_AT_COL      = 24;
 
 // SETTINGS sheet columns (0-based, single data row at row 2)
 const SET_HOTEL_NAME_COL       = 0;
@@ -154,9 +124,8 @@ const SET_DEFAULT_CURRENCY_COL = 7;
 const SET_GST_DEFAULT_COL      = 8;
 const SET_GREENTAX_DEFAULT_COL = 9;
 const SET_NEXT_INVOICE_COL     = 10;
-const SET_NEXT_QUOTE_COL       = 11;
-const SET_PDF_FOLDER_ID_COL    = 12;
-const SET_LOGO_FOLDER_ID_COL   = 13;
+const SET_PDF_FOLDER_ID_COL    = 11;
+const SET_LOGO_FOLDER_ID_COL   = 12;
 
 // BUDGETS sheet columns (0-based)
 const BDG_ID_COL           = 0;
@@ -229,8 +198,8 @@ const REST_BILLED_CHECKIN_ID_COL = 8;
 const REST_ADDED_BY_COL = 9;
 
 // SETTINGS sheet NEW columns (appended)
-const SET_NEXT_CHECKIN_COL  = 14;
-const SET_NEXT_BILL_COL     = 15;
+const SET_NEXT_CHECKIN_COL  = 13;
+const SET_NEXT_BILL_COL     = 14;
 
 // CUSTOMERS sheet columns (0-based)
 const CUST_ID_COL           = 0;
@@ -245,7 +214,7 @@ const CUST_LINKED_USER_COL  = 8;
 
 /***************************************************
  * WEB APP ENTRY POINT
- ***************************************************/
+/***************************************************/
 function doGet(e) {
   var template = HtmlService.createTemplateFromFile('index');
   return template
@@ -261,7 +230,7 @@ function include(filename) {
 
 /***************************************************
  * LOGIN LOGIC
- ***************************************************/
+/***************************************************/
 function checkLogin(username, password) {
   try {
     const loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
@@ -334,7 +303,7 @@ function changePassword(username, oldPassword, newPassword) {
 
 /***************************************************
  * CREATE ACCOUNT (Self-Registration)
- ***************************************************/
+/***************************************************/
 function createAccount(email, password) {
   try {
     if (!email || !password) {
@@ -372,7 +341,7 @@ function createAccount(email, password) {
 
 /***************************************************
  * FORGOT PASSWORD — OTP FLOW
- ***************************************************/
+/***************************************************/
 function sendForgotPasswordOTP(email) {
   try {
     if (!email) {
@@ -508,7 +477,7 @@ function resetPassword(email, otp, newPassword) {
 
 /***************************************************
  * HELPER FUNCTIONS
- ***************************************************/
+/***************************************************/
 function generateTicketId() {
   const prefix = "TKT";
   const timestamp = new Date().getTime().toString().slice(-6);
@@ -534,7 +503,7 @@ function daysBetween(d1, d2) {
 
 /**
  * Sequential ID generator using SETTINGS sheet as counter store.
- * type: 'invoice' → INV-0001, 'quote' → QTN-0001
+ * type: 'invoice' → INV-0001
  */
 function getNextSequentialId(type) {
   const ss = SpreadsheetApp.openById(SS_ID);
@@ -543,8 +512,8 @@ function getNextSequentialId(type) {
     throw new Error("Settings sheet not found. Please run Setup Demo Data first.");
   }
 
-  const prefixMap = { invoice: 'INV', quote: 'QTN' };
-  const colMap = { invoice: SET_NEXT_INVOICE_COL, quote: SET_NEXT_QUOTE_COL };
+  const prefixMap = { invoice: 'INV' };
+  const colMap = { invoice: SET_NEXT_INVOICE_COL };
 
   const prefix = prefixMap[type];
   const col = colMap[type];
@@ -573,7 +542,7 @@ function getOrCreateDriveFolder(folderName) {
 
 /***************************************************
  * BOOK / CHECKOUT ROOM
- ***************************************************/
+/***************************************************/
 function bookRoom(bookingDetails) {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
@@ -1146,7 +1115,7 @@ function generateInvoiceHtml(invoiceData) {
 
 /***************************************************
  * CHECK-IN FUNCTIONS
- ***************************************************/
+/***************************************************/
 
 function generateCheckInId() {
   const ss = SpreadsheetApp.openById(SS_ID);
@@ -1466,7 +1435,7 @@ function updateCheckIn(rowIndex, checkInData) {
 
 /***************************************************
  * RESTAURANT FUNCTIONS
- ***************************************************/
+/***************************************************/
 
 function generateOrderId() {
   return "ORD-" + new Date().getTime().toString().slice(-6) + Math.floor(Math.random() * 900 + 100);
@@ -1614,7 +1583,7 @@ function getActiveCheckInRooms() {
 
 /***************************************************
  * CHECKOUT FUNCTIONS (REVAMPED)
- ***************************************************/
+/***************************************************/
 
 function processFullCheckout(checkInId, checkoutData) {
   try {
@@ -2228,7 +2197,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       ];
 
       const nowStr = new Date().toISOString();
-      const invoiceRow = new Array(26).fill('');
+      const invoiceRow = new Array(25).fill('');
       invoiceRow[0] = billNumber; 
       invoiceRow[1] = primaryGuestData.guestName; 
       invoiceRow[2] = primaryGuestData.mobile; 
@@ -2252,9 +2221,8 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       invoiceRow[20] = billAmount; 
       invoiceRow[21] = `Merged: ${Object.keys(roomsByCi).join(', ')}`; 
       invoiceRow[22] = ""; 
-      invoiceRow[23] = ""; 
-      invoiceRow[24] = "System"; 
-      invoiceRow[25] = nowStr; 
+      invoiceRow[23] = "System";
+      invoiceRow[24] = nowStr;
 
       masterInvSheet.appendRow(invoiceRow);
     }
@@ -2364,7 +2332,7 @@ function numberToWords(num) {
 
 /***************************************************
  * DASHBOARD
- ***************************************************/
+/***************************************************/
 function getDashboardData() {
   try {
     const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
@@ -2482,22 +2450,6 @@ function getDashboardData() {
     }
 
     // Quote Stats
-    let quoteStats = { totalQuotes: 0, draftQuotes: 0, sentQuotes: 0, acceptedQuotes: 0, expiredQuotes: 0 };
-    try {
-      const quoteSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(QUOTES_SHEET_NAME);
-      if (quoteSheet) {
-        const quoteData = quoteSheet.getDataRange().getValues();
-        quoteStats.totalQuotes = Math.max(0, quoteData.length - 1);
-        for (let i = 1; i < quoteData.length; i++) {
-          let status = (quoteData[i][QUOTE_STATUS_COL] || "").toString();
-          if (status === "Draft") quoteStats.draftQuotes++;
-          else if (status === "Sent") quoteStats.sentQuotes++;
-          else if (status === "Accepted") quoteStats.acceptedQuotes++;
-          else if (status === "Expired") quoteStats.expiredQuotes++;
-        }
-      }
-    } catch (quoteErr) {
-      Logger.log("Could not load quote data: " + quoteErr);
     }
 
     // Monthly data (last 6 months) - declared outside try so return can access them
@@ -2624,7 +2576,6 @@ function getDashboardData() {
       financeSummary,
       expenseCategories,
       incomeCategories,
-      quoteStats,
       bookingRevenue,
       recentBookings,
       invoiceStats,
@@ -2742,7 +2693,7 @@ function getAllBookings() {
 
 /***************************************************
  * USER MANAGEMENT
- ***************************************************/
+/***************************************************/
 function getAllUsers() {
   try {
     const loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
@@ -2819,7 +2770,7 @@ function deleteUser(rowIndex) {
 
 /***************************************************
  * CUSTOMER MANAGEMENT
- ***************************************************/
+/***************************************************/
 function getAllCustomers() {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
@@ -2925,64 +2876,8 @@ function deleteCustomer(rowIndex) {
   }
 }
 
-/***************************************************
- * ROOMS KANBAN
- ***************************************************/
-function checkReservedRooms() {
-  try {
-    const ss = SpreadsheetApp.openById(SS_ID);
-    const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
-    const quotesSheet = ss.getSheetByName(QUOTES_SHEET_NAME);
-    if (!roomsSheet || !quotesSheet) return { success: false, message: "Sheet not found." };
-
-    const roomsData = roomsSheet.getDataRange().getValues();
-    const quotesData = quotesSheet.getDataRange().getValues();
-    const now = new Date();
-    let releasedCount = 0;
-
-    for (let i = 1; i < roomsData.length; i++) {
-      if ((roomsData[i][ROOM_STATUS_COL] || '').toString() === 'Reserved') {
-        const roomNo = (roomsData[i][ROOM_NO_COL] || '').toString();
-        let shouldRelease = true;
-
-        for (let q = 1; q < quotesData.length; q++) {
-          const qStatus = (quotesData[q][QUOTE_STATUS_COL] || '').toString();
-          const qCreated = quotesData[q][QUOTE_CREATED_COL] ? new Date(quotesData[q][QUOTE_CREATED_COL]) : null;
-          const qConverted = (quotesData[q][QUOTE_CONVERTED_COL] || '').toString();
-
-          if (qConverted) continue;
-          if (qStatus === 'Expired' || qStatus === 'Converted') continue;
-
-          try {
-            const items = JSON.parse((quotesData[q][QUOTE_ITEMS_COL] || '[]').toString());
-            const hasRoom = items.some(it => it.type === 'room' && it.reservedRoomNo === roomNo);
-            if (hasRoom && qCreated) {
-              const hoursSince = (now - qCreated) / (1000 * 60 * 60);
-              if (hoursSince < 24) {
-                shouldRelease = false;
-                break;
-              }
-            }
-          } catch (e) { /* ignore parse errors */ }
-        }
-
-        if (shouldRelease) {
-          roomsSheet.getRange(i + 1, ROOM_STATUS_COL + 1).setValue("Available");
-          releasedCount++;
-        }
-      }
-    }
-
-    SpreadsheetApp.flush();
-    return { success: true, message: releasedCount + " room(s) released from reservation.", releasedCount: releasedCount };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-/***************************************************
  * ROOM MANAGEMENT
- ***************************************************/
+/***************************************************/
 function getAllRooms() {
   try {
     const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
@@ -3085,292 +2980,8 @@ function deleteRoom(rowIndex) {
   }
 }
 
-/***************************************************
- * QUOTE MANAGEMENT
- ***************************************************/
-function getAllQuotes() {
-  try {
-    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(QUOTES_SHEET_NAME);
-    if (!sheet) return [];
-    const data = sheet.getDataRange().getValues();
-    let quotes = [];
-    for (let i = 1; i < data.length; i++) {
-      let row = data[i];
-      quotes.push({
-        rowIndex: i + 1,
-        quoteId: (row[QUOTE_ID_COL] || "").toString(),
-        guestName: (row[QUOTE_GUEST_NAME_COL] || "").toString(),
-        phone: (row[QUOTE_PHONE_COL] || "").toString(),
-        email: (row[QUOTE_EMAIL_COL] || "").toString(),
-        createdDate: (row[QUOTE_CREATED_COL] || "").toString(),
-        validUntil: (row[QUOTE_VALID_COL] || "").toString(),
-        status: (row[QUOTE_STATUS_COL] || "").toString(),
-        items: (row[QUOTE_ITEMS_COL] || "[]").toString(),
-        subTotal: parseFloat(row[QUOTE_SUBTOTAL_COL]) || 0,
-        tax: parseFloat(row[QUOTE_TAX_COL]) || 0,
-        discount: parseFloat(row[QUOTE_DISCOUNT_COL]) || 0,
-        totalAmount: parseFloat(row[QUOTE_TOTAL_COL]) || 0,
-        notes: (row[QUOTE_NOTES_COL] || "").toString(),
-        createdBy: (row[QUOTE_CREATED_BY_COL] || "").toString(),
-        currency: (row[QUOTE_CURRENCY_COL] || 'MVR').toString(),
-        gstEnabled: row[QUOTE_GST_ENABLED_COL] === true || row[QUOTE_GST_ENABLED_COL] === 'true',
-        gstPercent: parseFloat(row[QUOTE_GST_PERCENT_COL]) || 0,
-        gstAmount: parseFloat(row[QUOTE_GST_AMOUNT_COL]) || 0,
-        greenTaxEnabled: row[QUOTE_GREENTAX_ENABLED_COL] === true || row[QUOTE_GREENTAX_ENABLED_COL] === 'true',
-        greenTaxPerNight: parseFloat(row[QUOTE_GREENTAX_RATE_COL]) || 0,
-        greenTaxPax: parseFloat(row[QUOTE_GREENTAX_PAX_COL]) || 0,
-        greenTaxNights: parseFloat(row[QUOTE_GREENTAX_NIGHTS_COL]) || 0,
-        greenTaxAmount: parseFloat(row[QUOTE_GREENTAX_AMOUNT_COL]) || 0,
-        customerTIN: (row[QUOTE_CUSTOMER_TIN_COL] || '').toString(),
-        convertedToInvoice: (row[QUOTE_CONVERTED_COL] || '').toString(),
-        pdfDriveLink: (row[QUOTE_PDF_LINK_COL] || '').toString()
-      });
-    }
-    return quotes;
-  } catch (err) {
-    return { error: err.message };
-  }
-}
-
-function addQuote(quoteData) {
-  try {
-    if (!quoteData.guestName) {
-      return { success: false, message: "Guest name is required." };
-    }
-    if (!quoteData.items || quoteData.items === '[]') {
-      return { success: false, message: "At least one item is required." };
-    }
-
-    try { JSON.parse(quoteData.items); } catch (jsonErr) {
-      return { success: false, message: "Invalid items format." };
-    }
-
-    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(QUOTES_SHEET_NAME);
-    if (!sheet) return { success: false, message: "Quotes sheet not found." };
-
-    const quoteId = getNextSequentialId('quote');
-    const createdDate = new Date().toISOString();
-    const status = quoteData.status || "Draft";
-    const subTotal = parseFloat(quoteData.subTotal) || 0;
-    const discount = parseFloat(quoteData.discount) || 0;
-    const currency = quoteData.currency || 'MVR';
-
-    // Tax calculations
-    const gstEnabled = quoteData.gstEnabled === true;
-    const gstPercent = parseFloat(quoteData.gstPercent) || 0;
-    const gstAmount = gstEnabled ? (subTotal - discount) * (gstPercent / 100) : 0;
-    const greenTaxEnabled = quoteData.greenTaxEnabled === true;
-    const greenTaxRate = parseFloat(quoteData.greenTaxPerNight) || 0;
-    const greenTaxPax = parseFloat(quoteData.greenTaxPax) || 0;
-    const greenTaxNights = parseFloat(quoteData.greenTaxNights) || 0;
-    const greenTaxAmount = greenTaxEnabled ? greenTaxRate * greenTaxPax * greenTaxNights : 0;
-    const totalAmount = subTotal - discount + gstAmount + greenTaxAmount;
-
-    sheet.appendRow([
-      quoteId,
-      quoteData.guestName.trim(),
-      (quoteData.phone || "").trim(),
-      (quoteData.email || "").trim(),
-      createdDate,
-      (quoteData.validUntil || "").trim(),
-      status,
-      quoteData.items,
-      subTotal,
-      0,
-      discount,
-      Math.round(totalAmount * 100) / 100,
-      (quoteData.notes || "").trim(),
-      (quoteData.createdBy || "").trim(),
-      currency,
-      gstEnabled,
-      gstPercent,
-      Math.round(gstAmount * 100) / 100,
-      greenTaxEnabled,
-      greenTaxRate,
-      greenTaxPax,
-      greenTaxNights,
-      Math.round(greenTaxAmount * 100) / 100,
-      (quoteData.customerTIN || '').trim(),
-      '',
-      ''
-    ]);
-
-    // Reserve rooms if items contain reservedRoomNo
-    try {
-      const parsedItems = JSON.parse(quoteData.items);
-      const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
-      if (roomsSheet) {
-        const roomsData = roomsSheet.getDataRange().getValues();
-        parsedItems.forEach(item => {
-          if (item.type === 'room' && item.reservedRoomNo) {
-            for (let r = 1; r < roomsData.length; r++) {
-              if ((roomsData[r][ROOM_NO_COL] || '').toString() === item.reservedRoomNo.toString()) {
-                const curStatus = (roomsData[r][ROOM_STATUS_COL] || '').toString().toLowerCase();
-                if (curStatus === 'available') {
-                  roomsSheet.getRange(r + 1, ROOM_STATUS_COL + 1).setValue("Reserved");
-                }
-                break;
-              }
-            }
-          }
-        });
-      }
-    } catch (reserveErr) { Logger.log("Room reserve error: " + reserveErr); }
-
-    return { success: true, message: "Quote created successfully!", quoteId: quoteId };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-function updateQuote(rowIndex, quoteData) {
-  try {
-    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(QUOTES_SHEET_NAME);
-    if (!sheet) return { success: false, message: "Quotes sheet not found." };
-    if (rowIndex <= 1) return { success: false, message: "Invalid row index." };
-
-    // Original columns 0-13
-    if (quoteData.guestName !== undefined) sheet.getRange(rowIndex, QUOTE_GUEST_NAME_COL + 1).setValue(quoteData.guestName);
-    if (quoteData.phone !== undefined) sheet.getRange(rowIndex, QUOTE_PHONE_COL + 1).setValue(quoteData.phone);
-    if (quoteData.email !== undefined) sheet.getRange(rowIndex, QUOTE_EMAIL_COL + 1).setValue(quoteData.email);
-    if (quoteData.validUntil !== undefined) sheet.getRange(rowIndex, QUOTE_VALID_COL + 1).setValue(quoteData.validUntil);
-    if (quoteData.status !== undefined) sheet.getRange(rowIndex, QUOTE_STATUS_COL + 1).setValue(quoteData.status);
-    if (quoteData.notes !== undefined) sheet.getRange(rowIndex, QUOTE_NOTES_COL + 1).setValue(quoteData.notes);
-
-    if (quoteData.items !== undefined) {
-      try { JSON.parse(quoteData.items); } catch (e) {
-        return { success: false, message: "Invalid items format." };
-      }
-      sheet.getRange(rowIndex, QUOTE_ITEMS_COL + 1).setValue(quoteData.items);
-    }
-
-    if (quoteData.subTotal !== undefined) sheet.getRange(rowIndex, QUOTE_SUBTOTAL_COL + 1).setValue(parseFloat(quoteData.subTotal) || 0);
-    if (quoteData.tax !== undefined) sheet.getRange(rowIndex, QUOTE_TAX_COL + 1).setValue(parseFloat(quoteData.tax) || 0);
-    if (quoteData.discount !== undefined) sheet.getRange(rowIndex, QUOTE_DISCOUNT_COL + 1).setValue(parseFloat(quoteData.discount) || 0);
-
-    // New columns 14-25
-    if (quoteData.currency !== undefined) sheet.getRange(rowIndex, QUOTE_CURRENCY_COL + 1).setValue(quoteData.currency);
-    if (quoteData.customerTIN !== undefined) sheet.getRange(rowIndex, QUOTE_CUSTOMER_TIN_COL + 1).setValue(quoteData.customerTIN);
-
-    // Tax fields
-    if (quoteData.gstEnabled !== undefined) sheet.getRange(rowIndex, QUOTE_GST_ENABLED_COL + 1).setValue(quoteData.gstEnabled === true);
-    if (quoteData.gstPercent !== undefined) sheet.getRange(rowIndex, QUOTE_GST_PERCENT_COL + 1).setValue(parseFloat(quoteData.gstPercent) || 0);
-    if (quoteData.greenTaxEnabled !== undefined) sheet.getRange(rowIndex, QUOTE_GREENTAX_ENABLED_COL + 1).setValue(quoteData.greenTaxEnabled === true);
-    if (quoteData.greenTaxPerNight !== undefined) sheet.getRange(rowIndex, QUOTE_GREENTAX_RATE_COL + 1).setValue(parseFloat(quoteData.greenTaxPerNight) || 0);
-    if (quoteData.greenTaxPax !== undefined) sheet.getRange(rowIndex, QUOTE_GREENTAX_PAX_COL + 1).setValue(parseFloat(quoteData.greenTaxPax) || 0);
-    if (quoteData.greenTaxNights !== undefined) sheet.getRange(rowIndex, QUOTE_GREENTAX_NIGHTS_COL + 1).setValue(parseFloat(quoteData.greenTaxNights) || 0);
-
-    // Recalculate tax amounts and total
-    const subTotal = parseFloat(sheet.getRange(rowIndex, QUOTE_SUBTOTAL_COL + 1).getValue()) || 0;
-    const discount = parseFloat(sheet.getRange(rowIndex, QUOTE_DISCOUNT_COL + 1).getValue()) || 0;
-    const gstEnabled = sheet.getRange(rowIndex, QUOTE_GST_ENABLED_COL + 1).getValue() === true;
-    const gstPercent = parseFloat(sheet.getRange(rowIndex, QUOTE_GST_PERCENT_COL + 1).getValue()) || 0;
-    const gstAmount = gstEnabled ? (subTotal - discount) * (gstPercent / 100) : 0;
-    const greenTaxEnabled = sheet.getRange(rowIndex, QUOTE_GREENTAX_ENABLED_COL + 1).getValue() === true;
-    const greenTaxRate = parseFloat(sheet.getRange(rowIndex, QUOTE_GREENTAX_RATE_COL + 1).getValue()) || 0;
-    const greenTaxPax = parseFloat(sheet.getRange(rowIndex, QUOTE_GREENTAX_PAX_COL + 1).getValue()) || 0;
-    const greenTaxNights = parseFloat(sheet.getRange(rowIndex, QUOTE_GREENTAX_NIGHTS_COL + 1).getValue()) || 0;
-    const greenTaxAmount = greenTaxEnabled ? greenTaxRate * greenTaxPax * greenTaxNights : 0;
-    const total = subTotal - discount + gstAmount + greenTaxAmount;
-
-    sheet.getRange(rowIndex, QUOTE_GST_AMOUNT_COL + 1).setValue(Math.round(gstAmount * 100) / 100);
-    sheet.getRange(rowIndex, QUOTE_GREENTAX_AMOUNT_COL + 1).setValue(Math.round(greenTaxAmount * 100) / 100);
-    sheet.getRange(rowIndex, QUOTE_TOTAL_COL + 1).setValue(Math.round(total * 100) / 100);
-
-    // Reserve rooms if status changed and items contain reservedRoomNo
-    if (quoteData.status === 'Sent' || quoteData.status === 'Accepted') {
-      try {
-        const itemsStr = (quoteData.items || sheet.getRange(rowIndex, QUOTE_ITEMS_COL + 1).getValue() || '[]').toString();
-        const parsedItems = JSON.parse(itemsStr);
-        const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
-        if (roomsSheet) {
-          const roomsData = roomsSheet.getDataRange().getValues();
-          parsedItems.forEach(item => {
-            if (item.type === 'room' && item.reservedRoomNo) {
-              for (let r = 1; r < roomsData.length; r++) {
-                if ((roomsData[r][ROOM_NO_COL] || '').toString() === item.reservedRoomNo.toString()) {
-                  const curStatus = (roomsData[r][ROOM_STATUS_COL] || '').toString().toLowerCase();
-                  if (curStatus === 'available') {
-                    roomsSheet.getRange(r + 1, ROOM_STATUS_COL + 1).setValue("Reserved");
-                  }
-                  break;
-                }
-              }
-            }
-          });
-        }
-      } catch (reserveErr) { Logger.log("Room reserve error on update: " + reserveErr); }
-    }
-
-    return { success: true, message: "Quote updated successfully." };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-function deleteQuote(rowIndex) {
-  try {
-    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(QUOTES_SHEET_NAME);
-    if (!sheet) return { success: false, message: "Quotes sheet not found." };
-    if (rowIndex <= 1) return { success: false, message: "Cannot delete header row." };
-    sheet.deleteRow(rowIndex);
-    return { success: true, message: "Quote deleted successfully." };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-function getQuoteById(quoteId) {
-  try {
-    const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(QUOTES_SHEET_NAME);
-    if (!sheet) return { success: false, message: "Quotes sheet not found." };
-    const data = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < data.length; i++) {
-      if ((data[i][QUOTE_ID_COL] || "").toString() === quoteId.toString()) {
-        return {
-          success: true,
-          quote: {
-            rowIndex: i + 1,
-            quoteId: (data[i][QUOTE_ID_COL] || "").toString(),
-            guestName: (data[i][QUOTE_GUEST_NAME_COL] || "").toString(),
-            phone: (data[i][QUOTE_PHONE_COL] || "").toString(),
-            email: (data[i][QUOTE_EMAIL_COL] || "").toString(),
-            createdDate: (data[i][QUOTE_CREATED_COL] || "").toString(),
-            validUntil: (data[i][QUOTE_VALID_COL] || "").toString(),
-            status: (data[i][QUOTE_STATUS_COL] || "").toString(),
-            items: (data[i][QUOTE_ITEMS_COL] || "[]").toString(),
-            subTotal: parseFloat(data[i][QUOTE_SUBTOTAL_COL]) || 0,
-            tax: parseFloat(data[i][QUOTE_TAX_COL]) || 0,
-            discount: parseFloat(data[i][QUOTE_DISCOUNT_COL]) || 0,
-            totalAmount: parseFloat(data[i][QUOTE_TOTAL_COL]) || 0,
-            notes: (data[i][QUOTE_NOTES_COL] || "").toString(),
-            createdBy: (data[i][QUOTE_CREATED_BY_COL] || "").toString(),
-            currency: (data[i][QUOTE_CURRENCY_COL] || 'MVR').toString(),
-            gstEnabled: data[i][QUOTE_GST_ENABLED_COL] === true || data[i][QUOTE_GST_ENABLED_COL] === 'true',
-            gstPercent: parseFloat(data[i][QUOTE_GST_PERCENT_COL]) || 0,
-            gstAmount: parseFloat(data[i][QUOTE_GST_AMOUNT_COL]) || 0,
-            greenTaxEnabled: data[i][QUOTE_GREENTAX_ENABLED_COL] === true || data[i][QUOTE_GREENTAX_ENABLED_COL] === 'true',
-            greenTaxPerNight: parseFloat(data[i][QUOTE_GREENTAX_RATE_COL]) || 0,
-            greenTaxPax: parseFloat(data[i][QUOTE_GREENTAX_PAX_COL]) || 0,
-            greenTaxNights: parseFloat(data[i][QUOTE_GREENTAX_NIGHTS_COL]) || 0,
-            greenTaxAmount: parseFloat(data[i][QUOTE_GREENTAX_AMOUNT_COL]) || 0,
-            customerTIN: (data[i][QUOTE_CUSTOMER_TIN_COL] || '').toString(),
-            convertedToInvoice: (data[i][QUOTE_CONVERTED_COL] || '').toString(),
-            pdfDriveLink: (data[i][QUOTE_PDF_LINK_COL] || '').toString()
-          }
-        };
-      }
-    }
-    return { success: false, message: "Quote not found." };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-/***************************************************
  * FINANCE MANAGEMENT
- ***************************************************/
+/***************************************************/
 function recalculateBalances() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
@@ -3561,7 +3172,7 @@ function getFinanceSummary() {
 
 /***************************************************
  * SETTINGS MANAGEMENT
- ***************************************************/
+/***************************************************/
 function getSettings() {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
@@ -3573,7 +3184,7 @@ function getSettings() {
         greenTaxDefaultRate: 6, nextInvoiceNum: 1, nextQuoteNum: 1, pdfFolderId: '', logoFolderId: ''
       }};
     }
-    const row = sheet.getRange(2, 1, 1, 14).getValues()[0];
+    const row = sheet.getRange(2, 1, 1, 13).getValues()[0];
     return { success: true, data: {
       hotelName: (row[SET_HOTEL_NAME_COL] || 'Hill View Eco Retreat').toString(),
       hotelAddress: (row[SET_HOTEL_ADDRESS_COL] || '').toString(),
@@ -3586,7 +3197,6 @@ function getSettings() {
       gstDefaultPercent: parseFloat(row[SET_GST_DEFAULT_COL]) || 16,
       greenTaxDefaultRate: parseFloat(row[SET_GREENTAX_DEFAULT_COL]) || 6,
       nextInvoiceNum: parseInt(row[SET_NEXT_INVOICE_COL]) || 1,
-      nextQuoteNum: parseInt(row[SET_NEXT_QUOTE_COL]) || 1,
       pdfFolderId: (row[SET_PDF_FOLDER_ID_COL] || '').toString(),
       logoFolderId: (row[SET_LOGO_FOLDER_ID_COL] || '').toString()
     }};
@@ -3603,13 +3213,11 @@ function updateSettings(settingsData) {
 
     // Read current counter values fresh from sheet to prevent race condition
     let currentInvoiceNum = 1;
-    let currentQuoteNum = 1;
     let currentPdfFolderId = settingsData.pdfFolderId || '';
     let currentLogoFolderId = settingsData.logoFolderId || '';
     if (sheet.getLastRow() >= 2) {
-      const existing = sheet.getRange(2, 1, 1, 14).getValues()[0];
+      const existing = sheet.getRange(2, 1, 1, 13).getValues()[0];
       currentInvoiceNum = parseInt(existing[SET_NEXT_INVOICE_COL]) || 1;
-      currentQuoteNum = parseInt(existing[SET_NEXT_QUOTE_COL]) || 1;
       currentPdfFolderId = (existing[SET_PDF_FOLDER_ID_COL] || '').toString() || currentPdfFolderId;
       currentLogoFolderId = (existing[SET_LOGO_FOLDER_ID_COL] || '').toString() || currentLogoFolderId;
     }
@@ -3626,7 +3234,6 @@ function updateSettings(settingsData) {
       parseFloat(settingsData.gstDefaultPercent) || 16,
       parseFloat(settingsData.greenTaxDefaultRate) || 6,
       currentInvoiceNum,
-      currentQuoteNum,
       currentPdfFolderId,
       currentLogoFolderId
     ];
@@ -3634,7 +3241,7 @@ function updateSettings(settingsData) {
     if (sheet.getLastRow() < 2) {
       sheet.appendRow(row);
     } else {
-      sheet.getRange(2, 1, 1, 14).setValues([row]);
+      sheet.getRange(2, 1, 1, 13).setValues([row]);
     }
 
     return { success: true, message: "Settings updated successfully!" };
@@ -3671,7 +3278,7 @@ function uploadLogo(base64Data, fileName, mimeType) {
 
 /***************************************************
  * INVOICE MANAGEMENT
- ***************************************************/
+/***************************************************/
 function getAllInvoices() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(INVOICES_SHEET_NAME);
@@ -3704,7 +3311,6 @@ function getAllInvoices() {
         discount: parseFloat(row[INV_DISCOUNT_COL]) || 0,
         totalAmount: parseFloat(row[INV_TOTAL_COL]) || 0,
         notes: (row[INV_NOTES_COL] || '').toString(),
-        sourceQuoteId: (row[INV_SOURCE_QUOTE_COL] || '').toString(),
         pdfDriveLink: (row[INV_PDF_LINK_COL] || '').toString(),
         createdBy: (row[INV_CREATED_BY_COL] || '').toString(),
         updatedAt: (row[INV_UPDATED_AT_COL] || '').toString()
@@ -3774,7 +3380,6 @@ function addInvoice(invoiceData) {
       discount,
       Math.round(totalAmount * 100) / 100,
       (invoiceData.notes || '').trim(),
-      invoiceData.sourceQuoteId || '',
       '',
       (invoiceData.createdBy || '').trim(),
       now
@@ -3811,7 +3416,6 @@ function updateInvoice(rowIndex, invoiceData) {
     // Keep existing ID and createdDate, update everything else
     const existingId = sheet.getRange(rowIndex, INV_ID_COL + 1).getValue();
     const existingCreated = sheet.getRange(rowIndex, INV_CREATED_DATE_COL + 1).getValue();
-    const existingSource = sheet.getRange(rowIndex, INV_SOURCE_QUOTE_COL + 1).getValue();
     const existingPdf = sheet.getRange(rowIndex, INV_PDF_LINK_COL + 1).getValue();
     const existingCreatedBy = sheet.getRange(rowIndex, INV_CREATED_BY_COL + 1).getValue();
 
@@ -3838,13 +3442,13 @@ function updateInvoice(rowIndex, invoiceData) {
       discount,
       Math.round(totalAmount * 100) / 100,
       (invoiceData.notes || '').trim(),
-      existingSource,
+
       existingPdf,
       existingCreatedBy,
       now
     ];
 
-    sheet.getRange(rowIndex, 1, 1, 26).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 25).setValues([row]);
 
     // Auto-record payment when status changes to Paid
     const newStatus = (invoiceData.status || 'Draft').toString();
@@ -3954,16 +3558,15 @@ function checkOverdueInvoices() {
 
 /***************************************************
  * EMAIL INVOICE / QUOTE
- ***************************************************/
+/***************************************************/
 function generateDocumentEmailHtml(type, data, settings) {
   const hotelName = settings.hotelName || 'Hill View Eco Retreat';
   const hotelAddress = settings.hotelAddress || '';
   const hotelPhone = settings.hotelPhone || '';
   const hotelEmail = settings.hotelEmail || '';
   const cur = data.currency || 'MVR';
-  const isInvoice = type === 'invoice';
-  const docLabel = isInvoice ? 'INVOICE' : 'QUOTATION';
-  const docId = isInvoice ? data.invoiceId : data.quoteId;
+  const docLabel = 'INVOICE';
+  const docId = data.invoiceId;
 
   let items = [];
   try { items = JSON.parse(typeof data.items === 'string' ? data.items : '[]'); } catch (e) { items = []; }
@@ -3994,12 +3597,7 @@ function generateDocumentEmailHtml(type, data, settings) {
   if (data.greenTaxEnabled) totalsRows += '<tr><td colspan="2">Green Tax</td><td class="right">' + cur + ' ' + greenTaxAmount.toFixed(2) + '</td></tr>';
   totalsRows += '<tr class="total"><td colspan="2"><strong>TOTAL</strong></td><td class="right"><strong>' + cur + ' ' + totalAmount.toFixed(2) + '</strong></td></tr>';
 
-  let dateInfo = '';
-  if (isInvoice) {
-    dateInfo = '<p><strong>Date:</strong> ' + (data.createdDate || '') + '</p><p><strong>Due Date:</strong> ' + (data.dueDate || '') + '</p><p><strong>Status:</strong> ' + (data.status || '') + '</p>';
-  } else {
-    dateInfo = '<p><strong>Created:</strong> ' + (data.createdDate || '') + '</p><p><strong>Valid Until:</strong> ' + (data.validUntil || '') + '</p>';
-  }
+  let dateInfo = '<p><strong>Date:</strong> ' + (data.createdDate || '') + '</p><p><strong>Due Date:</strong> ' + (data.dueDate || '') + '</p><p><strong>Status:</strong> ' + (data.status || '') + '</p>';
 
   return '<html><head><style>body{font-family:Arial,sans-serif;margin:20px;color:#333}' +
     '.doc-container{max-width:650px;margin:auto;border:1px solid #ddd;padding:30px;border-radius:4px}' +
@@ -4056,166 +3654,9 @@ function emailInvoice(invoiceId) {
   }
 }
 
-function emailQuote(quoteId) {
-  try {
-    const result = getQuoteById(quoteId);
-    if (!result.success) return result;
-    const q = result.quote;
-
-    if (!q.email) return { success: false, message: "No email address on this quote." };
-
-    const settingsResult = getSettings();
-    const settings = settingsResult.success ? settingsResult.data : { hotelName: 'Hill View Eco Retreat' };
-
-    const htmlBody = generateDocumentEmailHtml('quote', q, settings);
-    const subject = settings.hotelName + ' - Quotation ' + q.quoteId;
-
-    MailApp.sendEmail({
-      to: q.email,
-      subject: subject,
-      body: 'Dear ' + q.guestName + ',\n\nPlease find your quotation ' + q.quoteId + ' for ' + (q.currency || 'MVR') + ' ' + q.totalAmount.toFixed(2) + '.\nValid until: ' + (q.validUntil || 'N/A') + '\n\nThank you!\n' + settings.hotelName,
-      htmlBody: htmlBody
-    });
-
-    return { success: true, message: "Quote emailed to " + q.email + " successfully!" };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-/***************************************************
- * QUOTE → INVOICE CONVERSION
- ***************************************************/
-function convertQuoteToInvoice(quoteRowIndex, user) {
-  try {
-    const ss = SpreadsheetApp.openById(SS_ID);
-    const quotesSheet = ss.getSheetByName(QUOTES_SHEET_NAME);
-    if (!quotesSheet) return { success: false, message: "Quotes sheet not found." };
-
-    const quoteRow = quotesSheet.getRange(quoteRowIndex, 1, 1, 26).getValues()[0];
-    const quoteId = (quoteRow[QUOTE_ID_COL] || '').toString();
-    const converted = (quoteRow[QUOTE_CONVERTED_COL] || '').toString();
-    if (converted && converted !== '' && converted !== 'false') {
-      return { success: false, message: "This quote has already been converted to invoice " + converted + "." };
-    }
-
-    const invoicesSheet = ss.getSheetByName(INVOICES_SHEET_NAME);
-    if (!invoicesSheet) return { success: false, message: "Invoices sheet not found." };
-
-    const invId = getNextSequentialId('invoice');
-    const now = new Date().toISOString();
-
-    // Read quote data
-    const items = (quoteRow[QUOTE_ITEMS_COL] || '[]').toString();
-    const subTotal = parseFloat(quoteRow[QUOTE_SUBTOTAL_COL]) || 0;
-    const discount = parseFloat(quoteRow[QUOTE_DISCOUNT_COL]) || 0;
-    const currency = (quoteRow[QUOTE_CURRENCY_COL] || 'MVR').toString();
-    const gstEnabled = quoteRow[QUOTE_GST_ENABLED_COL] === true || quoteRow[QUOTE_GST_ENABLED_COL] === 'true';
-    const gstPercent = parseFloat(quoteRow[QUOTE_GST_PERCENT_COL]) || 0;
-    const gstAmount = parseFloat(quoteRow[QUOTE_GST_AMOUNT_COL]) || 0;
-    const greenTaxEnabled = quoteRow[QUOTE_GREENTAX_ENABLED_COL] === true || quoteRow[QUOTE_GREENTAX_ENABLED_COL] === 'true';
-    const greenTaxRate = parseFloat(quoteRow[QUOTE_GREENTAX_RATE_COL]) || 0;
-    const greenTaxPax = parseFloat(quoteRow[QUOTE_GREENTAX_PAX_COL]) || 0;
-    const greenTaxNights = parseFloat(quoteRow[QUOTE_GREENTAX_NIGHTS_COL]) || 0;
-    const greenTaxAmount = parseFloat(quoteRow[QUOTE_GREENTAX_AMOUNT_COL]) || 0;
-    const totalAmount = parseFloat(quoteRow[QUOTE_TOTAL_COL]) || 0;
-
-    // Due date = 30 days from now
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    invoicesSheet.appendRow([
-      invId,
-      (quoteRow[QUOTE_GUEST_NAME_COL] || '').toString(),
-      (quoteRow[QUOTE_PHONE_COL] || '').toString(),
-      (quoteRow[QUOTE_EMAIL_COL] || '').toString(),
-      (quoteRow[QUOTE_CUSTOMER_TIN_COL] || '').toString(),
-      currency,
-      now,
-      dueDate.toISOString(),
-      'Draft',
-      items,
-      subTotal,
-      gstEnabled,
-      gstPercent,
-      gstAmount,
-      greenTaxEnabled,
-      greenTaxRate,
-      greenTaxPax,
-      greenTaxNights,
-      greenTaxAmount,
-      discount,
-      totalAmount,
-      (quoteRow[QUOTE_NOTES_COL] || '').toString(),
-      quoteId,
-      '',
-      user || '',
-      now
-    ]);
-
-    // Mark quote as Converted
-    quotesSheet.getRange(quoteRowIndex, QUOTE_STATUS_COL + 1).setValue('Converted');
-    quotesSheet.getRange(quoteRowIndex, QUOTE_CONVERTED_COL + 1).setValue(invId);
-
-    // Auto-create bookings from room items
-    try {
-      const parsedItems = JSON.parse(items);
-      const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
-      const bookingsSheet = ss.getSheetByName(BOOKINGS_SHEET_NAME);
-      const roomsData = roomsSheet ? roomsSheet.getDataRange().getValues() : [];
-
-      const guestName = (quoteRow[QUOTE_GUEST_NAME_COL] || '').toString();
-      const phone = (quoteRow[QUOTE_PHONE_COL] || '').toString();
-      const email = (quoteRow[QUOTE_EMAIL_COL] || '').toString();
-
-      parsedItems.forEach(item => {
-        if (item.type === 'room' && item.reservedRoomNo) {
-          const roomNo = item.reservedRoomNo.toString();
-
-          // Set room to Booked
-          for (let r = 1; r < roomsData.length; r++) {
-            if ((roomsData[r][ROOM_NO_COL] || '').toString() === roomNo) {
-              roomsSheet.getRange(r + 1, ROOM_STATUS_COL + 1).setValue("Booked");
-              break;
-            }
-          }
-
-          // Create booking entry
-          const ticketId = generateTicketId();
-          const checkInDate = new Date();
-          const checkOutDate = new Date();
-          checkOutDate.setDate(checkOutDate.getDate() + (parseInt(item.nights) || 1));
-          const roomRate = parseFloat(item.rate) || 0;
-          const nights = parseInt(item.nights) || 1;
-          const qty = parseInt(item.quantity) || 1;
-          const baseAmount = roomRate * nights * qty;
-
-          bookingsSheet.appendRow([
-            ticketId, roomNo, guestName, phone, email,
-            '', '', 'Single', '',
-            checkInDate.toISOString(),
-            checkOutDate.toISOString(),
-            'Booked',
-            roomRate, 0, 0, 'Invoice',
-            baseAmount, 'Unpaid', 0,
-            '', '', 'None', 0, qty, ''
-          ]);
-        }
-      });
-      SpreadsheetApp.flush();
-    } catch (bookErr) {
-      Logger.log("Auto-booking from quote conversion error: " + bookErr);
-    }
-
-    return { success: true, message: "Quote converted to invoice " + invId + " successfully!", invoiceId: invId };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
 /***************************************************
  * PDF DRIVE STORAGE
- ***************************************************/
+/***************************************************/
 function savePdfToDrive(base64PdfData, fileName, recordId, type) {
   try {
     const folder = getOrCreateDriveFolder("Hotel Invoice PDFs");
@@ -4239,18 +3680,6 @@ function savePdfToDrive(base64PdfData, fileName, recordId, type) {
           }
         }
       }
-    } else if (type === 'quote') {
-      const sheet = ss.getSheetByName(QUOTES_SHEET_NAME);
-      if (sheet) {
-        const data = sheet.getDataRange().getValues();
-        for (let i = 1; i < data.length; i++) {
-          if ((data[i][QUOTE_ID_COL] || '').toString() === recordId) {
-            sheet.getRange(i + 1, QUOTE_PDF_LINK_COL + 1).setValue(fileUrl);
-            break;
-          }
-        }
-      }
-    }
 
     // Update PDF folder ID in settings
     const settingsSheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
@@ -4266,7 +3695,7 @@ function savePdfToDrive(base64PdfData, fileName, recordId, type) {
 
 /***************************************************
  * BUDGET MANAGEMENT
- ***************************************************/
+/***************************************************/
 function getAllBudgets() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BUDGETS_SHEET_NAME);
@@ -4390,7 +3819,7 @@ function calculateMonthlyExpenses(month, year) {
 
 /***************************************************
  * CATEGORIES MANAGEMENT
- ***************************************************/
+/***************************************************/
 function getAllCategories() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(CATEGORIES_SHEET_NAME);
@@ -4460,7 +3889,7 @@ function deleteCategory(rowIndex) {
 
 /***************************************************
  * MONTHLY REPORTS
- ***************************************************/
+/***************************************************/
 function getMonthlyReport(month, year, reportType) {
   try {
     month = parseInt(month);
@@ -4533,7 +3962,7 @@ function getMonthlyReport(month, year, reportType) {
 }
 
 /***************************************************
- ***************************************************/
+/***************************************************/
 /**
  * Automatically adds, modifies, or deletes sheets and their headers according to logic.
  * @param {Array<Object>} configArray - Array of sheet configurations: {sheetName: "Name", headers: ["Col1", "Col2"], deleteSheet: false}
@@ -4604,9 +4033,8 @@ function initDataStructure() {
     { sheetName: LOGIN_SHEET_NAME, headers: ["Username", "Password", "Role", "OTP", "OTPExpiry"] },
     { sheetName: ROOMS_SHEET_NAME, headers: ["Room No", "Room Type", "Room Rate", "Room Status"] },
     { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "City", "Marital Status", "Occupancy Type", "Family Details", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
-    { sheetName: QUOTES_SHEET_NAME, headers: ["QuoteID", "GuestName", "Phone", "Email", "CreatedDate", "ValidUntil", "Status", "Items", "SubTotal", "Tax", "Discount", "TotalAmount", "Notes", "CreatedBy", "Currency", "GSTEnabled", "GSTPercent", "GSTAmount", "GreenTaxEnabled", "GreenTaxPerNight", "GreenTaxPax", "GreenTaxNights", "GreenTaxAmount", "CustomerTIN", "ConvertedToInvoice", "PDFDriveLink"] },
-    { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "GreenTaxEnabled", "GreenTaxPerNight", "GreenTaxPax", "GreenTaxNights", "GreenTaxAmount", "Discount", "TotalAmount", "Notes", "SourceQuoteID", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
-    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "GreenTaxDefaultRate", "NextInvoiceNum", "NextQuoteNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
+    { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "GreenTaxEnabled", "GreenTaxPerNight", "GreenTaxPax", "GreenTaxNights", "GreenTaxAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
+    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "GreenTaxDefaultRate", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
     { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "Category", "Description", "Amount", "Status", "BilledCheckInID", "AddedBy"] },
@@ -4617,7 +4045,7 @@ function initDataStructure() {
 
 function setupDemoData() {
   const ss = SpreadsheetApp.openById(SS_ID);
-  const sheetNames = [LOGIN_SHEET_NAME, ROOMS_SHEET_NAME, BOOKINGS_SHEET_NAME, QUOTES_SHEET_NAME, FINANCE_SHEET_NAME, INVOICES_SHEET_NAME, SETTINGS_SHEET_NAME, BUDGETS_SHEET_NAME, CATEGORIES_SHEET_NAME, CUSTOMERS_SHEET_NAME, CHECKIN_SHEET_NAME, RESTAURANT_SHEET_NAME, STAY_SEGMENTS_SHEET_NAME];
+  const sheetNames = [LOGIN_SHEET_NAME, ROOMS_SHEET_NAME, BOOKINGS_SHEET_NAME, FINANCE_SHEET_NAME, INVOICES_SHEET_NAME, SETTINGS_SHEET_NAME, BUDGETS_SHEET_NAME, CATEGORIES_SHEET_NAME, CUSTOMERS_SHEET_NAME, CHECKIN_SHEET_NAME, RESTAURANT_SHEET_NAME, STAY_SEGMENTS_SHEET_NAME];
 
   // --- 1. Delete all existing sheets ---
   let tempSheet = ss.insertSheet("_TEMP_SETUP_");
@@ -4634,7 +4062,6 @@ function setupDemoData() {
   const loginSheet = ss.getSheetByName(LOGIN_SHEET_NAME);
   const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
   const bookingsSheet = ss.getSheetByName(BOOKINGS_SHEET_NAME);
-  const quotesSheet = ss.getSheetByName(QUOTES_SHEET_NAME);
   const financeSheet = ss.getSheetByName(FINANCE_SHEET_NAME);
   const invoicesSheet = ss.getSheetByName(INVOICES_SHEET_NAME);
   const settingsSheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
@@ -4646,7 +4073,7 @@ function setupDemoData() {
   const staySegmentsSheet = ss.getSheetByName(STAY_SEGMENTS_SHEET_NAME);
 
   // SETTINGS (1 data row after headers)
-  settingsSheet.appendRow(["MRI Demo Hotel", "Demo Location, Maldives", "+960-0000000", "info@demo.com", "", "", "", "MVR", 5, 6, 5, 6, "", "", 4, 1]);
+  settingsSheet.appendRow(["MRI Demo Hotel", "Demo Location, Maldives", "+960-0000000", "info@demo.com", "", "", "", "MVR", 5, 6, 5, "", "", 4, 1]);
 
   // Delete temp sheet
   ss.deleteSheet(tempSheet);
@@ -4689,40 +4116,6 @@ function setupDemoData() {
   ];
   bookingsSheet.getRange(2, 1, bookingsData.length, 25).setValues(bookingsData);
 
-  // ===== QUOTES (4 quotes, 26 columns) =====
-  const quoteItems1 = JSON.stringify([
-    { type: "room", description: "Deluxe Room", roomType: "Deluxe", quantity: 1, nights: 3, rate: 1200, amount: 3600 },
-    { type: "service", description: "Airport Transfer", amount: 150 }
-  ]);
-  const quoteItems2 = JSON.stringify([
-    { type: "room", description: "Suite Room", roomType: "Suite", quantity: 1, nights: 5, rate: 2500, amount: 12500 },
-    { type: "activity", description: "Sunset Cruise", pax: 2, rate: 200, amount: 400 },
-    { type: "service", description: "Airport Transfer", amount: 150 }
-  ]);
-  const quoteItems3 = JSON.stringify([
-    { type: "room", description: "Standard Room", roomType: "Standard", quantity: 2, nights: 2, rate: 800, amount: 3200 }
-  ]);
-  const quoteItems4 = JSON.stringify([
-    { type: "room", description: "Family Room", roomType: "Family", quantity: 1, nights: 4, rate: 1800, amount: 7200 },
-    { type: "activity", description: "Snorkeling Trip", pax: 4, rate: 150, amount: 600 },
-    { type: "service", description: "Spa Package", amount: 350 }
-  ]);
-
-  const quotesData = [
-    ["QTN-0001", "Demo Client 1", "+960-2000001", "client1@demo.com", "2026-02-01T10:00:00Z", "2026-02-15T23:59:59Z", "Sent",     quoteItems1, 3750, 0, 0, 4350, "Includes breakfast", "admin@demo.com", "MVR", true, 16, 600, false, 6, 0, 0, 0, "", "", ""],
-    ["QTN-0002", "Demo Client 2", "+960-2000002", "client2@demo.com", "2026-02-05T11:00:00Z", "2026-02-20T23:59:59Z", "Draft",    quoteItems2, 13050, 0, 500, 14558, "VIP demo guest", "admin@demo.com", "USD", true, 16, 2008, false, 6, 0, 0, 0, "", "", ""],
-    ["QTN-0003", "Demo Client 3", "+960-2000003", "client3@demo.com", "2026-02-08T09:00:00Z", "2026-02-22T23:59:59Z", "Accepted", quoteItems3, 3200, 0, 0, 3736, "", "admin@demo.com", "MVR", true, 16, 512, true, 6, 2, 2, 24, "", "", ""],
-    ["QTN-0004", "Demo Client 4", "+960-2000004", "client4@demo.com", "2026-02-10T15:00:00Z", "2026-01-25T23:59:59Z", "Expired",  quoteItems4, 8150, 0, 100, 9434, "Demo family vacation", "admin@demo.com", "MVR", true, 16, 1288, true, 6, 4, 4, 96, "", "", ""]
-  ];
-  quotesSheet.getRange(2, 1, quotesData.length, 26).setValues(quotesData);
-
-  // Extra quote for Feb 21 reservation testing
-  const quoteItems5 = JSON.stringify([
-    { type: "room", description: "Single Room", roomType: "Single", quantity: 1, nights: 3, rate: 500, amount: 1500, reservedRoomNo: "108" },
-    { type: "service", description: "Airport Transfer", amount: 150 }
-  ]);
-  quotesSheet.appendRow(["QTN-0005", "Demo Client 1", "+960-2000001", "client1@demo.com", "2026-02-21T10:00:00Z", "2026-03-07T23:59:59Z", "Accepted", quoteItems5, 1650, 0, 0, 1914, "Room reserve test - Feb 21", "admin@demo.com", "MVR", true, 16, 264, false, 6, 0, 0, 0, "", "", ""]);
-
   // ===== INVOICES (3 invoices) =====
   const invItems1 = JSON.stringify([
     { type: "room", roomType: "Deluxe", quantity: 2, nights: 3, rate: 1200, amount: 7200 },
@@ -4749,7 +4142,7 @@ function setupDemoData() {
     ["INV-0003", "Demo Guest 3", "+960-1000003", "guest3@demo.com", "TIN-00003", "MVR", "2026-02-10T09:00:00Z", "2026-03-10T23:59:59Z", "Draft", invItems3, 1650, true, 16, 264, true, 6, 1, 2, 12, 0, 1926, "Demo standard booking", "", "", "admin@demo.com", "2026-02-10T09:00:00Z"],
     ["INV-0004", "Demo Guest 4", "+960-1000004", "guest4@demo.com", "", "MVR", "2026-01-20T10:00:00Z", "2026-02-01T23:59:59Z", "Sent", invItems4, 7350, true, 16, 1176, false, 6, 0, 0, 0, 0, 8526, "Demo overdue test", "", "", "admin@demo.com", "2026-01-20T10:00:00Z"]
   ];
-  invoicesSheet.getRange(2, 1, invoicesData.length, 26).setValues(invoicesData);
+  invoicesSheet.getRange(2, 1, invoicesData.length, 25).setValues(invoicesData);
 
   // ===== FINANCE (13 records, 12 columns — includes linked invoice payment) =====
   const financeData = [
@@ -4834,7 +4227,7 @@ function setupDemoData() {
   restaurantSheet.getRange(2, 1, restaurantData.length, 9).setValues(restaurantData);
 
   // --- 4. Format header rows ---
-  [loginSheet, roomsSheet, bookingsSheet, quotesSheet, financeSheet, invoicesSheet, settingsSheet, budgetsSheet, categoriesSheet, customersSheet, checkinSheet, restaurantSheet, staySegmentsSheet].forEach(function(sheet) {
+  [loginSheet, roomsSheet, bookingsSheet, financeSheet, invoicesSheet, settingsSheet, budgetsSheet, categoriesSheet, customersSheet, checkinSheet, restaurantSheet, staySegmentsSheet].forEach(function(sheet) {
     const lastCol = sheet.getLastColumn();
     if (lastCol > 0) {
       const headerRange = sheet.getRange(1, 1, 1, lastCol);

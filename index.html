@@ -621,43 +621,6 @@
     const statusCls = (s) => { if(!s) return ''; const m = {available:'status-available',booked:'status-booked',checkedout:'status-checkedout',maintenance:'status-maintenance',draft:'status-draft',sent:'status-sent',accepted:'status-accepted',expired:'status-expired',income:'status-income',expense:'status-expense',paid:'status-paid',partial:'status-partial',unpaid:'status-unpaid',overdue:'status-overdue',cancelled:'status-cancelled',converted:'status-converted',reserved:'status-reserved'}; return m[s.toLowerCase().replace(/\s+/g,'')] || ''; };
     const CURRENCIES = ['MVR','USD','EUR','GBP','AED','SAR','INR','PKR','LKR','BDT','JPY','CNY','AUD','CAD','SGD','MYR','THB','IDR','PHP','VND','KRW','TWD','HKD','NZD','CHF','SEK','NOK','DKK','PLN','CZK','HUF','RON','BGN','HRK','RUB','UAH','TRY','ZAR','EGP','NGN','KES','GHS','TZS','UGX','MAD','TND','QAR','KWD','BHD','OMR','JOD','ILS','BRL','ARS','CLP','COP','PEN','MXN','UYU','DOP','CRC','GTQ','PYG','BOB','VES','TTD','JMD','BBD','BZD','BMD','BSD','KYD','XCD','FJD','PGK','WST','TOP','VUV','SBD','MWK','ZMW','BWP','MUR','SCR','NPR','BTN','MMK','KHR','LAK','MNT','KZT','UZS','GEL','AMD','AZN','AFN','IQD','IRR','SYP','LBP','YER','ETB','RWF','BIF','DJF','ERN','SOS','SDG','LSL','SZL','NAD','GMD','SLL','GNF','LRD','CVE','STN','XOF','XAF','XPF','CDF','AOA','MZN','MDL','ALL','MKD','BAM','RSD','ISK','GIP','FKP','SHP','HTG','NIO','HNL','PAB','CUP'];
 
-    const downloadQuotePdf = (quote) => {
-      const cur = quote.currency || APP_CURRENCY;
-      const fc = (a) => fmtCur(a, cur);
-      const items = (() => { try { return JSON.parse(typeof quote.items === 'string' ? quote.items : '[]'); } catch(e) { return []; } })();
-      const roomItems = items.filter(i=>i.type==='room');
-      const actItems = items.filter(i=>i.type==='activity');
-      const svcItems = items.filter(i=>i.type==='service');
-      const tBody = [];
-      if(roomItems.length>0){
-        tBody.push([{text:'Room Type',style:'th'},{text:'Qty',style:'th',alignment:'center'},{text:'Nights',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        roomItems.forEach(it=>{const qty=it.quantity||1;tBody.push([it.roomType||'Room',{text:String(qty),alignment:'center'},{text:String(it.nights),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]);});
-      }
-      if(actItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Activity',style:'th',colSpan:2},{},{text:'Pax',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        actItems.forEach(it=>tBody.push([{text:it.description||'Activity',colSpan:2},{},{text:String(it.pax||1),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
-      }
-      if(svcItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Service',style:'th',colSpan:4},{},{},{},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        svcItems.forEach(it=>tBody.push([{text:it.description||'Service',colSpan:4},{},{},{},{text:fc(it.amount),alignment:'right'}]));
-      }
-      tBody.push([{text:'Subtotal',bold:true,colSpan:4},{},{},{},{text:fc(quote.subTotal),alignment:'right',bold:true}]);
-      if(quote.discount>0)tBody.push([{text:'Discount',colSpan:4},{},{},{},{text:'- '+fc(quote.discount),alignment:'right'}]);
-      if(quote.gstEnabled)tBody.push([{text:'GST ('+quote.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(quote.gstAmount),alignment:'right'}]);
-      if(quote.greenTaxEnabled)tBody.push([{text:'Green Tax ('+cur+' '+quote.greenTaxPerNight+' x '+quote.greenTaxPax+' pax x '+quote.greenTaxNights+' nights)',colSpan:4},{},{},{},{text:fc(quote.greenTaxAmount),alignment:'right'}]);
-      tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(quote.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
-      const guestInfo = [{text:'Guest: ',bold:true},(quote.guestName||'')+'\n',{text:'Phone: ',bold:true},(quote.phone||'-')+'\n',{text:'Email: ',bold:true},(quote.email||'-')+'\n'];
-      if(quote.customerTIN)guestInfo.push({text:'TIN: ',bold:true},quote.customerTIN+'\n');
-      const doc = {content:[{text:'MRI HOTEL - QUOTATION',style:'hdr',alignment:'center'},{text:'Quote #'+(quote.quoteId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
-        {columns:[{text:guestInfo},{text:[{text:'Date: ',bold:true},fmtDate(quote.createdDate)+'\n',{text:'Valid Until: ',bold:true},fmtDate(quote.validUntil)+'\n',{text:'Status: ',bold:true},(quote.status||'Draft')+'\n']}]},
-        {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
-        quote.notes?{text:'\nNotes: '+quote.notes,margin:[0,10,0,0],italics:true}:{text:''},
-        {text:'\nThank you for your interest!',alignment:'center',margin:[0,20,0,0],italics:true}],
-        styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
-      pdfMake.createPdf(doc).download('Quote-'+(quote.quoteId||'new')+'.pdf');
-    };
 
     const downloadInvoicePdf = (inv) => {
       const cur = inv.currency || APP_CURRENCY;
@@ -692,13 +655,12 @@
         {columns:[{text:guestInfo},{text:[{text:'Invoice Date: ',bold:true},fmtDate(inv.createdDate)+'\n',{text:'Due Date: ',bold:true},fmtDate(inv.dueDate)+'\n',{text:'Status: ',bold:true},(inv.status||'Draft')+'\n']}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         inv.notes?{text:'\nNotes: '+inv.notes,margin:[0,10,0,0],italics:true}:{text:''},
-        inv.sourceQuoteId?{text:'Source Quote: '+inv.sourceQuoteId,margin:[0,5,0,0],fontSize:10,color:'#888'}:{text:''},
         {text:'\nThank you for your business!',alignment:'center',margin:[0,20,0,0],italics:true}],
         styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
       pdfMake.createPdf(doc).download('Invoice-'+(inv.invoiceId||'new')+'.pdf');
     };
 
-    const savePdfToDriveHelper = (record, type) => {
+    const savePdfToDriveHelper = (record) => {
       const cur = record.currency || APP_CURRENCY;
       const fc = (a) => fmtCur(a, cur);
       const items = (() => { try { return JSON.parse(typeof record.items === 'string' ? record.items : '[]'); } catch(e) { return []; } })();
@@ -725,8 +687,8 @@
       if(record.gstEnabled)tBody.push([{text:'GST ('+record.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(record.gstAmount),alignment:'right'}]);
       if(record.greenTaxEnabled)tBody.push([{text:'Green Tax',colSpan:4},{},{},{},{text:fc(record.greenTaxAmount),alignment:'right'}]);
       tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(record.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
-      const id = type==='invoice'?record.invoiceId:record.quoteId;
-      const title = type==='invoice'?'INVOICE':'QUOTATION';
+      const id = record.invoiceId;
+      const title = 'INVOICE';
       const doc = {content:[{text:'MRI HOTEL - '+title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
         {columns:[{text:[{text:'Guest: ',bold:true},(record.guestName||'')+'\n',{text:'Phone: ',bold:true},(record.phone||'-')+'\n',{text:'Email: ',bold:true},(record.email||'-')]},{text:[{text:'Date: ',bold:true},fmtDate(record.createdDate)+'\n',{text:'Status: ',bold:true},(record.status||'Draft')]}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
@@ -735,7 +697,7 @@
       Swal.fire({title:'Saving to Drive...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
       pdfMake.createPdf(doc).getBase64((base64)=>{
         const fileName = title+'-'+id+'.pdf';
-        google.script.run.withSuccessHandler((r)=>{Swal.close();if(r.success)Swal.fire({icon:'success',title:'Saved!',text:'PDF saved to Google Drive.',timer:2000,showConfirmButton:false});else Swal.fire({icon:'error',title:'Error',text:r.message});}).withFailureHandler((e)=>{Swal.close();Swal.fire({icon:'error',title:'Error',text:e.message});}).savePdfToDrive(base64,fileName,id,type);
+        google.script.run.withSuccessHandler((r)=>{Swal.close();if(r.success)Swal.fire({icon:'success',title:'Saved!',text:'PDF saved to Google Drive.',timer:2000,showConfirmButton:false});else Swal.fire({icon:'error',title:'Error',text:r.message});}).withFailureHandler((e)=>{Swal.close();Swal.fire({icon:'error',title:'Error',text:e.message});}).savePdfToDrive(base64,fileName,id,'invoice');
       });
     };
 
@@ -965,7 +927,7 @@
 
     function Sidebar({activeMenu,setActiveMenu,role,user,onLogout,isOpen,setIsOpen}){
       const adm=role==='admin';
-      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'rooms',i:'fa-bed',l:'Rooms',a:true},{k:'quotes',i:'fa-file-invoice',l:'Quotes',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'finance',i:'fa-coins',l:'Finance',a:true},{k:'reports',i:'fa-chart-bar',l:'Reports',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
+      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'rooms',i:'fa-bed',l:'Rooms',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'finance',i:'fa-coins',l:'Finance',a:true},{k:'reports',i:'fa-chart-bar',l:'Reports',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
       const click=(k)=>{setActiveMenu(k);setIsOpen(false);};
       return(<><div className={`sidebar-overlay ${isOpen?'open':''}`} onClick={()=>setIsOpen(false)}></div><div className={`sidebar ${isOpen?'open':''}`}><div style={{padding:'24px',borderBottom:'1px solid rgba(255,255,255,0.1)',textAlign:'center'}}><div style={{color:'white',fontSize:'20px',fontWeight:'700'}}><i className="fas fa-hotel"></i> Hill View Eco Retreat</div></div><div className="sidebar-user-info"><div className="sidebar-user-name">{user}</div><div className="sidebar-user-role">{role}</div></div><div className="sidebar-menu-section"><div className="sidebar-menu-title">Navigation</div><ul className="sidebar-menu">{items.filter(m=>adm||!m.a).map(m=>(<li key={m.k}><button className={activeMenu===m.k?'active':''} onClick={()=>click(m.k)}><i className={`fas ${m.i}`}></i><span>{m.l}</span></button></li>))}</ul></div><div className="sidebar-logout"><button onClick={onLogout}><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div></div></>);
     }
@@ -982,7 +944,7 @@
         if(c5){const iv=d.invoiceStats||{};cr.current.is=new Chart(c5,{type:'doughnut',data:{labels:['Draft','Sent','Paid','Overdue','Cancelled'],datasets:[{data:[iv.draftInvoices||0,iv.sentInvoices||0,iv.paidInvoices||0,iv.overdueInvoices||0,iv.cancelledInvoices||0],backgroundColor:['#6c757d','#006d6f','#00a89d','#f39c12','#d35400'],borderColor:'#fff',borderWidth:2,hoverOffset:10}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#333',padding:12,usePointStyle:true}},title:{display:true,text:'Invoice Status',color:'#001f3f',font:{size:16,weight:'bold'}}}}});}
       };
       if(ld)return(<div><div className="kpi-cards">{[...Array(4)].map((_,i)=><div key={i} className="skeleton" style={{height:'130px',borderRadius:'8px'}}></div>)}</div><div className="dashboard-grid-9">{[...Array(9)].map((_,i)=><DashboardCardSkeleton key={i}/>)}</div><div className="dashboard-split"><ChartSkeleton/><div className="skeleton" style={{height:'380px',borderRadius:'4px'}}></div></div><div className="dashboard-grid-2"><ChartSkeleton/><ChartSkeleton/><ChartSkeleton/><ChartSkeleton/></div></div>);
-      const f=st?.financeSummary||{};const b=st?.bookingRevenue||{};const q=st?.quoteStats||{};const inv=st?.invoiceStats||{};const bdg=st?.currentBudget||null;const rb=st?.recentBookings||[];
+      const f=st?.financeSummary||{};const b=st?.bookingRevenue||{};const inv=st?.invoiceStats||{};const bdg=st?.currentBudget||null;const rb=st?.recentBookings||[];
       const occRate=st?.totalRooms>0?Math.round((st?.bookedRooms/st?.totalRooms)*100):0;
       return(<div>
         {/* Row 1: 4 Colorful KPI Cards */}
@@ -1003,7 +965,6 @@
           <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-file-invoice-dollar"></i></div><div className="stat-card-value">{inv.totalInvoices||0}</div><div className="stat-card-label">Invoices</div></div>
           <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-check-double"></i></div><div className="stat-card-value">{inv.paidInvoices||0}</div><div className="stat-card-label">Paid</div></div>
           <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-exclamation-triangle"></i></div><div className="stat-card-value">{inv.overdueInvoices||0}</div><div className="stat-card-label">Overdue</div></div>
-          <div className="stat-card purple"><div className="stat-card-icon"><i className="fas fa-file-alt"></i></div><div className="stat-card-value">{q.totalQuotes||0}</div><div className="stat-card-label">Quotes</div></div>
         </div>
 
         {/* Room Block View & Recent Bookings */}
@@ -2176,130 +2137,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       </div>);
     }
 
-    function QuoteModal({quote,onClose,onSave,user}){
-      const parseItems=(q)=>{try{return JSON.parse(q?.items||'[]');}catch(e){return[];}};
-      const [fd,setFd]=useState({guestName:quote?.guestName||'',phone:quote?.phone||'',email:quote?.email||'',customerTIN:quote?.customerTIN||'',currency:quote?.currency||APP_CURRENCY,validUntil:quote?.validUntil?quote.validUntil.slice(0,10):'',status:quote?.status||'Draft',notes:quote?.notes||'',discount:quote?.discount||0,gstEnabled:quote?.gstEnabled||false,gstPercent:quote?.gstPercent||16,greenTaxEnabled:quote?.greenTaxEnabled||false,greenTaxPerNight:quote?.greenTaxPerNight||6,greenTaxPax:quote?.greenTaxPax||0,greenTaxNights:quote?.greenTaxNights||0});
-      const [items,setItems]=useState(parseItems(quote));
-      const [sv,setSv]=useState(false);
-      const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
-      const [availRooms,setAvailRooms]=useState([]);
-      useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();google.script.run.withSuccessHandler(r=>{setAvailRooms((Array.isArray(r)?r:[]).filter(rm=>{const s=(rm.roomStatus||'').toLowerCase();return s==='available'||s==='reserved';}));}).withFailureHandler(()=>{}).getAllRooms();},[]);
-      const pickCustomer=(val)=>{setSelCust(val);if(val){const c=customers.find(x=>x.customerId===val);if(c)setFd(p=>({...p,guestName:c.name||p.guestName,phone:c.phone||p.phone,email:c.email||p.email,customerTIN:c.customerTIN||p.customerTIN}));}};
-      const addRoom=()=>setItems([...items,{type:'room',description:'',roomType:'Standard',quantity:1,nights:1,rate:0,amount:0,reservedRoomNo:''}]);
-      const addActivity=()=>setItems([...items,{type:'activity',description:'',pax:1,rate:0,amount:0}]);
-      const addSvc=()=>setItems([...items,{type:'service',description:'',amount:0}]);
-      const upd=(idx,field,val)=>{const n=[...items];n[idx]={...n[idx],[field]:val};if(n[idx].type==='room'){const qty=parseFloat(n[idx].quantity)||1;const nts=parseFloat(n[idx].nights)||0;const rt=parseFloat(n[idx].rate)||0;n[idx].amount=qty*nts*rt;n[idx].description=(qty>1?qty+' x ':'')+n[idx].roomType+' Room - '+n[idx].nights+' Night(s)';}else if(n[idx].type==='activity'){const px=parseFloat(n[idx].pax)||1;const r=parseFloat(n[idx].rate)||0;n[idx].amount=px*r;}setItems(n);};
-      const rem=(idx)=>setItems(items.filter((_,i)=>i!==idx));
-      const subTotal=items.reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
-      const disc=parseFloat(fd.discount)||0;
-      const gstAmt=fd.gstEnabled?(subTotal-disc)*(parseFloat(fd.gstPercent)||0)/100:0;
-      const gtAmt=fd.greenTaxEnabled?(parseFloat(fd.greenTaxPerNight)||0)*(parseFloat(fd.greenTaxPax)||0)*(parseFloat(fd.greenTaxNights)||0):0;
-      const total=subTotal-disc+gstAmt+gtAmt;
-      const buildPdfData=(quoteId)=>({quoteId:quoteId||'',guestName:fd.guestName,phone:fd.phone,email:fd.email,customerTIN:fd.customerTIN,currency:fd.currency,createdDate:new Date().toISOString(),validUntil:fd.validUntil,status:fd.status,items:JSON.stringify(items),subTotal,discount:disc,gstEnabled:fd.gstEnabled,gstPercent:fd.gstPercent,gstAmount:gstAmt,greenTaxEnabled:fd.greenTaxEnabled,greenTaxPerNight:fd.greenTaxPerNight,greenTaxPax:fd.greenTaxPax,greenTaxNights:fd.greenTaxNights,greenTaxAmount:gtAmt,totalAmount:total,notes:fd.notes});
-      const onSuccess=(r,isEdit)=>{setSv(false);if(r.success){
-        const pdfData=buildPdfData(isEdit?quote.quoteId:r.quoteId);
-        Swal.fire({icon:'success',title:'Quote Saved!',text:r.message,showCancelButton:true,confirmButtonText:'<i class="fas fa-file-pdf"></i> Download PDF',cancelButtonText:'Close',confirmButtonColor:'#001f3f'}).then(res=>{if(res.isConfirmed)downloadQuotePdf(pdfData);});
-        onClose();setTimeout(onSave,100);
-      }else Swal.fire({icon:'error',text:r.message});};
-      const submit=(e)=>{e.preventDefault();if(items.length===0){Swal.fire({icon:'warning',text:'Add at least one item'});return;}setSv(true);
-        const qd={...fd,items:JSON.stringify(items),subTotal,gstAmount:gstAmt,greenTaxAmount:gtAmt,totalAmount:total,createdBy:user};
-        if(quote){google.script.run.withSuccessHandler(r=>onSuccess(r,true)).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateQuote(quote.rowIndex,qd);}
-        else{google.script.run.withSuccessHandler(r=>onSuccess(r,false)).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).addQuote(qd);}};
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice"></i> {quote?'Edit':'New'} Quote</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
-        {!quote&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer (auto-fills guest info)</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
-        <div className="form-grid">
-          <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
-          <div className="form-group"><label>Phone</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})}/></div>
-          <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
-          <div className="form-group"><label>Customer TIN</label><input value={fd.customerTIN} onChange={e=>setFd({...fd,customerTIN:e.target.value})} placeholder="Optional"/></div>
-          <div className="form-group"><label>Valid Until</label><input type="date" value={fd.validUntil} onChange={e=>setFd({...fd,validUntil:e.target.value})}/></div>
-          <div className="form-group"><label>Status</label><select value={fd.status} onChange={e=>setFd({...fd,status:e.target.value})}><option>Draft</option><option>Sent</option><option>Accepted</option><option>Expired</option></select></div>
-          <div className="form-group"><label>Currency</label><select value={fd.currency} onChange={e=>setFd({...fd,currency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-        </div>
-        <div className="line-items-section"><h4>Room Items <button type="button" className="btn btn-sm btn-success" onClick={addRoom}><i className="fas fa-plus"></i> Add</button></h4>
-          {items.filter(it=>it.type==='room').map((it,idx)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row room-item"><div><label>Room Type</label><select value={it.roomType} onChange={e=>upd(ri,'roomType',e.target.value)}><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div><div><label>Qty (Rooms)</label><input type="number" min="1" value={it.quantity||1} onChange={e=>upd(ri,'quantity',e.target.value)}/></div><div><label>Nights</label><input type="number" min="1" value={it.nights} onChange={e=>upd(ri,'nights',e.target.value)}/></div><div><label>Rate/Night</label><input type="number" step="0.01" min="0" value={it.rate} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div>{availRooms.length>0&&<div><label>Reserve Room #</label><SearchableSelect value={it.reservedRoomNo||''} onChange={v=>upd(ri,'reservedRoomNo',v)} options={[{value:'',label:'-- None --'},...availRooms.map(rm=>({value:rm.roomNo,label:'#'+rm.roomNo+' ('+rm.roomType+')'}))] } placeholder="Optional" /></div>}<button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
-        </div>
-        <div className="line-items-section"><h4>Activity Items <button type="button" className="btn btn-sm btn-success" onClick={addActivity}><i className="fas fa-plus"></i> Add</button></h4>
-          {items.filter(it=>it.type==='activity').map((it)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row activity-item"><div><label>Description</label><input value={it.description||''} onChange={e=>upd(ri,'description',e.target.value)} placeholder="e.g. Snorkeling Trip"/></div><div><label>Pax</label><input type="number" min="1" value={it.pax||''} onChange={e=>upd(ri,'pax',e.target.value)}/></div><div><label>Rate/Person</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
-        </div>
-        <div className="line-items-section"><h4>Service Items <button type="button" className="btn btn-sm btn-success" onClick={addSvc}><i className="fas fa-plus"></i> Add</button></h4>
-          {items.filter(it=>it.type==='service').map((it,idx)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row service-item"><div><label>Description</label><input value={it.description} onChange={e=>upd(ri,'description',e.target.value)}/></div><div><label>Amount</label><input type="number" step="0.01" min="0" value={it.amount} onChange={e=>upd(ri,'amount',parseFloat(e.target.value)||0)}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
-        </div>
-        <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.gstEnabled} onChange={e=>setFd({...fd,gstEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>GST</label></div>
-          {fd.gstEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>GST %</label><input type="number" step="0.01" value={fd.gstPercent} onChange={e=>setFd({...fd,gstPercent:e.target.value})}/></div></div>}
-        </div>
-        <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.greenTaxEnabled} onChange={e=>setFd({...fd,greenTaxEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>Green Tax</label></div>
-          {fd.greenTaxEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>Rate/Night</label><input type="number" step="0.01" value={fd.greenTaxPerNight} onChange={e=>setFd({...fd,greenTaxPerNight:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Pax</label><input type="number" min="0" value={fd.greenTaxPax} onChange={e=>setFd({...fd,greenTaxPax:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Nights</label><input type="number" min="0" value={fd.greenTaxNights} onChange={e=>setFd({...fd,greenTaxNights:e.target.value})}/></div></div>}
-        </div>
-        <div className="form-group"><label>Discount</label><input type="number" step="0.01" min="0" value={fd.discount} onChange={e=>setFd({...fd,discount:e.target.value})}/></div>
-        <div className="totals-section">
-          <div className="totals-row"><span>Subtotal</span><span>{fmtCur(subTotal,fd.currency)}</span></div>
-          {disc>0&&<div className="totals-row"><span>Discount</span><span>- {fmtCur(disc,fd.currency)}</span></div>}
-          {fd.gstEnabled&&<div className="totals-row"><span>GST ({fd.gstPercent}%)</span><span>{fmtCur(gstAmt,fd.currency)}</span></div>}
-          {fd.greenTaxEnabled&&<div className="totals-row"><span>Green Tax</span><span>{fmtCur(gtAmt,fd.currency)}</span></div>}
-          <div className="totals-row grand-total"><span>Total</span><span>{fmtCur(total,fd.currency)}</span></div>
-        </div>
-        <div className="form-group" style={{marginTop:'15px'}}><label>Notes</label><textarea rows="3" value={fd.notes} onChange={e=>setFd({...fd,notes:e.target.value})}></textarea></div>
-        <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save Quote</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div>
-      </form></div></div></div>);
-    }
-
-    function QuotePreviewModal({quote,onClose}){
-      const cur=quote.currency||APP_CURRENCY;const fc=(a)=>fmtCur(a,cur);
-      const items=(() => {try{return JSON.parse(quote.items||'[]');}catch(e){return[];}})();
-      const roomItems=items.filter(i=>i.type==='room');const actItems=items.filter(i=>i.type==='activity');const svcItems=items.filter(i=>i.type==='service');
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-eye"></i> Quote Preview</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
-        <div className="invoice-preview"><h2>Hill View Eco Retreat - Quotation</h2><p className="subtitle">#{quote.quoteId} | Status: {quote.status}</p><hr style={{marginBottom:'20px'}}/>
-          <div className="invoice-detail-grid"><p><strong>Guest:</strong> {quote.guestName}</p><p><strong>Date:</strong> {fmtDate(quote.createdDate)}</p><p><strong>Phone:</strong> {quote.phone||'-'}</p><p><strong>Valid Until:</strong> {fmtDate(quote.validUntil)}</p><p><strong>Email:</strong> {quote.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>{quote.customerTIN&&<p><strong>Customer TIN:</strong> {quote.customerTIN}</p>}</div>
-          {roomItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px'}}>Room Items</h4><table className="invoice-table"><thead><tr><th>Room Type</th><th>Qty</th><th>Nights</th><th>Rate</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{roomItems.map((it,i)=><tr key={i}><td>{it.roomType}</td><td>{it.quantity||1}</td><td>{it.nights}</td><td>{fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
-          {actItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px',marginTop:'15px'}}>Activity Items</h4><table className="invoice-table"><thead><tr><th>Description</th><th>Pax</th><th>Rate/Person</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{actItems.map((it,i)=><tr key={i}><td>{it.description||'Activity'}</td><td>{it.pax}</td><td>{fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
-          {svcItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px',marginTop:'15px'}}>Service Items</h4><table className="invoice-table"><thead><tr><th>Description</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{svcItems.map((it,i)=><tr key={i}><td>{it.description}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
-          <div className="totals-section" style={{marginTop:'15px'}}><div className="totals-row"><span>Subtotal</span><span>{fc(quote.subTotal)}</span></div>{quote.discount>0&&<div className="totals-row"><span>Discount</span><span>- {fc(quote.discount)}</span></div>}{quote.gstEnabled&&<div className="totals-row"><span>GST ({quote.gstPercent}%)</span><span>{fc(quote.gstAmount)}</span></div>}{quote.greenTaxEnabled&&<div className="totals-row"><span>Green Tax ({cur} {quote.greenTaxPerNight} x {quote.greenTaxPax} pax x {quote.greenTaxNights} nights)</span><span>{fc(quote.greenTaxAmount)}</span></div>}<div className="totals-row grand-total"><span>Total</span><span>{fc(quote.totalAmount)}</span></div></div>
-          {quote.notes&&<p style={{marginTop:'15px',fontStyle:'italic',color:'#666'}}>Notes: {quote.notes}</p>}
-          <div className="preview-actions"><button className="btn btn-primary" onClick={()=>downloadQuotePdf(quote)}><i className="fas fa-download"></i> Download PDF</button><button className="btn btn-success" onClick={()=>savePdfToDriveHelper(quote,'quote')}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button><button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button></div>
-        </div></div></div></div>);
-    }
-
-    function QuotesView({user}){
-      const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [preview,setPreview]=useState(null);const tRef=useRef(null);
-      const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:''});const [quotes,setQuotes]=useState([]);
-      useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
-      const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);const d=Array.isArray(r)?r:[];setQuotes(d);initT(d);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllQuotes();};
-      const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#qtT').empty();}catch(e){}}
-        setTimeout(()=>{try{$.fn.dataTable.ext.search=[];const t=$('#qtT').DataTable({data,destroy:true,columns:[
-          {data:'quoteId',title:'Quote ID'},{data:'guestName',title:'Guest'},{data:'createdDate',title:'Created',render:d=>fmtDate(d)},{data:'validUntil',title:'Valid Until',render:d=>fmtDate(d)},
-          {data:'status',title:'Status',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},{data:'currency',title:'Cur'},{data:'totalAmount',title:'Total',render:(d,t,row)=>fmtCur(d,row.currency)},
-          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,t,row)=>{let btns='<button class="action-icon view-icon" data-action="view" title="Preview"><i class="fas fa-eye"></i></button><button class="action-icon" data-action="email" title="Email Quote" style="color:#0074D9"><i class="fas fa-envelope"></i></button><button class="action-icon" data-action="dlpdf" title="Download PDF" style="color:#001f3f"><i class="fas fa-file-pdf"></i></button>';if(!row.convertedToInvoice&&(row.status==='Accepted'||row.status==='Sent'))btns+='<button class="action-icon" data-action="convert" title="Convert to Invoice" style="color:#34a853"><i class="fas fa-exchange-alt"></i></button>';btns+='<button class="action-icon edit-icon" data-action="edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete" title="Delete"><i class="fas fa-trash"></i></button>';return btns;}}
-        ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
-          {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
-        ],order:[[0,'desc']]});
-        $('#qtT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='view')setPreview(rd);else if(a==='email')emailQt(rd);else if(a==='dlpdf')downloadQuotePdf(rd);else if(a==='convert')convertQuote(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='delete')delQuote(rd);});
-        tRef.current=t;}catch(e){console.error(e);}},150);};
-      const delQuote=(q)=>{Swal.fire({icon:'warning',title:'Delete Quote?',text:'Delete quote '+q.quoteId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteQuote(q.rowIndex);});};
-      const convertQuote=(q)=>{Swal.fire({icon:'question',title:'Convert to Invoice?',text:'Convert quote '+q.quoteId+' to a new invoice?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Convert'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Converting...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success){Swal.fire({icon:'success',title:'Invoice Created!',text:'Invoice '+res.invoiceId+' created from '+q.quoteId});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).convertQuoteToInvoice(q.rowIndex,user);}});};
-      const emailQt=(q)=>{if(!q.email)return Swal.fire({icon:'warning',text:'No email address on this quote.'});Swal.fire({icon:'question',title:'Email Quote?',text:'Send quote '+q.quoteId+' to '+q.email+'?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Send Email'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Sending email...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success)Swal.fire({icon:'success',text:res.message,timer:3000,showConfirmButton:false});else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).emailQuote(q.quoteId);}});};
-      useEffect(()=>{if(!tRef.current||quotes.length===0)return;
-        $.fn.dataTable.ext.search=[];
-        $.fn.dataTable.ext.search.push(function(s,d,idx){const row=quotes[idx];if(!row)return true;
-          if(filters.dateFrom){const dt=new Date(row.createdDate);if(dt<new Date(filters.dateFrom))return false;}
-          if(filters.dateTo){const dt=new Date(row.createdDate);if(dt>new Date(filters.dateTo+'T23:59:59'))return false;}return true;});
-        if(filters.status)tRef.current.column(4).search('^'+filters.status+'$',true,false);else tRef.current.column(4).search('');
-        tRef.current.draw();},[filters]);
-      const clearF=()=>{setFilters({dateFrom:'',dateTo:'',status:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-file-invoice"></i> Quotes</h2><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> New Quote</button></div>
-        {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear</button></div><div className="filters-grid">
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-tag"></i> Status</label><select className="filter-input" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All</option><option>Draft</option><option>Sent</option><option>Accepted</option><option>Expired</option><option>Converted</option></select></div>
-        </div></div>}
-        {ld&&<TableSkeleton rows={5} columns={7}/>}<div style={{display:ld?'none':'block'}}><table id="qtT" className="display" style={{width:'100%'}}></table></div>
-        {show&&<QuoteModal quote={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load} user={user}/>}
-        {preview&&<QuotePreviewModal quote={preview} onClose={()=>setPreview(null)}/>}
-      </div>);
-    }
-
     function FinanceEntryModal({record,onClose,onSave,user}){
       const [fd,setFd]=useState({date:record?.date?record.date.slice(0,10):'',type:record?.type||'Income',description:record?.description||'',shopSource:record?.shopSource||'',amount:record?.amount||'',category:record?.category||'',currency:record?.currency||APP_CURRENCY});
       const [sv,setSv]=useState(false);const [cats,setCats]=useState([]);
@@ -2430,20 +2267,19 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
     function AboutView(){
       return(<div className="about-section">
         <div className="about-header"><div className="about-logo"><img src={LOGO} alt="Logo"/></div><div className="about-title"><h1>Hill View Eco Retreat</h1><p className="about-dev">Develped by <strong>Mohammad Rameez Imdad</strong> (Rameez Scripts)</p></div></div>
-        <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices and quotes, and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
+        <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices and and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
         <div className="about-card"><h2><i className="fas fa-clipboard-list"></i> What Can You Do With It?</h2><ul className="about-features">
           <li><i className="fas fa-check"></i> <strong>Room Management</strong> - Add, edit, and manage hotel rooms with diffrent types and rates</li>
           <li><i className="fas fa-check"></i> <strong>Bookings</strong> - Create new bookings, track guest details, and manage reservations</li>
           <li><i className="fas fa-check"></i> <strong>Checkout & Invoicing</strong> - Process checkouts and generate professional PDF invoices</li>
           <li><i className="fas fa-check"></i> <strong>Standalone Invoices</strong> - Create invoices with rooms, activities, and services with auto-numbering (INV-0001)</li>
-          <li><i className="fas fa-check"></i> <strong>Quotes</strong> - Create quotations with rooms, activities, and services. Convert accepted quotes to invoices</li>
           <li><i className="fas fa-check"></i> <strong>Multi-Currency</strong> - Support for MVR and USD currencies per document</li>
-          <li><i className="fas fa-check"></i> <strong>Tax System</strong> - Optional GST (percentage) and Green Tax (per person per night) on invoices and quotes</li>
+          <li><i className="fas fa-check"></i> <strong>Tax System</strong> - Optional GST (percentage) and Green Tax (per person per night) on invoices</li>
           <li><i className="fas fa-check"></i> <strong>Finance Tracking</strong> - Record income and expenses with categories, currency support, and running balance</li>
           <li><i className="fas fa-check"></i> <strong>Budget Management</strong> - Set monthly budgets and track spending with visual progress bars</li>
           <li><i className="fas fa-check"></i> <strong>Categories</strong> - Manage income and expense categories for better financial tracking</li>
           <li><i className="fas fa-check"></i> <strong>Monthly Reports</strong> - Generate detailed financial reports with category breakdowns</li>
-          <li><i className="fas fa-check"></i> <strong>PDF to Drive</strong> - Save invoice and quote PDFs directly to Google Drive</li>
+          <li><i className="fas fa-check"></i> <strong>PDF to Drive</strong> - Save invoice PDFs directly to Google Drive</li>
           <li><i className="fas fa-check"></i> <strong>Hotel Settings</strong> - Configure hotel details, logo, default currency, and tax rates</li>
           <li><i className="fas fa-check"></i> <strong>Dashboard</strong> - Visual overview with charts showing room occupancy, revenue, invoices, and budget</li>
           <li><i className="fas fa-check"></i> <strong>User Management</strong> - Manage staff accounts with Admin and User roles</li>
@@ -2455,7 +2291,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
           <tr><td>View All Bookings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i> Own only</td></tr>
           <tr><td>Checkout Guests</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Manage Rooms</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Manage Quotes</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Manage Invoices</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Finance Tracking</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Monthly Reports</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
@@ -2535,7 +2370,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
             <p><strong>Phone:</strong> {invoice.phone||'-'}</p><p><strong>Status:</strong> <span className={`status-badge ${statusCls(invoice.status)}`}>{invoice.status}</span></p>
             <p><strong>Email:</strong> {invoice.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>
             {invoice.customerTIN&&<p><strong>Customer TIN:</strong> {invoice.customerTIN}</p>}
-            {invoice.sourceQuoteId&&<p><strong>Source Quote:</strong> {invoice.sourceQuoteId}</p>}
           </div>
           <table className="invoice-table"><thead><tr><th>Description</th><th>Details</th><th className="right">Amount ({cur})</th></tr></thead><tbody>
             {roomItems.map((it,i)=><tr key={'r'+i}><td>{it.roomType||'Room'}</td><td>{it.quantity||1} room(s) x {it.nights} night(s) x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
@@ -2551,7 +2385,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         </div>
         <div className="preview-actions">
           <button className="btn btn-primary" onClick={()=>downloadInvoicePdf(invoice)}><i className="fas fa-download"></i> Download PDF</button>
-          <button className="btn btn-success" onClick={()=>savePdfToDriveHelper(invoice,'invoice')}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button>
+          <button className="btn btn-success" onClick={()=>savePdfToDriveHelper(invoice)}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button>
           <button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button>
         </div>
       </div></div></div>);
@@ -2577,7 +2411,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
           {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},{extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},{extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}],order:[[2,'desc']]});
         $('#invT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();
-          if(a==='view')setPreview(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='email')emailInv(rd);else if(a==='pdf')downloadInvoicePdf(rd);else if(a==='drive')savePdfToDriveHelper(rd,'invoice');else if(a==='delete')delRec(rd);});
+          if(a==='view')setPreview(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='email')emailInv(rd);else if(a==='pdf')downloadInvoicePdf(rd);else if(a==='drive')savePdfToDriveHelper(rd);else if(a==='delete')delRec(rd);});
         tRef.current=t;}catch(e){console.error(e);}},150);};
       const delRec=(rec)=>{Swal.fire({icon:'warning',title:'Delete?',text:'Delete invoice '+rec.invoiceId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteInvoice(rec.rowIndex);});};
       const emailInv=(inv)=>{if(!inv.email)return Swal.fire({icon:'warning',text:'No email address on this invoice.'});Swal.fire({icon:'question',title:'Email Invoice?',text:'Send invoice '+inv.invoiceId+' to '+inv.email+'?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Send Email'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Sending email...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success)Swal.fire({icon:'success',text:res.message,timer:3000,showConfirmButton:false});else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).emailInvoice(inv.invoiceId);}});};
@@ -2704,7 +2538,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         {k:'checkin',i:'fa-door-open',l:'Check-In'},
         {k:'restaurant',i:'fa-utensils',l:'Restaurant'},
         {k:'rooms',i:'fa-bed',l:'Rooms'},
-        {k:'quotes',i:'fa-file-invoice',l:'Quotes'},
+
         {k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices'},
         {k:'finance',i:'fa-coins',l:'Finance'},
         {k:'reports',i:'fa-chart-bar',l:'Reports'},
@@ -2831,7 +2665,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         case 'restaurant': return <RestaurantView user={user}/>;
         case 'rooms': return <RoomsView user={user}/>;
         case 'customers': return <CustomersView user={user}/>;
-        case 'quotes': return <QuotesView user={user}/>;
         case 'invoices': return <InvoicesView user={user}/>;
         case 'finance': return <FinanceView user={user}/>;
         case 'reports': return <ReportsView user={user}/>;
