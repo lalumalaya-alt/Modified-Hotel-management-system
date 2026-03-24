@@ -39,30 +39,26 @@ const BOOKING_ROOM_NO_COL  = 1;
 const GUEST_NAME_COL       = 2;
 const PHONE_COL            = 3;
 const EMAIL_COL            = 4;
-const CITY_COL             = 5;
-const MARITAL_STATUS_COL   = 6;
-const OCCUPANCY_TYPE_COL   = 7;
-const FAMILY_DETAILS_COL   = 8;
-const CHECK_IN_COL         = 9;
-const CHECK_OUT_COL        = 10;
-const BOOKING_STATUS_COL   = 11;
-const ROOM_RATE_BOOK_COL   = 12;
-const DISCOUNT_COL         = 13;
-const TAX_COL              = 14;
-const PAYMENT_METHOD_COL   = 15;
-const TOTAL_AMOUNT_COL     = 16;
-const PAYMENT_STATUS_COL   = 17;  // "Unpaid", "Partial", "Paid"
-const AMOUNT_PAID_COL      = 18;  // Numeric amount paid so far
-const CHECKIN_TIME_COL     = 19;
-const CHECKOUT_TIME_COL    = 20;
-const FOOD_PLAN_COL        = 21;
-const ADVANCE_PAID_COL     = 22;
-const NUM_ROOMS_COL        = 23;
-const LINKED_CHECKIN_COL   = 24;
-const BOOKING_GST_TYPE_COL = 25;
-const BOOKING_FIX_RENT_COL = 26;
-const BOOKING_FIX_RENT_AMT_COL = 27;
-const BOOKING_DISC_PCT_COL = 28; // Added back to prevent ReferenceError in Booking.gs
+const CHECK_IN_COL         = 5;
+const CHECK_OUT_COL        = 6;
+const BOOKING_STATUS_COL   = 7;
+const ROOM_RATE_BOOK_COL   = 8;
+const DISCOUNT_COL         = 9;
+const TAX_COL              = 10;
+const PAYMENT_METHOD_COL   = 11;
+const TOTAL_AMOUNT_COL     = 12;
+const PAYMENT_STATUS_COL   = 13;  // "Unpaid", "Partial", "Paid"
+const AMOUNT_PAID_COL      = 14;  // Numeric amount paid so far
+const CHECKIN_TIME_COL     = 15;
+const CHECKOUT_TIME_COL    = 16;
+const FOOD_PLAN_COL        = 17;
+const ADVANCE_PAID_COL     = 18;
+const NUM_ROOMS_COL        = 19;
+const LINKED_CHECKIN_COL   = 20;
+const BOOKING_GST_TYPE_COL = 21;
+const BOOKING_FIX_RENT_COL = 22;
+const BOOKING_FIX_RENT_AMT_COL = 23;
+const BOOKING_DISC_PCT_COL = 24; // Added back to prevent ReferenceError in Booking.gs
 
 // LOGIN sheet columns (0-based)
 const LOGIN_USERNAME_COL   = 0;
@@ -613,10 +609,6 @@ function bookRoom(bookingDetails) {
       bookingDetails.guestName,
       bookingDetails.phone,
       bookingDetails.email,
-      bookingDetails.city || '',
-      bookingDetails.maritalStatus || '',
-      bookingDetails.occupancyType || '',
-      bookingDetails.familyDetails || '',
       checkInDate.toISOString(),
       checkOutDate.toISOString(),
       "Booked",
@@ -696,7 +688,6 @@ function checkoutRoom(ticketId, paymentOverride) {
     let guestName = "";
     let email = "";
     let phone = "";
-    let city = "";
     let checkInDate, checkOutDate;
     let roomRate, discount, tax, paymentMethod;
 
@@ -711,7 +702,6 @@ function checkoutRoom(ticketId, paymentOverride) {
         guestName = bookingsData[i][GUEST_NAME_COL];
         phone = bookingsData[i][PHONE_COL];
         email = bookingsData[i][EMAIL_COL];
-        city = bookingsData[i][CITY_COL];
         checkInDate = new Date(bookingsData[i][CHECK_IN_COL]);
         checkOutDate = new Date(bookingsData[i][CHECK_OUT_COL]);
         roomRate = parseFloat(bookingsData[i][ROOM_RATE_BOOK_COL]) || 0;
@@ -801,7 +791,6 @@ function checkoutRoom(ticketId, paymentOverride) {
         guestName: guestName,
         phone: phone,
         email: email,
-        city: city,
         roomNo: roomNoToCheckout.toString(),
         checkIn: checkInDate.toISOString(),
         checkOut: checkOutDate.toISOString(),
@@ -946,10 +935,6 @@ function updateBooking(rowIndex, bookingData) {
       (bookingData.guestName || '').trim(),
       (bookingData.phone || '').trim(),
       (bookingData.email || '').trim(),
-      (bookingData.city || '').trim(),
-      bookingData.maritalStatus || 'Single',
-      bookingData.occupancyType || 'Single',
-      (bookingData.familyDetails || '').trim(),
       checkInDate.toISOString(),
       checkOutDate.toISOString(),
       existingStatus,
@@ -972,7 +957,7 @@ function updateBooking(rowIndex, bookingData) {
       discountPercent
     ];
 
-    sheet.getRange(rowIndex, 1, 1, 29).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 25).setValues([row]);
     
     // Update room statuses for the new set of rooms
     if (existingStatus !== 'Cancelled' && existingStatus !== 'Checked Out') {
@@ -1326,7 +1311,6 @@ function getCheckInByRoomNo(roomNo) {
             companyName: '', gstNumber: '', identityProof: '',
             mobile: (bData[i][PHONE_COL] || '').toString(),
             email: (bData[i][EMAIL_COL] || '').toString(),
-            address: (bData[i][CITY_COL] || '').toString(),
             purposeOfVisit: '',
             checkInDate: (bData[i][CHECK_IN_COL] || '').toString(),
             checkInTime: (bData[i][CHECKIN_TIME_COL] || '14:00').toString(),
@@ -1620,7 +1604,7 @@ function processFullCheckout(checkInId, checkoutData) {
           ci[CI_GUEST_NAME_COL]    = (bData[i][GUEST_NAME_COL] || '').toString();
           ci[CI_MOBILE_COL]        = (bData[i][PHONE_COL] || '').toString();
           ci[CI_EMAIL_COL]         = (bData[i][EMAIL_COL] || '').toString();
-          ci[CI_ADDRESS_COL]       = (bData[i][CITY_COL] || '').toString();
+          ci[CI_ADDRESS_COL]       = '';
           ci[CI_CHECKIN_DATE_COL]  = (bData[i][CHECK_IN_COL] || '').toString();
           ci[CI_CHECKIN_TIME_COL]  = (bData[i][CHECKIN_TIME_COL] || '14:00').toString();
           ci[CI_CHECKOUT_DATE_COL] = (bData[i][CHECK_OUT_COL] || '').toString();
@@ -2657,10 +2641,6 @@ function getAllBookings() {
         guestName: (row[GUEST_NAME_COL] || "").toString(),
         phone: (row[PHONE_COL] || "").toString(),
         email: (row[EMAIL_COL] || "").toString(),
-        city: (row[CITY_COL] || "").toString(),
-        maritalStatus: (row[MARITAL_STATUS_COL] || "").toString(),
-        occupancyType: (row[OCCUPANCY_TYPE_COL] || "").toString(),
-        familyDetails: (row[FAMILY_DETAILS_COL] || "").toString(),
         checkIn: row[CHECK_IN_COL] ? new Date(row[CHECK_IN_COL]).toISOString() : "",
         checkOut: row[CHECK_OUT_COL] ? new Date(row[CHECK_OUT_COL]).toISOString() : "",
         status: (row[BOOKING_STATUS_COL] || "").toString(),
@@ -4039,7 +4019,7 @@ function initDataStructure() {
   const config = [
     { sheetName: LOGIN_SHEET_NAME, headers: ["Username", "Password", "Role", "OTP", "OTPExpiry"] },
     { sheetName: ROOMS_SHEET_NAME, headers: ["Room No", "Room Type", "Room Rate", "Room Status"] },
-    { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "City", "Marital Status", "Occupancy Type", "Family Details", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
+    { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "GreenTaxEnabled", "GreenTaxPerNight", "GreenTaxPax", "GreenTaxNights", "GreenTaxAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
     { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "GreenTaxDefaultRate", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
@@ -4109,19 +4089,19 @@ function setupDemoData() {
   ];
   roomsSheet.getRange(2, 1, roomsData.length, 4).setValues(roomsData);
 
-  // ===== BOOKINGS (9 bookings - varied dates/statuses for calendar testing, 25 columns) =====
+  // ===== BOOKINGS (9 bookings - varied dates/statuses for calendar testing, 21 columns) =====
   const bookingsData = [
-    ["TKT-20260201-001", "104", "Demo Guest 1", "+960-1000001", "user1@demo.com",   "Demo City A", "Single",  "Single",   "",                  "2026-02-01T14:00:00Z", "2026-02-04T12:00:00Z", "Checked In",  1200, 0,   60,  "Cash",        3660,  "Unpaid",  0,    "14:00", "12:00", "Including Breakfast", 0, 1, "CHK-0001"],
-    ["TKT-20260203-002", "107", "Demo Guest 2", "+960-1000002", "user2@demo.com",   "Demo City B", "Married", "Family",   "Spouse + 1 child",  "2026-02-03T14:00:00Z", "2026-02-06T12:00:00Z", "Booked",      1800, 100, 85,  "Card",        5385,  "Partial", 3000, "14:00", "12:00", "Including Breakfast and Dinner", 3000, 1, ""],
-    ["TKT-20260110-003", "101", "Demo Guest 3", "+960-1000003", "guest3@demo.com",  "Demo City C", "Single",  "Single",   "",                  "2026-01-10T14:00:00Z", "2026-01-12T12:00:00Z", "Checked Out", 800,  0,   32,  "Cash",        1632,  "Paid",    1632, "14:00", "12:00", "None", 0, 1, ""],
-    ["TKT-20260115-004", "103", "Demo Guest 4", "+960-1000004", "guest4@demo.com",  "Demo City A", "Married", "Couple",   "Spouse",            "2026-01-15T14:00:00Z", "2026-01-18T12:00:00Z", "Checked Out", 1200, 50,  71,  "Bank Transfer", 3621,  "Paid",    3621, "14:00", "12:00", "Including Breakfast", 1000, 1, ""],
-    ["TKT-20260120-005", "105", "Demo Guest 5", "+960-1000005", "guest5@demo.com",  "Demo City D", "Single",  "Single",   "",                  "2026-01-20T14:00:00Z", "2026-01-23T12:00:00Z", "Checked Out", 2500, 200, 145, "Cash",        7445,  "Paid",    7445, "14:00", "12:00", "None", 2000, 1, ""],
-    ["TKT-20260210-006", "108", "Demo Guest 6", "+960-1000006", "user1@demo.com",   "Demo City B", "Single",  "Single",   "",                  "2026-02-10T14:00:00Z", "2026-02-13T12:00:00Z", "Booked",      500,  0,   25,  "Card",        1525,  "Unpaid",  0,    "14:00", "12:00", "None", 0, 1, ""],
-    ["TKT-20260215-007", "106", "Demo Guest 7", "+960-1000007", "user2@demo.com",   "Demo City E", "Married", "Couple",   "Spouse",            "2026-02-15T14:00:00Z", "2026-02-18T12:00:00Z", "Booked",      2500, 0,   125, "Card",        7625,  "Paid",    7625, "14:00", "12:00", "Including Breakfast", 5000, 1, ""],
-    ["TKT-20260220-008", "110", "Demo Guest 8", "+960-1000008", "guest8@demo.com",  "Demo City A", "Single",  "Family",   "2 children",        "2026-02-20T14:00:00Z", "2026-02-25T12:00:00Z", "Checked In",  1800, 200, 80,  "Bank Transfer", 8880,  "Unpaid",  0,    "14:00", "12:00", "Including Breakfast and Dinner", 0, 1, "CHK-0002"],
-    ["TKT-20260225-009", "102", "Demo Guest 9", "+960-1000009", "guest9@demo.com",  "Demo City C", "Single",  "Double",   "",                  "2026-02-25T14:00:00Z", "2026-02-28T12:00:00Z", "Checked In",  800,  0,   48,  "Cash",        2448,  "Unpaid",  0,    "14:00", "12:00", "None", 0, 1, "CHK-0003"]
+    ["TKT-20260201-001", "104", "Demo Guest 1", "+960-1000001", "user1@demo.com",   "2026-02-01T14:00:00Z", "2026-02-04T12:00:00Z", "Checked In",  1200, 0,   60,  "Cash",        3660,  "Unpaid",  0,    "14:00", "12:00", "Including Breakfast", 0, 1, "CHK-0001"],
+    ["TKT-20260203-002", "107", "Demo Guest 2", "+960-1000002", "user2@demo.com",   "2026-02-03T14:00:00Z", "2026-02-06T12:00:00Z", "Booked",      1800, 100, 85,  "Card",        5385,  "Partial", 3000, "14:00", "12:00", "Including Breakfast and Dinner", 3000, 1, ""],
+    ["TKT-20260110-003", "101", "Demo Guest 3", "+960-1000003", "guest3@demo.com",  "2026-01-10T14:00:00Z", "2026-01-12T12:00:00Z", "Checked Out", 800,  0,   32,  "Cash",        1632,  "Paid",    1632, "14:00", "12:00", "None", 0, 1, ""],
+    ["TKT-20260115-004", "103", "Demo Guest 4", "+960-1000004", "guest4@demo.com",  "2026-01-15T14:00:00Z", "2026-01-18T12:00:00Z", "Checked Out", 1200, 50,  71,  "Bank Transfer", 3621,  "Paid",    3621, "14:00", "12:00", "Including Breakfast", 1000, 1, ""],
+    ["TKT-20260120-005", "105", "Demo Guest 5", "+960-1000005", "guest5@demo.com",  "2026-01-20T14:00:00Z", "2026-01-23T12:00:00Z", "Checked Out", 2500, 200, 145, "Cash",        7445,  "Paid",    7445, "14:00", "12:00", "None", 2000, 1, ""],
+    ["TKT-20260210-006", "108", "Demo Guest 6", "+960-1000006", "user1@demo.com",   "2026-02-10T14:00:00Z", "2026-02-13T12:00:00Z", "Booked",      500,  0,   25,  "Card",        1525,  "Unpaid",  0,    "14:00", "12:00", "None", 0, 1, ""],
+    ["TKT-20260215-007", "106", "Demo Guest 7", "+960-1000007", "user2@demo.com",   "2026-02-15T14:00:00Z", "2026-02-18T12:00:00Z", "Booked",      2500, 0,   125, "Card",        7625,  "Paid",    7625, "14:00", "12:00", "Including Breakfast", 5000, 1, ""],
+    ["TKT-20260220-008", "110", "Demo Guest 8", "+960-1000008", "guest8@demo.com",  "2026-02-20T14:00:00Z", "2026-02-25T12:00:00Z", "Checked In",  1800, 200, 80,  "Bank Transfer", 8880,  "Unpaid",  0,    "14:00", "12:00", "Including Breakfast and Dinner", 0, 1, "CHK-0002"],
+    ["TKT-20260225-009", "102", "Demo Guest 9", "+960-1000009", "guest9@demo.com",  "2026-02-25T14:00:00Z", "2026-02-28T12:00:00Z", "Checked In",  800,  0,   48,  "Cash",        2448,  "Unpaid",  0,    "14:00", "12:00", "None", 0, 1, "CHK-0003"]
   ];
-  bookingsSheet.getRange(2, 1, bookingsData.length, 25).setValues(bookingsData);
+  bookingsSheet.getRange(2, 1, bookingsData.length, 21).setValues(bookingsData);
 
   // ===== INVOICES (3 invoices) =====
   const invItems1 = JSON.stringify([
