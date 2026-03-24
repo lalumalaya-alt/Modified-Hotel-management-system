@@ -3974,6 +3974,7 @@ function getMonthlyReport(month, year, reportType) {
  * @param {Array<Object>} configArray - Array of sheet configurations: {sheetName: "Name", headers: ["Col1", "Col2"], deleteSheet: false}
  */
 function manageSheetsDataStructure(configArray) {
+  if (!configArray || !Array.isArray(configArray)) return;
   const ss = SpreadsheetApp.openById(SS_ID);
   const currentSheets = ss.getSheets().reduce((acc, sheet) => {
     acc[sheet.getName()] = sheet;
