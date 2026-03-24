@@ -64,8 +64,6 @@ const BOOKING_DISC_PCT_COL = 24; // Added back to prevent ReferenceError in Book
 const LOGIN_USERNAME_COL   = 0;
 const LOGIN_PASSWORD_COL   = 1;
 const LOGIN_ROLE_COL       = 2;
-const LOGIN_OTP_COL        = 3;
-const LOGIN_OTP_EXPIRY_COL = 4;
 
 // FINANCE sheet columns (0-based) — cols 0-8 original, 9-11 new
 const FIN_ID_COL           = 0;
@@ -266,7 +264,7 @@ function createUserIfNotExists(email, generatedPassword) {
   }
 
   if (!userExists) {
-    loginSheet.appendRow([email, generatedPassword, "user", "", ""]);
+    loginSheet.appendRow([email, generatedPassword, "user"]);
   }
 }
 
@@ -292,180 +290,6 @@ function changePassword(username, oldPassword, newPassword) {
       }
     }
     return { success: false, message: "Current password is incorrect." };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-/***************************************************
- * CREATE ACCOUNT (Self-Registration)
- ***************************************************/
-function createAccount(email, password) {
-  try {
-    if (!email || !password) {
-      return { success: false, message: "Email and password are required." };
-    }
-
-    email = email.toString().trim().toLowerCase();
-
-    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return { success: false, message: "Please enter a valid email address." };
-    }
-
-    if (password.length < 4) {
-      return { success: false, message: "Password must be at least 4 characters." };
-    }
-
-    var loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
-    var data = loginSheet.getDataRange().getValues();
-
-    for (var i = 1; i < data.length; i++) {
-      var storedUser = (data[i][LOGIN_USERNAME_COL] || "").toString().trim().toLowerCase();
-      if (storedUser === email) {
-        return { success: false, message: "An account with this email already exists." };
-      }
-    }
-
-    loginSheet.appendRow([email, password, "user", "", ""]);
-
-    return { success: true, message: "Account created successfully! You can now login." };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-/***************************************************
- * FORGOT PASSWORD — OTP FLOW
- ***************************************************/
-function sendForgotPasswordOTP(email) {
-  try {
-    if (!email) {
-      return { success: false, message: "Email is required." };
-    }
-
-    email = email.toString().trim().toLowerCase();
-
-    var loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
-    var data = loginSheet.getDataRange().getValues();
-    var userRowIndex = -1;
-
-    for (var i = 1; i < data.length; i++) {
-      var storedUser = (data[i][LOGIN_USERNAME_COL] || "").toString().trim().toLowerCase();
-      if (storedUser === email) {
-        userRowIndex = i + 1;
-        break;
-      }
-    }
-
-    if (userRowIndex === -1) {
-      return { success: false, message: "No account found with this email." };
-    }
-
-    var otp = Math.floor(1000 + Math.random() * 9000).toString();
-    var expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    loginSheet.getRange(userRowIndex, LOGIN_OTP_COL + 1).setValue(otp);
-    loginSheet.getRange(userRowIndex, LOGIN_OTP_EXPIRY_COL + 1).setValue(expiry);
-    SpreadsheetApp.flush();
-
-    var hotelName = 'Hill View Eco Retreat';
-    try {
-      var setSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(SETTINGS_SHEET_NAME);
-      if (setSheet && setSheet.getLastRow() > 1) {
-        hotelName = (setSheet.getRange(2, SET_HOTEL_NAME_COL + 1).getValue() || 'Hill View Eco Retreat').toString();
-      }
-    } catch (se) { Logger.log("Could not load hotel name: " + se); }
-
-    MailApp.sendEmail({
-      to: email,
-      subject: hotelName + ' - Password Reset OTP',
-      body: 'Hello,\n\nYour OTP for password reset is: ' + otp + '\n\nThis code is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.\n\n- ' + hotelName
-    });
-
-    return { success: true, message: "OTP sent to your email. Check your inbox." };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-function verifyOTP(email, otp) {
-  try {
-    if (!email || !otp) {
-      return { success: false, message: "Email and OTP are required." };
-    }
-
-    email = email.toString().trim().toLowerCase();
-    otp = otp.toString().trim();
-
-    var loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
-    var data = loginSheet.getDataRange().getValues();
-
-    for (var i = 1; i < data.length; i++) {
-      var storedUser = (data[i][LOGIN_USERNAME_COL] || "").toString().trim().toLowerCase();
-      if (storedUser === email) {
-        var storedOtp = (data[i][LOGIN_OTP_COL] || "").toString().trim();
-        var storedExpiry = (data[i][LOGIN_OTP_EXPIRY_COL] || "").toString().trim();
-
-        if (storedOtp !== otp) {
-          return { success: false, message: "Invalid OTP. Please try again." };
-        }
-
-        if (!storedExpiry || new Date(storedExpiry) < new Date()) {
-          loginSheet.getRange(i + 1, LOGIN_OTP_COL + 1).setValue("");
-          loginSheet.getRange(i + 1, LOGIN_OTP_EXPIRY_COL + 1).setValue("");
-          return { success: false, message: "OTP has expired. Please request a new one." };
-        }
-
-        return { success: true, message: "OTP verified successfully." };
-      }
-    }
-
-    return { success: false, message: "No account found with this email." };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-}
-
-function resetPassword(email, otp, newPassword) {
-  try {
-    if (!email || !otp || !newPassword) {
-      return { success: false, message: "All fields are required." };
-    }
-    if (newPassword.length < 4) {
-      return { success: false, message: "New password must be at least 4 characters." };
-    }
-
-    email = email.toString().trim().toLowerCase();
-    otp = otp.toString().trim();
-
-    var loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
-    var data = loginSheet.getDataRange().getValues();
-
-    for (var i = 1; i < data.length; i++) {
-      var storedUser = (data[i][LOGIN_USERNAME_COL] || "").toString().trim().toLowerCase();
-      if (storedUser === email) {
-        var storedOtp = (data[i][LOGIN_OTP_COL] || "").toString().trim();
-        var storedExpiry = (data[i][LOGIN_OTP_EXPIRY_COL] || "").toString().trim();
-
-        if (storedOtp !== otp) {
-          return { success: false, message: "Invalid OTP." };
-        }
-        if (!storedExpiry || new Date(storedExpiry) < new Date()) {
-          loginSheet.getRange(i + 1, LOGIN_OTP_COL + 1).setValue("");
-          loginSheet.getRange(i + 1, LOGIN_OTP_EXPIRY_COL + 1).setValue("");
-          return { success: false, message: "OTP has expired. Please request a new one." };
-        }
-
-        loginSheet.getRange(i + 1, LOGIN_PASSWORD_COL + 1).setValue(newPassword);
-        loginSheet.getRange(i + 1, LOGIN_OTP_COL + 1).setValue("");
-        loginSheet.getRange(i + 1, LOGIN_OTP_EXPIRY_COL + 1).setValue("");
-
-        return { success: true, message: "Password reset successfully! You can now login." };
-      }
-    }
-
-    return { success: false, message: "No account found with this email." };
   } catch (err) {
     return { success: false, message: err.message };
   }
@@ -2706,7 +2530,7 @@ function addUser(username, password, role) {
       }
     }
 
-    loginSheet.appendRow([username.trim(), password.trim(), role.trim().toLowerCase(), "", ""]);
+    loginSheet.appendRow([username.trim(), password.trim(), role.trim().toLowerCase()]);
     return { success: true, message: "User added successfully!" };
   } catch (err) {
     return { success: false, message: err.message };
@@ -4017,7 +3841,7 @@ function manageSheetsDataStructure(configArray) {
 
 function initDataStructure() {
   const config = [
-    { sheetName: LOGIN_SHEET_NAME, headers: ["Username", "Password", "Role", "OTP", "OTPExpiry"] },
+    { sheetName: LOGIN_SHEET_NAME, headers: ["Username", "Password", "Role"] },
     { sheetName: ROOMS_SHEET_NAME, headers: ["Room No", "Room Type", "Room Rate", "Room Status"] },
     { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "GreenTaxEnabled", "GreenTaxPerNight", "GreenTaxPax", "GreenTaxNights", "GreenTaxAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
@@ -4068,11 +3892,11 @@ function setupDemoData() {
   // --- 3. Populate demo data ---
 
   // ===== LOGIN (3 users) =====
-  loginSheet.appendRow(["admin@demo.com", "admin123", "admin", "", ""]);
-  loginSheet.appendRow(["user1@demo.com", "user123", "user", "", ""]);
-  loginSheet.appendRow(["user2@demo.com", "user123", "user", "", ""]);
-  loginSheet.appendRow(["client1@demo.com", "client123", "user", "", ""]);
-  loginSheet.appendRow(["client2@demo.com", "client123", "user", "", ""]);
+  loginSheet.appendRow(["admin@demo.com", "admin123", "admin"]);
+  loginSheet.appendRow(["user1@demo.com", "user123", "user"]);
+  loginSheet.appendRow(["user2@demo.com", "user123", "user"]);
+  loginSheet.appendRow(["client1@demo.com", "client123", "user"]);
+  loginSheet.appendRow(["client2@demo.com", "client123", "user"]);
 
   // ===== ROOMS (10 rooms) =====
   const roomsData = [
@@ -4101,7 +3925,7 @@ function setupDemoData() {
     ["TKT-20260220-008", "110", "Demo Guest 8", "+960-1000008", "guest8@demo.com",  "2026-02-20T14:00:00Z", "2026-02-25T12:00:00Z", "Checked In",  1800, 200, 80,  "Bank Transfer", 8880,  "Unpaid",  0,    "14:00", "12:00", "Including Breakfast and Dinner", 0, 1, "CHK-0002"],
     ["TKT-20260225-009", "102", "Demo Guest 9", "+960-1000009", "guest9@demo.com",  "2026-02-25T14:00:00Z", "2026-02-28T12:00:00Z", "Checked In",  800,  0,   48,  "Cash",        2448,  "Unpaid",  0,    "14:00", "12:00", "None", 0, 1, "CHK-0003"]
   ];
-  bookingsSheet.getRange(2, 1, bookingsData.length, 21).setValues(bookingsData);
+  bookingsSheet.getRange(2, 1, bookingsData.length, 25).setValues(bookingsData);
 
   // ===== INVOICES (3 invoices) =====
   const invItems1 = JSON.stringify([
