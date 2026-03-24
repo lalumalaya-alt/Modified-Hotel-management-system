@@ -4,7 +4,7 @@
 
 /***************************************************
  * GLOBAL CONSTANTS
-/***************************************************/
+ ***************************************************/
 const SS_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
 
 // SHEET NAMES
@@ -214,7 +214,7 @@ const CUST_LINKED_USER_COL  = 8;
 
 /***************************************************
  * WEB APP ENTRY POINT
-/***************************************************/
+ ***************************************************/
 function doGet(e) {
   var template = HtmlService.createTemplateFromFile('index');
   return template
@@ -230,7 +230,7 @@ function include(filename) {
 
 /***************************************************
  * LOGIN LOGIC
-/***************************************************/
+ ***************************************************/
 function checkLogin(username, password) {
   try {
     const loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
@@ -303,7 +303,7 @@ function changePassword(username, oldPassword, newPassword) {
 
 /***************************************************
  * CREATE ACCOUNT (Self-Registration)
-/***************************************************/
+ ***************************************************/
 function createAccount(email, password) {
   try {
     if (!email || !password) {
@@ -341,7 +341,7 @@ function createAccount(email, password) {
 
 /***************************************************
  * FORGOT PASSWORD — OTP FLOW
-/***************************************************/
+ ***************************************************/
 function sendForgotPasswordOTP(email) {
   try {
     if (!email) {
@@ -477,7 +477,7 @@ function resetPassword(email, otp, newPassword) {
 
 /***************************************************
  * HELPER FUNCTIONS
-/***************************************************/
+ ***************************************************/
 function generateTicketId() {
   const prefix = "TKT";
   const timestamp = new Date().getTime().toString().slice(-6);
@@ -503,7 +503,7 @@ function daysBetween(d1, d2) {
 
 /**
  * Sequential ID generator using SETTINGS sheet as counter store.
- * type: 'invoice' → INV-0001
+ * type: 'invoice' → INV-0001, 'quote' → QTN-0001
  */
 function getNextSequentialId(type) {
   const ss = SpreadsheetApp.openById(SS_ID);
@@ -542,7 +542,7 @@ function getOrCreateDriveFolder(folderName) {
 
 /***************************************************
  * BOOK / CHECKOUT ROOM
-/***************************************************/
+ ***************************************************/
 function bookRoom(bookingDetails) {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
@@ -1115,7 +1115,7 @@ function generateInvoiceHtml(invoiceData) {
 
 /***************************************************
  * CHECK-IN FUNCTIONS
-/***************************************************/
+ ***************************************************/
 
 function generateCheckInId() {
   const ss = SpreadsheetApp.openById(SS_ID);
@@ -1435,7 +1435,7 @@ function updateCheckIn(rowIndex, checkInData) {
 
 /***************************************************
  * RESTAURANT FUNCTIONS
-/***************************************************/
+ ***************************************************/
 
 function generateOrderId() {
   return "ORD-" + new Date().getTime().toString().slice(-6) + Math.floor(Math.random() * 900 + 100);
@@ -1583,7 +1583,7 @@ function getActiveCheckInRooms() {
 
 /***************************************************
  * CHECKOUT FUNCTIONS (REVAMPED)
-/***************************************************/
+ ***************************************************/
 
 function processFullCheckout(checkInId, checkoutData) {
   try {
@@ -2332,7 +2332,7 @@ function numberToWords(num) {
 
 /***************************************************
  * DASHBOARD
-/***************************************************/
+ ***************************************************/
 function getDashboardData() {
   try {
     const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
@@ -2449,8 +2449,6 @@ function getDashboardData() {
       Logger.log("Could not load finance data: " + finErr);
     }
 
-    // Quote Stats
-    }
 
     // Monthly data (last 6 months) - declared outside try so return can access them
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -2693,7 +2691,7 @@ function getAllBookings() {
 
 /***************************************************
  * USER MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function getAllUsers() {
   try {
     const loginSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(LOGIN_SHEET_NAME);
@@ -2770,7 +2768,7 @@ function deleteUser(rowIndex) {
 
 /***************************************************
  * CUSTOMER MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function getAllCustomers() {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
@@ -2876,8 +2874,9 @@ function deleteCustomer(rowIndex) {
   }
 }
 
+/***************************************************
  * ROOM MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function getAllRooms() {
   try {
     const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
@@ -2980,8 +2979,9 @@ function deleteRoom(rowIndex) {
   }
 }
 
+/***************************************************
  * FINANCE MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function recalculateBalances() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
@@ -3172,7 +3172,7 @@ function getFinanceSummary() {
 
 /***************************************************
  * SETTINGS MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function getSettings() {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
@@ -3278,7 +3278,7 @@ function uploadLogo(base64Data, fileName, mimeType) {
 
 /***************************************************
  * INVOICE MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function getAllInvoices() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(INVOICES_SHEET_NAME);
@@ -3311,7 +3311,7 @@ function getAllInvoices() {
         discount: parseFloat(row[INV_DISCOUNT_COL]) || 0,
         totalAmount: parseFloat(row[INV_TOTAL_COL]) || 0,
         notes: (row[INV_NOTES_COL] || '').toString(),
-        pdfDriveLink: (row[INV_PDF_LINK_COL] || '').toString(),
+                pdfDriveLink: (row[INV_PDF_LINK_COL] || '').toString(),
         createdBy: (row[INV_CREATED_BY_COL] || '').toString(),
         updatedAt: (row[INV_UPDATED_AT_COL] || '').toString()
       });
@@ -3380,7 +3380,7 @@ function addInvoice(invoiceData) {
       discount,
       Math.round(totalAmount * 100) / 100,
       (invoiceData.notes || '').trim(),
-      '',
+            '',
       (invoiceData.createdBy || '').trim(),
       now
     ]);
@@ -3416,7 +3416,7 @@ function updateInvoice(rowIndex, invoiceData) {
     // Keep existing ID and createdDate, update everything else
     const existingId = sheet.getRange(rowIndex, INV_ID_COL + 1).getValue();
     const existingCreated = sheet.getRange(rowIndex, INV_CREATED_DATE_COL + 1).getValue();
-    const existingPdf = sheet.getRange(rowIndex, INV_PDF_LINK_COL + 1).getValue();
+        const existingPdf = sheet.getRange(rowIndex, INV_PDF_LINK_COL + 1).getValue();
     const existingCreatedBy = sheet.getRange(rowIndex, INV_CREATED_BY_COL + 1).getValue();
 
     const row = [
@@ -3442,8 +3442,7 @@ function updateInvoice(rowIndex, invoiceData) {
       discount,
       Math.round(totalAmount * 100) / 100,
       (invoiceData.notes || '').trim(),
-
-      existingPdf,
+            existingPdf,
       existingCreatedBy,
       now
     ];
@@ -3558,7 +3557,7 @@ function checkOverdueInvoices() {
 
 /***************************************************
  * EMAIL INVOICE / QUOTE
-/***************************************************/
+ ***************************************************/
 function generateDocumentEmailHtml(type, data, settings) {
   const hotelName = settings.hotelName || 'Hill View Eco Retreat';
   const hotelAddress = settings.hotelAddress || '';
@@ -3597,7 +3596,7 @@ function generateDocumentEmailHtml(type, data, settings) {
   if (data.greenTaxEnabled) totalsRows += '<tr><td colspan="2">Green Tax</td><td class="right">' + cur + ' ' + greenTaxAmount.toFixed(2) + '</td></tr>';
   totalsRows += '<tr class="total"><td colspan="2"><strong>TOTAL</strong></td><td class="right"><strong>' + cur + ' ' + totalAmount.toFixed(2) + '</strong></td></tr>';
 
-  let dateInfo = '<p><strong>Date:</strong> ' + (data.createdDate || '') + '</p><p><strong>Due Date:</strong> ' + (data.dueDate || '') + '</p><p><strong>Status:</strong> ' + (data.status || '') + '</p>';
+    let dateInfo = '<p><strong>Date:</strong> ' + (data.createdDate || '') + '</p><p><strong>Due Date:</strong> ' + (data.dueDate || '') + '</p><p><strong>Status:</strong> ' + (data.status || '') + '</p>';
 
   return '<html><head><style>body{font-family:Arial,sans-serif;margin:20px;color:#333}' +
     '.doc-container{max-width:650px;margin:auto;border:1px solid #ddd;padding:30px;border-radius:4px}' +
@@ -3654,9 +3653,10 @@ function emailInvoice(invoiceId) {
   }
 }
 
+
 /***************************************************
  * PDF DRIVE STORAGE
-/***************************************************/
+ ***************************************************/
 function savePdfToDrive(base64PdfData, fileName, recordId, type) {
   try {
     const folder = getOrCreateDriveFolder("Hotel Invoice PDFs");
@@ -3680,6 +3680,7 @@ function savePdfToDrive(base64PdfData, fileName, recordId, type) {
           }
         }
       }
+    }
 
     // Update PDF folder ID in settings
     const settingsSheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
@@ -3695,7 +3696,7 @@ function savePdfToDrive(base64PdfData, fileName, recordId, type) {
 
 /***************************************************
  * BUDGET MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function getAllBudgets() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BUDGETS_SHEET_NAME);
@@ -3819,7 +3820,7 @@ function calculateMonthlyExpenses(month, year) {
 
 /***************************************************
  * CATEGORIES MANAGEMENT
-/***************************************************/
+ ***************************************************/
 function getAllCategories() {
   try {
     const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(CATEGORIES_SHEET_NAME);
@@ -3889,7 +3890,7 @@ function deleteCategory(rowIndex) {
 
 /***************************************************
  * MONTHLY REPORTS
-/***************************************************/
+ ***************************************************/
 function getMonthlyReport(month, year, reportType) {
   try {
     month = parseInt(month);
@@ -3961,8 +3962,13 @@ function getMonthlyReport(month, year, reportType) {
   }
 }
 
+
 /***************************************************
-/***************************************************/
+ * SETUP DEMO DATA
+ * Deletes ALL existing sheets, recreates them
+ * with headers, and populates with generic demo data.
+ * Run this once from the Script Editor to set up.
+ ***************************************************/
 /**
  * Automatically adds, modifies, or deletes sheets and their headers according to logic.
  * @param {Array<Object>} configArray - Array of sheet configurations: {sheetName: "Name", headers: ["Col1", "Col2"], deleteSheet: false}
