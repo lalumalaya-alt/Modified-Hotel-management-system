@@ -1,7 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    window.google = { script: { run: {
+      withSuccessHandler: () => window.google.script.run,
+      withFailureHandler: () => window.google.script.run,
+      getAllRooms: () => {}, getAllCheckIns: () => {}, getAllBookings: () => {}
+    }}};
+    window.Swal = { fire: () => Promise.resolve({isConfirmed: false}), close: () => {} };
+    window.$ = function() { return { DataTable: () => ({ destroy: () => {}, row: () => ({data: () => {}}) }), off: function() { return this; }, on: function() { return this; }, empty: () => {} } };
+  </script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 <!--
   Developed by Malaya
 -->
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -9,20 +26,6 @@
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root { --navy-primary: #001f3f; --navy-dark: #001529; --navy-light: #003366; --navy-accent: #0074D9; --navy-hover: #002a52; --success: #34a853; --warning: #fbbc04; --danger: #ea4335; }
     * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.15) transparent; }
@@ -603,18 +606,15 @@
     }
   </style>
 </head>
-<body>
-  <div id="root"></div>
-  <script type="text/babel">
     const { useState, useEffect, useRef } = React;
     const LOGO = 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiGXxCe0WNNedmFqSWeF761f7Kshhc-NP5ChRQKz9fr97cO8VaarvD0KlCwqHojJVBWv-RAxfOqMI5rD4H78KnARyOc6QgwL1nRRFWf5xNQ1d9F9HfAoLPPGlTyP0GwNl4n-INMEsWLQ4Y7zJtz5bOdAnc2ePH9-uCRgshlo6BsS6gJEz6fhrxL-5U5O3sX/s160/channels4_profile.jpg';
-    const fmtDate = (s) => { 
-      if(!s) return '-'; 
-      return new Date(s).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year:'numeric',month:'short',day:'2-digit' }); 
+    const fmtDate = (s) => {
+      if(!s) return '-';
+      return new Date(s).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year:'numeric',month:'short',day:'2-digit' });
     };
-    const fmtDateTime = (s) => { 
-      if(!s) return '-'; 
-      return new Date(s).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year:'numeric',month:'short',day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true }); 
+    const fmtDateTime = (s) => {
+      if(!s) return '-';
+      return new Date(s).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year:'numeric',month:'short',day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true });
     };
     let APP_CURRENCY = 'MVR';
     const fmtCur = (a, currency) => (currency || APP_CURRENCY || 'MVR') + ' ' + (parseFloat(a)||0).toFixed(2);
@@ -786,7 +786,7 @@
       useEffect(()=>{google.script.run.withSuccessHandler((r)=>{setLd(false);if(r.error){Swal.fire({icon:'error',title:'Error',text:r.error});return;}if(r.defaultCurrency)APP_CURRENCY=r.defaultCurrency;setSt(r);setTimeout(()=>charts(r),200);}).withFailureHandler((e)=>{setLd(false);Swal.fire({icon:'error',title:'Error',text:e.message});}).getDashboardData();return()=>{Object.values(cr.current).forEach(c=>{if(c)c.destroy();});};},[]);
       const charts=(d)=>{Object.values(cr.current).forEach(c=>{if(c)c.destroy();});cr.current={};
         const palette=['#001f3f','#0074D9','#34a853','#fbbc04','#ea4335','#6f42c1','#20c997','#e67e22','#3498db','#9b59b6'];
-        
+
         // 1. Invoice Status Doughnut
         const c5=document.getElementById('invStatusChart');
         if(c5){const iv=d.invoiceStats||{};cr.current.is=new Chart(c5,{type:'doughnut',data:{labels:['Draft','Sent','Paid','Overdue','Cancelled'],datasets:[{data:[iv.draftInvoices||0,iv.sentInvoices||0,iv.paidInvoices||0,iv.overdueInvoices||0,iv.cancelledInvoices||0],backgroundColor:['#6c757d','#006d6f','#00a89d','#f39c12','#d35400'],borderColor:'#fff',borderWidth:2,hoverOffset:10}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#333',padding:12,usePointStyle:true}},title:{display:true,text:'Invoice Status',color:'#001f3f',font:{size:16,weight:'bold'}}}}});}
@@ -802,7 +802,7 @@
           <div className="kpi-card c-green"><i className="fas fa-wallet kpi-card-icon"></i><div className="kpi-card-title">Net Balance</div><div className="kpi-card-value">{fmtCur(f.netBalance)}</div><div className="kpi-card-sub"><i className="fas fa-arrow-up"></i> {fmtCur(f.totalIncome)} income</div></div>
           <div className="kpi-card c-orange"><i className="fas fa-chart-pie kpi-card-icon"></i><div className="kpi-card-title">Occupancy Rate</div><div className="kpi-card-value">{occRate}%</div><div className="kpi-card-sub"><i className="fas fa-door-open"></i> {st?.bookedRooms||0} of {st?.totalRooms||0} rooms</div></div>
         </div>
-        
+
         {/* Row 2: 8 White Stat Cards in single row */}
         <div className="dashboard-grid-9">
           <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-door-open"></i></div><div className="stat-card-value">{st?.totalRooms||0}</div><div className="stat-card-label">Total Rooms</div></div>
@@ -826,7 +826,7 @@
                 if(rm.status==='Booked') bg = '#0074D9';
                 if(rm.status==='Maintenance') bg = '#fbbc04';
                 if(rm.status==='Reserved') bg = '#6f42c1';
-                
+
                 return (
                   <div key={rm.roomNo} style={{background:bg,color:'#fff',padding:'12px 8px',borderRadius:'8px',textAlign:'center',boxShadow:'0 2px 4px rgba(0,0,0,0.1)',display:'flex',flexDirection:'column',justifyContent:'center',minHeight:'90px', gap:'4px'}}>
                     <div style={{fontSize:'18px',fontWeight:'bold'}}>{rm.roomNo}</div>
@@ -864,7 +864,7 @@
         <div className="dashboard-grid-2" style={{gridTemplateColumns:'1fr'}}>
           <div className="chart-card"><div className="chart-container"><canvas id="invStatusChart"></canvas></div></div>
         </div>
-        
+
       </div>);
     }
 
@@ -936,7 +936,7 @@
       const isAdmin=role==='admin';
       // If editing, parsing is tricky if the format changed. We will support both room numbers and types.
       const parsedEditRoomNos = isEdit?(booking.roomNo||'').split(',').map(r=>r.trim()).filter(r=>r):[];
-      
+
       const [selectedRoomsByType,setSelectedRoomsByType]=useState(
         isEdit ? parsedEditRoomNos.reduce((acc, rm) => {
           const match = rm.match(/(.+?)(?:\s*\((\d+)\))?$/);
@@ -957,13 +957,13 @@
       const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
       useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();},[]);
       const pickCustomer=(val)=>{setSelCust(val);if(val){const c=customers.find(x=>x.customerId===val);if(c)setFd(p=>({...p,guestName:c.name||p.guestName,phone:c.phone||p.phone,email:c.email||p.email}));}};
-      
+
       // Calculate dynamic availability
       const getAvailByType = () => {
         if (!fd.checkIn || !fd.checkOut) return [];
         const ci = new Date(fd.checkIn); const co = new Date(fd.checkOut);
         if (isNaN(ci) || isNaN(co) || co <= ci) return [];
-        
+
         // 1. Total rooms by type
         const totals = rooms.reduce((acc, r) => {
           const status = (r.roomStatus||'').toLowerCase();
@@ -972,7 +972,7 @@
           }
           return acc;
         }, {});
-        
+
         // 2. Count overlapping bookings
         const overlaps = {};
         const overlappingBks = allBookings.filter(b => {
@@ -981,13 +981,13 @@
           const bCi = new Date(b.checkIn); const bCo = new Date(b.checkOut);
           return (ci < bCo && co > bCi);
         });
-        
+
         overlappingBks.forEach(b => {
           const rNos = (b.roomNo||'').split(',').map(r=>r.trim()).filter(r=>r);
           rNos.forEach(rn => {
             const match = rn.match(/(.+?)(?:\s*\((\d+)\))?$/);
             if (match) {
-              let type = match[1].trim(); 
+              let type = match[1].trim();
               const qty = parseInt(match[2]||1,10);
               const physRoom = rooms.find(r => r.roomNo.toString() === type);
               if(physRoom) type = physRoom.roomType;
@@ -995,7 +995,7 @@
             }
           });
         });
-        
+
         // 3. Count active check-ins (since they hold physical rooms)
         allCheckIns.filter(ci => ci.status === 'Active').forEach(c => {
           const rNos = (c.roomNumbers||'').split(',').map(r=>r.trim()).filter(r=>r);
@@ -1011,9 +1011,9 @@
           return { type, available: Math.max(0, t - o), rate };
         });
       };
-      
+
       const availByType = getAvailByType();
-      
+
       const setRoomTypeQty = (type, qty) => {
         qty = parseInt(qty, 10) || 0;
         setSelectedRoomsByType(prev => {
@@ -1037,7 +1037,7 @@
       }, 0);
 
       const editRate=combinedRate;
-      
+
       const submit=(e)=>{e.preventDefault();if(selectedCount===0){Swal.fire({icon:'warning',text:'Please select at least one room'});return;}setSv(true);
         const roomNosStr = Object.entries(selectedRoomsByType).map(([type, qty]) => `${type} (${qty})`).join(', ');
         const calcTotals = calcTotal();
@@ -1054,7 +1054,7 @@
           <div className="form-group"><label>Check-out Time</label><input type="time" value={fd.checkOutTime} onChange={e=>setFd({...fd,checkOutTime:e.target.value})}/></div>
           <div className="form-group" style={{gridColumn:'1 / -1'}}><hr style={{border:'0',borderTop:'1px solid #ddd'}}/></div>
         </div>
-        
+
         {!isEdit&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
         <div className="form-group"><label>Select Room Types *</label><div className="room-types-list">{(!fd.checkIn||!fd.checkOut)?<p style={{color:'#666'}}>Select dates first.</p>:availByType.length===0?<p style={{color:'#666'}}>No rooms available.</p>:availByType.map(t=>(<div key={t.type} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px',border:'1px solid #ddd',borderRadius:'4px',marginBottom:'8px'}}><div><strong>{t.type}</strong><br/><span style={{fontSize:'12px',color:'#666'}}>Standard Rate: {fmtCur(t.rate)}/night | Available: {t.available}</span></div><div style={{display:'flex',gap:'8px'}}>{selectedRoomsByType[t.type]>0&&<input type="number" step="0.01" min="0" placeholder={`Custom Rate (${t.rate})`} value={customRates[t.type]||''} onChange={e=>handleCustomRate(t.type, e.target.value)} style={{width:'110px',padding:'4px'}} title="Leave blank for standard rate" />}<input type="number" min="0" max={t.available} value={selectedRoomsByType[t.type]||''} onChange={e=>setRoomTypeQty(t.type, e.target.value)} style={{width:'60px',padding:'4px'}} placeholder="Qty"/></div></div>))}</div>{selectedCount>0&&<p style={{marginTop:'8px',color:'var(--navy-primary)',fontWeight:'600'}}>Total Rooms: {selectedCount} — Combined Rate: {fmtCur(combinedRate)}/night</p>}</div>
         <div className="form-grid">
@@ -1144,7 +1144,7 @@
       const getRoomStates = () => {
         let states = {};
         rooms.forEach(rm => {
-          states[rm.roomNo.toString()] = { 
+          states[rm.roomNo.toString()] = {
             status: (rm.roomStatus || '').toLowerCase() === 'maintenance' ? 'maintenance' : 'available',
             label: (rm.roomStatus || '').toLowerCase() === 'maintenance' ? 'Maintenance' : 'Available',
             room: rm
@@ -1176,7 +1176,7 @@
               if (bk.status === 'Booked' && bk.roomNo && bk.ticketId !== (linkedBooking && linkedBooking.ticketId)) {
                 const bIn = new Date(bk.checkIn);
                 const bOut = new Date(bk.checkOut);
-                
+
                 if (cIn < bOut && cOut > bIn) {
                   const roomNosArr = bk.roomNo.split(',').map(r => r.trim()).filter(Boolean);
                   roomNosArr.forEach(r => {
@@ -1227,7 +1227,7 @@
             requiredTypes[type] = (requiredTypes[type] || 0) + 1;
           }
         });
-        
+
         const selectedCountByType = {};
         selectedRooms.forEach(rn => {
           const physRoom = rooms.find(rx => rx.roomNo.toString() === rn);
@@ -1235,13 +1235,13 @@
             selectedCountByType[physRoom.roomType] = (selectedCountByType[physRoom.roomType] || 0) + 1;
           }
         });
-        
+
         return Object.entries(requiredTypes).map(([type, reqQty]) => {
           const selQty = selectedCountByType[type] || 0;
           return { type, reqQty, selQty, fulfilled: selQty === reqQty, over: selQty > reqQty };
         });
       };
-      
+
       const dynRooms = getDynRooms();
       const needsRoomSelection = mode === 'advance' && dynRooms.length > 0 && !dynRooms.every(d => d.fulfilled);
 
@@ -1315,7 +1315,7 @@
       const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);setWalkinStep(1);};
 
       const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setWalkinStep(3);};
-      
+
       const submit=(e)=>{e.preventDefault();
         if(!fd.guestName.trim()){Swal.fire({icon:'warning',text:'Guest Name is required.'});return;}
         if(selectedRooms.length===0){Swal.fire({icon:'warning',text:'Select at least one room.'});return;}
@@ -1337,17 +1337,13 @@
       };
 
       return (
-        <div className="modal-overlay" onClick={onClose}>
-          <div className="modal modal-wide" onClick={e=>e.stopPropagation()}>
-            <div className="modal-header">
-            <h3 style={{color: 'var(--navy-primary)'}}>
-<i className={mode==='advance'?'fas fa-calendar-check':'fas fa-walking'}></i>
+        <div className="modal-overlay">
+          <div className="modal-content" style={{maxWidth: '1200px'}}>
+            <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
+            <h3 style={{marginBottom: '20px', color: 'var(--navy-primary)'}}>
+              <i className={mode==='advance'?'fas fa-calendar-check':'fas fa-walking'}></i>
               {editRowIndex ? ' Edit Check-In' : mode==='advance' ? ' Advance Booking Check-In' : ' Walk-In Check-In'}
             </h3>
-<button type="button" className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
-          </div>
-          <div className="modal-body">
-
 
             {/* Checkin Mode Toggle (only if not editing) */}
             {!editRowIndex && (
@@ -1371,7 +1367,7 @@
                         label: `${b.guestName} (${b.phone || 'No Phone'}) - ${b.roomNo} - In: ${fmtDate(b.checkIn)} [${b.ticketId}]`
                       }))}
                       placeholder="Search by Guest Name, Phone, or Ticket ID..."
-
+                      loading={advLd}
                     />
                   </div>
                   {linkedBooking && (
@@ -1390,12 +1386,12 @@
               {/* Walk-in Wizard OR Full Form depending on mode */}
               {mode === 'walkin' && !editRowIndex ? (
                 <div style={{gridColumn: '1 / -1'}}>
-                  <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"20px", background:"#f8f9fa", padding:"15px", borderRadius:"4px", border:"1px solid #dee2e6"}}>
-                    <div style={{flex:1, textAlign:"center", fontWeight:"bold", color: walkinStep >= 1 ? "var(--navy-primary)" : "#aaa"}}>1. Dates</div>
-                    <div style={{flex:2, height:"2px", background: "#ddd", margin:"0 10px"}}></div>
-                    <div style={{flex:1, textAlign:"center", fontWeight:"bold", color: walkinStep >= 2 ? "var(--navy-primary)" : "#aaa"}}>2. Rooms</div>
-                    <div style={{flex:2, height:"2px", background: "#ddd", margin:"0 10px"}}></div>
-                    <div style={{flex:1, textAlign:"center", fontWeight:"bold", color: walkinStep >= 3 ? "var(--navy-primary)" : "#aaa"}}>3. Details</div>
+                  <div className="walkin-wizard">
+                    <div className={`wizard-step ${walkinStep >= 1 ? 'active' : ''}`}>1. Dates</div>
+                    <div className="wizard-line"></div>
+                    <div className={`wizard-step ${walkinStep >= 2 ? 'active' : ''}`}>2. Rooms</div>
+                    <div className="wizard-line"></div>
+                    <div className={`wizard-step ${walkinStep >= 3 ? 'active' : ''}`}>3. Details</div>
                   </div>
 
                   {/* STEP 1: DATES */}
@@ -1446,7 +1442,6 @@
                      <div className="form-grid">
                         <div className="form-group"><label>Guest Name *</label><input type="text" className="form-control" value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
                         <div className="form-group"><label>Company Name</label><input type="text" className="form-control" value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
-                        <div className="form-group"><label>Identity Proof</label><input type="text" className="form-control" value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="ID/Passport Number" /></div>
                         <div className="form-group"><label>Mobile *</label><input type="text" className="form-control" value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})} required/></div>
                         <div className="form-group"><label>Email</label><input type="email" className="form-control" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
                         <div className="form-group" style={{gridColumn:'1/-1'}}><label>Address</label><input type="text" className="form-control" value={fd.address} onChange={e=>setFd({...fd,address:e.target.value})}/></div>
@@ -1510,8 +1505,7 @@
                        <div className="form-grid">
                           <div className="form-group"><label>Guest Name *</label><input type="text" className="form-control" value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
                           <div className="form-group"><label>Company Name</label><input type="text" className="form-control" value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
-                          <div className="form-group"><label>Identity Proof</label><input type="text" className="form-control" value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="ID/Passport Number" /></div>
-                        <div className="form-group"><label>Mobile *</label><input type="text" className="form-control" value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})} required/></div>
+                          <div className="form-group"><label>Mobile *</label><input type="text" className="form-control" value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})} required/></div>
                           <div className="form-group"><label>Email</label><input type="email" className="form-control" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
                           <div className="form-group" style={{gridColumn:'1/-1'}}><label>Address</label><input type="text" className="form-control" value={fd.address} onChange={e=>setFd({...fd,address:e.target.value})}/></div>
                           <div className="form-group"><label>Total Pax</label><input type="number" min="1" className="form-control" value={fd.pax} onChange={e=>setFd({...fd,pax:e.target.value})}/></div>
@@ -1534,7 +1528,6 @@
             </form>
           </div>
         </div>
-      </div>
       );
     }
 
@@ -1876,11 +1869,11 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
     function CheckoutView({user}){
       const [roomNo,setRoomNo]=useState('');
       const [fetching,setFetching]=useState(false);
-      
+
       const [queuedCis, setQueuedCis] = useState([]);
       const [primaryCiId, setPrimaryCiId] = useState(null);
       const [foodOrdersMap, setFoodOrdersMap] = useState({}); // { checkInId: [orders] }
-      
+
       // Fine-grained selection tracking
       const [selectedRoomsMap, setSelectedRoomsMap] = useState({}); // { checkInId: [roomNos] }
       const [selectedOrdersMap, setSelectedOrdersMap] = useState({}); // { checkInId: [orderIds] }
@@ -1897,7 +1890,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const fetchRoom=()=>{
         if(!roomNo.trim()){Swal.fire({icon:'warning',text:'Enter a room number.'});return;}
         setFetching(true);
-        
+
         google.script.run.withSuccessHandler(res=>{
           if(res){
             if (queuedCis.find(ci => ci.checkInId === res.checkInId)) {
@@ -1909,24 +1902,24 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
 
             if (queuedCis.length === 0) {
                setPrimaryCiId(res.checkInId);
-               setDiscountPercent(res.discountPercent || 0); 
+               setDiscountPercent(res.discountPercent || 0);
             }
 
             setQueuedCis(prev => [...prev, res]);
             const roomsArr = (res.roomNumbers||'').split(',').map(r=>r.trim()).filter(Boolean);
             setSelectedRoomsMap(prev => ({...prev, [res.checkInId]: roomsArr}));
-            
+
             google.script.run.withSuccessHandler(orders=>{
               setFetching(false);
               const activeOrders = Array.isArray(orders) ? orders.filter(o => o.checkInId === res.checkInId && o.status === 'Active') : [];
               setFoodOrdersMap(prev => ({...prev, [res.checkInId]: activeOrders}));
               setSelectedOrdersMap(prev => ({...prev, [res.checkInId]: activeOrders.map(o => o.orderId)}));
-              
+
               // Recalculate advance
               setAdvanceToApply(prev => prev + (parseFloat(res.advancePaid)||0));
               setRoomNo('');
             }).withFailureHandler(e=>{setFetching(false);Swal.fire('Error',e.message,'error')}).getAllFoodOrders();
-            
+
           } else {
             setFetching(false);
             Swal.fire({icon:'info',title:'Not Found',text:'No active check-in found for room #'+roomNo});
@@ -1965,7 +1958,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const doAdvancedCheckout=()=>{
         if(queuedCis.length === 0){Swal.fire({icon:'warning',text:'Add at least one check-in to the queue.'});return;}
         if(!primaryCiId){Swal.fire({icon:'warning',text:'Please select a primary billing guest from the queue.'});return;}
-        
+
         let hasAnySelection = false;
         const selectedRoomsFlat = [];
         for (const ciId in selectedRoomsMap) {
@@ -1974,7 +1967,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
              selectedRoomsMap[ciId].forEach(rn => selectedRoomsFlat.push({ checkInId: ciId, roomNo: rn }));
           }
         }
-        
+
         const selectedOrdersFlat = [];
         for (const ciId in selectedOrdersMap) {
           if (selectedOrdersMap[ciId] && selectedOrdersMap[ciId].length > 0) {
@@ -1986,14 +1979,14 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         if (!hasAnySelection) {
            Swal.fire({icon:'warning',text:'Please select at least one room or POS order to checkout.'});return;
         }
-        
+
         setSaving(true);Swal.fire({title:'Processing Advanced Checkout...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-        
+
         const payload = {
-          checkOutDate, checkOutTime, paymentMode:payMode, amountPaid:parseFloat(amtPaid)||0, 
+          checkOutDate, checkOutTime, paymentMode:payMode, amountPaid:parseFloat(amtPaid)||0,
           discountPercent, advanceToApply: parseFloat(advanceToApply)||0
         };
-        
+
         const primaryCi = queuedCis.find(ci => ci.checkInId === primaryCiId);
         const primaryGuestData = {
           guestName: primaryCi.guestName,
@@ -2028,7 +2021,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         {queuedCis.length > 0 && <>
           <div style={{background:'#fff',padding:'20px',borderRadius:'4px',border:'1px solid #ddd',marginBottom:'20px'}}>
             <h4 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-shopping-cart"></i> Checkout Cart (Select items to pay)</h4>
-            
+
             <div style={{display:'flex', gap:'20px', overflowX:'auto', paddingBottom:'10px'}}>
               {queuedCis.map(ci => {
                  const ciRooms = (ci.roomNumbers||'').split(',').map(r=>r.trim()).filter(Boolean);
@@ -2045,7 +2038,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
                        </div>
                        <button className="btn btn-secondary" style={{padding:'4px 8px',margin:0,fontSize:'11px'}} onClick={() => removeQueued(ci.checkInId)}><i className="fas fa-times"></i></button>
                      </div>
-                     
+
                      <div style={{marginTop:'15px'}}>
                        <strong>Rooms</strong>
                        {ciRooms.map(rn => (
@@ -2055,7 +2048,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
                          </label>
                        ))}
                      </div>
-                     
+
                      <div style={{marginTop:'15px'}}>
                        <strong>POS Orders</strong>
                        {ciOrders.length===0 && <div style={{fontSize:'12px',color:'#888',marginTop:'5px'}}>No pending orders</div>}
@@ -2653,5 +2646,4 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
     }
     ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
   </script>
-</body>
-</html>
+</body></html>
