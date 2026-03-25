@@ -621,7 +621,6 @@
     const statusCls = (s) => { if(!s) return ''; const m = {available:'status-available',booked:'status-booked',checkedout:'status-checkedout',maintenance:'status-maintenance',draft:'status-draft',sent:'status-sent',accepted:'status-accepted',expired:'status-expired',income:'status-income',expense:'status-expense',paid:'status-paid',partial:'status-partial',unpaid:'status-unpaid',overdue:'status-overdue',cancelled:'status-cancelled',converted:'status-converted',reserved:'status-reserved'}; return m[s.toLowerCase().replace(/\s+/g,'')] || ''; };
     const CURRENCIES = ['MVR','USD','EUR','GBP','AED','SAR','INR','PKR','LKR','BDT','JPY','CNY','AUD','CAD','SGD','MYR','THB','IDR','PHP','VND','KRW','TWD','HKD','NZD','CHF','SEK','NOK','DKK','PLN','CZK','HUF','RON','BGN','HRK','RUB','UAH','TRY','ZAR','EGP','NGN','KES','GHS','TZS','UGX','MAD','TND','QAR','KWD','BHD','OMR','JOD','ILS','BRL','ARS','CLP','COP','PEN','MXN','UYU','DOP','CRC','GTQ','PYG','BOB','VES','TTD','JMD','BBD','BZD','BMD','BSD','KYD','XCD','FJD','PGK','WST','TOP','VUV','SBD','MWK','ZMW','BWP','MUR','SCR','NPR','BTN','MMK','KHR','LAK','MNT','KZT','UZS','GEL','AMD','AZN','AFN','IQD','IRR','SYP','LBP','YER','ETB','RWF','BIF','DJF','ERN','SOS','SDG','LSL','SZL','NAD','GMD','SLL','GNF','LRD','CVE','STN','XOF','XAF','XPF','CDF','AOA','MZN','MDL','ALL','MKD','BAM','RSD','ISK','GIP','FKP','SHP','HTG','NIO','HNL','PAB','CUP'];
 
-
     const downloadInvoicePdf = (inv) => {
       const cur = inv.currency || APP_CURRENCY;
       const fc = (a) => fmtCur(a, cur);
@@ -655,7 +654,7 @@
         {columns:[{text:guestInfo},{text:[{text:'Invoice Date: ',bold:true},fmtDate(inv.createdDate)+'\n',{text:'Due Date: ',bold:true},fmtDate(inv.dueDate)+'\n',{text:'Status: ',bold:true},(inv.status||'Draft')+'\n']}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         inv.notes?{text:'\nNotes: '+inv.notes,margin:[0,10,0,0],italics:true}:{text:''},
-        {text:'\nThank you for your business!',alignment:'center',margin:[0,20,0,0],italics:true}],
+                {text:'\nThank you for your business!',alignment:'center',margin:[0,20,0,0],italics:true}],
         styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
       pdfMake.createPdf(doc).download('Invoice-'+(inv.invoiceId||'new')+'.pdf');
     };
@@ -755,7 +754,7 @@
             <img src={LOGO} alt="Logo" className="login-logo"/>
             <h2>Hill View Eco Retreat</h2>
             <LoginForm onLogin={onLogin} />
-          </div>
+                                  </div>
         </div>
       );
     }
@@ -773,7 +772,6 @@
         </form>
       );
     }
-
 
     function Sidebar({activeMenu,setActiveMenu,role,user,onLogout,isOpen,setIsOpen}){
       const adm=role==='admin';
@@ -815,6 +813,7 @@
           <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-file-invoice-dollar"></i></div><div className="stat-card-value">{inv.totalInvoices||0}</div><div className="stat-card-label">Invoices</div></div>
           <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-check-double"></i></div><div className="stat-card-value">{inv.paidInvoices||0}</div><div className="stat-card-label">Paid</div></div>
           <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-exclamation-triangle"></i></div><div className="stat-card-value">{inv.overdueInvoices||0}</div><div className="stat-card-label">Overdue</div></div>
+
         </div>
 
         {/* Room Block View & Recent Bookings */}
@@ -953,7 +952,7 @@
           }
           return acc;
         }, {}) : {});
-      const [fd,setFd]=useState({guestName:booking?.guestName||'',phone:booking?.phone||'',email:booking?.email||'',checkIn:booking?.checkIn?booking.checkIn.slice(0,10):'',checkOut:booking?.checkOut?booking.checkOut.slice(0,10):'',checkInTime:booking?.checkInTime||'14:00',checkOutTime:booking?.checkOutTime||'12:00',advancePaid:booking?.advancePaid||'0',paymentMethod:booking?.paymentMethod||'Cash',foodPlan:booking?.foodPlan||'None',discountPercent:booking?.discountPercent||'0',gstType:booking?.gstType||'Excluding'});
+      const [fd,setFd]=useState({guestName:booking?.guestName||'',phone:booking?.phone||'',email:booking?.email||'',checkIn:booking?.checkIn?booking.checkIn.slice(0,10):'',checkOut:booking?.checkOut?booking.checkOut.slice(0,10):'',checkInTime:booking?.checkInTime||'14:00',checkOutTime:booking?.checkOutTime||'12:00',advancePaid:booking?.advancePaid||'0',paymentMethod:booking?.paymentMethod||'',foodPlan:booking?.foodPlan||'None',discountPercent:booking?.discountPercent||'0',gstType:booking?.gstType||'Excluding',extraPerson:booking?.extraPerson||'0'});
       const [sv,setSv]=useState(false);
       const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
       useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();},[]);
@@ -1062,8 +1061,9 @@
           <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
           <div className="form-group"><label>Mobile *</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})} required/></div>
           <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+          <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={fd.extraPerson} onChange={e=>setFd({...fd,extraPerson:e.target.value})}/></div>
           <div className="form-group"><label>Advance Paid</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
-          <div className="form-group"><label>Mode of Payment</label><select value={fd.paymentMethod} onChange={e=>setFd({...fd,paymentMethod:e.target.value})}><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option><option>UPI</option></select></div>
+          <div className="form-group"><label>Mode of Payment</label><select value={fd.paymentMethod} onChange={e=>setFd({...fd,paymentMethod:e.target.value})}><option value="">Please Select</option><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option><option>UPI</option></select></div>
           <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
           <div className="form-group"><label>Discount (%)</label><input type="number" step="0.01" min="0" max="100" value={fd.discountPercent} onChange={e=>setFd({...fd,discountPercent:e.target.value})}/></div>
           <div className="form-group"><label>GST Type</label><select value={fd.gstType} onChange={e=>setFd({...fd,gstType:e.target.value})}><option>Excluding</option><option>Including</option><option>None</option></select></div>
@@ -1076,17 +1076,18 @@
     function BookingsView({user,role}){
       const isAdmin=role==='admin';
       const [ld,setLd]=useState(true);const [bks,setBks]=useState([]);const [rooms,setRooms]=useState([]);const [cis,setCis]=useState([]);const [show,setShow]=useState(false);const [editBooking,setEditBooking]=useState(null);const tRef=useRef(null);
-      const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:'',payment:'',paymentStatus:''});
+
       useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
+
       const load=()=>{setLd(true);
         google.script.run.withSuccessHandler(r=>{const data=Array.isArray(r)?r:[];const filtered=isAdmin?data:data.filter(b=>b.email===user);setBks(filtered);
           google.script.run.withSuccessHandler(rm=>{setRooms(Array.isArray(rm)?rm:[]);
             google.script.run.withSuccessHandler(ci=>{setCis(Array.isArray(ci)?ci:[]);setLd(false);initT(filtered);}).withFailureHandler(()=>{setLd(false);initT(filtered);}).getAllCheckIns();
           }).withFailureHandler(()=>{setLd(false);initT(filtered);}).getAllRooms();
         }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllBookings();};
+
       const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#bkT').empty();}catch(e){}}
         setTimeout(()=>{try{
-          $.fn.dataTable.ext.search=[];
           const t=$('#bkT').DataTable({data,destroy:true,columns:[
             {data:'ticketId',title:'Ticket ID'},{data:'roomNo',title:'Room'},{data:'guestName',title:'Guest'},
             {data:'checkIn',title:'Check-in',render:d=>fmtDate(d)},{data:'checkOut',title:'Check-out',render:d=>fmtDate(d)},
@@ -1101,28 +1102,8 @@
           ],order:[[0,'desc']]});
           $('#bkT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditBooking(rd);setShow(true);}else if(a==='delete'){Swal.fire({icon:'warning',title:'Delete Booking?',text:'Ticket '+rd.ticketId+' (Room #'+rd.roomNo+') will be permanently deleted and the room will be freed.',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete',cancelButtonText:'Cancel'}).then(res=>{if(res.isConfirmed){Swal.fire({title:'Deleting...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(r=>{Swal.close();if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setTimeout(()=>load(),100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).deleteBooking(rd.rowIndex);}});}});
           tRef.current=t;}catch(e){console.error(e);}},150);};
-      useEffect(()=>{if(!tRef.current||bks.length===0)return;
-        $.fn.dataTable.ext.search=[];
-        $.fn.dataTable.ext.search.push(function(settings,searchData,idx){
-          const row=bks[idx];if(!row)return true;
-          if(filters.dateFrom){const d=new Date(row.checkIn);if(d<new Date(filters.dateFrom))return false;}
-          if(filters.dateTo){const d=new Date(row.checkIn);if(d>new Date(filters.dateTo+'T23:59:59'))return false;}
-          return true;
-        });
-        if(filters.status)tRef.current.column(5).search(filters.status);else tRef.current.column(5).search('');
-        if(filters.paymentStatus)tRef.current.column(6).search(filters.paymentStatus);else tRef.current.column(6).search('');
-        if(filters.payment)tRef.current.column(7).search(filters.payment);else tRef.current.column(7).search('');
-        tRef.current.draw();
-      },[filters]);
-      const clearF=()=>{setFilters({dateFrom:'',dateTo:'',status:'',payment:'',paymentStatus:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
+
       return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-calendar-check"></i> Bookings</h2><button className="btn btn-success" onClick={()=>{setEditBooking(null);setShow(true);}}><i className="fas fa-plus"></i> New Booking</button></div>
-        {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear All</button></div><div className="filters-grid">
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-check-circle"></i> Status</label><select className="filter-input" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All</option><option>Booked</option><option>Checked Out</option></select></div>
-          <div className="filter-group"><label><i className="fas fa-money-bill-wave"></i> Pay Status</label><select className="filter-input" value={filters.paymentStatus} onChange={e=>setFilters({...filters,paymentStatus:e.target.value})}><option value="">All</option><option>Paid</option><option>Partial</option><option>Unpaid</option></select></div>
-          <div className="filter-group"><label><i className="fas fa-credit-card"></i> Method</label><select className="filter-input" value={filters.payment} onChange={e=>setFilters({...filters,payment:e.target.value})}><option value="">All</option><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option></select></div>
-        </div></div>}
         {ld&&<TableSkeleton rows={6} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="bkT" className="display" style={{width:'100%'}}></table></div>
         {show&&<BookingModal rooms={rooms} allBookings={bks} allCheckIns={cis} booking={editBooking} onClose={()=>{setShow(false);setEditBooking(null);}} onBooked={load} role={role}/>}
       </div>);
@@ -1131,6 +1112,7 @@
 
     function CheckInView({user,role}){
       const [mode,setMode]=useState('walkin');
+      const [walkinStep,setWalkinStep]=useState(1);
       const [rooms,setRooms]=useState([]);
       const [selectedRooms,setSelectedRooms]=useState([]);
       const [searchQ,setSearchQ]=useState('');
@@ -1457,19 +1439,48 @@
         )}
 
         <form onSubmit={submit}>
-          <div className="form-grid">
-            <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
-            <div className="form-group"><label>Company Name</label><input value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
-            <div className="form-group"><label>GST Number</label><input value={fd.gstNumber} onChange={e=>setFd({...fd,gstNumber:e.target.value})}/></div>
-            <div className="form-group"><label>Identity Proof</label><input value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="Aadhar/Passport No."/></div>
-            <div className="form-group"><label>Mobile</label><input value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})}/></div>
-            <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
-            <div className="form-group" style={{gridColumn:'1/-1'}}><label>Address</label><input value={fd.address} onChange={e=>setFd({...fd,address:e.target.value})}/></div>
-            <div className="form-group"><label>Purpose of Visit</label><input value={fd.purposeOfVisit} onChange={e=>setFd({...fd,purposeOfVisit:e.target.value})}/></div>
+          {mode === 'walkin' && <div className="step-indicator" style={{marginBottom:'20px'}}>
+            <div className={'step-dot' + (walkinStep >= 1 ? ' active' : '') + (walkinStep > 1 ? ' completed' : '')}></div>
+            <div className={'step-dot' + (walkinStep >= 2 ? ' active' : '') + (walkinStep > 2 ? ' completed' : '')}></div>
+            <div className={'step-dot' + (walkinStep >= 3 ? ' active' : '')}></div>
+          </div>}
+
+          <div className="form-grid" style={{ display: (mode==='advance' || walkinStep === 1) ? 'grid' : 'none' }}>
+            <h4 style={{gridColumn:'1/-1', color:'var(--navy-primary)'}}>1. Stay Details</h4>
             <div className="form-group"><label>Check-In Date *</label><input type="date" value={fd.checkInDate} onChange={e=>setFd({...fd,checkInDate:e.target.value})} required/></div>
             <div className="form-group"><label>Check-In Time</label><input type="time" value={fd.checkInTime} onChange={e=>setFd({...fd,checkInTime:e.target.value})}/></div>
-            <div className="form-group"><label>Expected Check-Out Date</label><input type="date" value={fd.checkOutDate} onChange={e=>setFd({...fd,checkOutDate:e.target.value})}/></div>
+            <div className="form-group"><label>Expected Check-Out Date *</label><input type="date" value={fd.checkOutDate} onChange={e=>setFd({...fd,checkOutDate:e.target.value})} required={mode==='walkin' && walkinStep === 1}/></div>
             <div className="form-group"><label>Check-Out Time</label><input type="time" value={fd.checkOutTime} onChange={e=>setFd({...fd,checkOutTime:e.target.value})}/></div>
+
+            {mode === 'walkin' && walkinStep === 1 && (
+              <div className="form-group" style={{gridColumn:'1/-1', textAlign:'right'}}>
+                <button type="button" className="btn btn-primary" onClick={() => {
+                  if(!fd.checkInDate || !fd.checkOutDate) {
+                    Swal.fire({icon:'warning', text:'Please enter both Check-In and Check-Out dates to proceed.'});
+                    return;
+                  }
+                  if(new Date(fd.checkOutDate) <= new Date(fd.checkInDate)) {
+                    Swal.fire({icon:'warning', text:'Check-Out date must be after Check-In date.'});
+                    return;
+                  }
+                  setWalkinStep(2);
+                }}>Next: Select Rooms <i className="fas fa-arrow-right"></i></button>
+              </div>
+            )}
+          </div>
+
+          {mode === 'advance' && <div className="form-grid"><div className="form-group" style={{gridColumn:'1/-1'}}><hr/></div></div>}
+
+          <div className="form-grid" style={{ display: (mode==='advance' || walkinStep >= 3) ? 'grid' : 'none' }}>
+            <h4 style={{gridColumn:'1/-1', color:'var(--navy-primary)', marginTop: mode==='advance'?'0':'20px'}}>3. Guest & Billing Details</h4>
+            <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required={mode==='advance' || walkinStep >= 3}/></div>
+            <div className="form-group"><label>Mobile</label><input value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})}/></div>
+            <div className="form-group"><label>Identity Proof</label><input value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="Aadhar/Passport No."/></div>
+            <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+            <div className="form-group"><label>Company Name</label><input value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
+            <div className="form-group"><label>GST Number</label><input value={fd.gstNumber} onChange={e=>setFd({...fd,gstNumber:e.target.value})}/></div>
+            <div className="form-group" style={{gridColumn:'1/-1'}}><label>Address</label><input value={fd.address} onChange={e=>setFd({...fd,address:e.target.value})}/></div>
+            <div className="form-group"><label>Purpose of Visit</label><input value={fd.purposeOfVisit} onChange={e=>setFd({...fd,purposeOfVisit:e.target.value})}/></div>
             <div className="form-group"><label>Pax</label><input type="number" min="1" value={fd.pax} onChange={e=>setFd({...fd,pax:e.target.value})}/></div>
             <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={fd.extraPerson} onChange={e=>setFd({...fd,extraPerson:e.target.value})}/></div>
             <div className="form-group"><label>Advance Paid ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
@@ -1480,7 +1491,8 @@
             <div className="form-group"><label>Fixed Rent Amount ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" placeholder="Leave blank for standard rent" value={fd.fixRoomRentAmount} onChange={e=>setFd({...fd,fixRoomRentAmount:e.target.value})}/></div>
           </div>
 
-          <div style={{marginBottom:'15px'}}><label style={{display:'block',marginBottom:'8px',color:'#555',fontWeight:500,fontSize:'14px'}}>Select Rooms * ({selectedRooms.length} selected)</label>
+          <div style={{ display: (mode === 'advance' || walkinStep >= 2) ? 'block' : 'none', marginTop: '20px' }}>
+            <h4 style={{ color: 'var(--navy-primary)', marginBottom: '15px' }}>2. Select Rooms * ({selectedRooms.length} selected)</h4>
             <div className="room-tiles-grid">{rooms.map(rm=>{
               const rState = roomStatesMap[rm.roomNo.toString()];
               const isAvail = rState && rState.status === 'available';
@@ -1496,9 +1508,29 @@
               </div>)
             })}</div>
             {rooms.length === 0 && <p style={{color:'#666',fontSize:'13px',fontStyle:'italic'}}>No rooms exist in the system.</p>}
+
+            {mode === 'walkin' && walkinStep === 2 && (
+              <div style={{ textAlign: 'right', marginTop: '20px' }}>
+                <button type="button" className="btn btn-secondary" style={{ marginRight: '10px' }} onClick={() => setWalkinStep(1)}><i className="fas fa-arrow-left"></i> Back</button>
+                <button type="button" className="btn btn-primary" onClick={() => {
+                  if(selectedRooms.length === 0) {
+                    Swal.fire({icon: 'warning', text: 'Please select at least one room to proceed.'});
+                    return;
+                  }
+                  setWalkinStep(3);
+                }}>Next: Guest Details <i className="fas fa-arrow-right"></i></button>
+              </div>
+            )}
           </div>
 
-          <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-door-open"></i> Complete Check-In</>}</button><button type="button" className="btn btn-secondary" onClick={resetForm}><i className="fas fa-undo"></i> Reset</button></div>
+
+          <div className="form-actions" style={{ display: (mode === 'advance' || walkinStep >= 3) ? 'flex' : 'none', marginTop: '20px' }}>
+            {mode === 'walkin' && walkinStep === 3 && (
+              <button type="button" className="btn btn-secondary" onClick={() => setWalkinStep(2)}><i className="fas fa-arrow-left"></i> Back to Rooms</button>
+            )}
+            <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 1 }}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-door-open"></i> Complete Check-In</>}</button>
+            <button type="button" className="btn btn-secondary" onClick={resetForm}><i className="fas fa-undo"></i> Reset</button>
+          </div>
         </form>
 
         <div style={{marginTop:'30px'}}><h3 style={{marginBottom:'15px',color:'var(--navy-primary)'}}><i className="fas fa-list"></i> All Check-Ins</h3>
@@ -2117,13 +2149,13 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
     function AboutView(){
       return(<div className="about-section">
         <div className="about-header"><div className="about-logo"><img src={LOGO} alt="Logo"/></div><div className="about-title"><h1>Hill View Eco Retreat</h1><p className="about-dev">Develped by <strong>Mohammad Rameez Imdad</strong> (Rameez Scripts)</p></div></div>
-        <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices and and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
+        <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices, and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
         <div className="about-card"><h2><i className="fas fa-clipboard-list"></i> What Can You Do With It?</h2><ul className="about-features">
           <li><i className="fas fa-check"></i> <strong>Room Management</strong> - Add, edit, and manage hotel rooms with diffrent types and rates</li>
           <li><i className="fas fa-check"></i> <strong>Bookings</strong> - Create new bookings, track guest details, and manage reservations</li>
           <li><i className="fas fa-check"></i> <strong>Checkout & Invoicing</strong> - Process checkouts and generate professional PDF invoices</li>
           <li><i className="fas fa-check"></i> <strong>Standalone Invoices</strong> - Create invoices with rooms, activities, and services with auto-numbering (INV-0001)</li>
-          <li><i className="fas fa-check"></i> <strong>Multi-Currency</strong> - Support for MVR and USD currencies per document</li>
+                    <li><i className="fas fa-check"></i> <strong>Multi-Currency</strong> - Support for MVR and USD currencies per document</li>
           <li><i className="fas fa-check"></i> <strong>Tax System</strong> - Optional GST (percentage) and Green Tax (per person per night) on invoices</li>
           <li><i className="fas fa-check"></i> <strong>Finance Tracking</strong> - Record income and expenses with categories, currency support, and running balance</li>
           <li><i className="fas fa-check"></i> <strong>Budget Management</strong> - Set monthly budgets and track spending with visual progress bars</li>
@@ -2141,7 +2173,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
           <tr><td>View All Bookings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i> Own only</td></tr>
           <tr><td>Checkout Guests</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Manage Rooms</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Manage Invoices</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
+                    <tr><td>Manage Invoices</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Finance Tracking</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Monthly Reports</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Hotel Settings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
@@ -2220,6 +2252,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
             <p><strong>Phone:</strong> {invoice.phone||'-'}</p><p><strong>Status:</strong> <span className={`status-badge ${statusCls(invoice.status)}`}>{invoice.status}</span></p>
             <p><strong>Email:</strong> {invoice.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>
             {invoice.customerTIN&&<p><strong>Customer TIN:</strong> {invoice.customerTIN}</p>}
+
           </div>
           <table className="invoice-table"><thead><tr><th>Description</th><th>Details</th><th className="right">Amount ({cur})</th></tr></thead><tbody>
             {roomItems.map((it,i)=><tr key={'r'+i}><td>{it.roomType||'Room'}</td><td>{it.quantity||1} room(s) x {it.nights} night(s) x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
@@ -2372,14 +2405,12 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const items=adm?[
         {k:'dashboard',i:'fa-chart-line',l:'Home'},
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
-
-        {k:'checkout',i:'fa-sign-out-alt',l:'Checkout'},
+                {k:'checkout',i:'fa-sign-out-alt',l:'Checkout'},
         {k:'more',i:'fa-ellipsis-h',l:'More'}
       ]:[
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
         {k:'calendar',i:'fa-calendar-alt',l:'Calendar'},
-
-        {k:'account',i:'fa-user-circle',l:'Account'},
+                {k:'account',i:'fa-user-circle',l:'Account'},
         {k:'about',i:'fa-info-circle',l:'About'}
       ];
       const [showMore,setShowMore]=useState(false);
@@ -2388,8 +2419,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         {k:'checkin',i:'fa-door-open',l:'Check-In'},
         {k:'restaurant',i:'fa-utensils',l:'Restaurant'},
         {k:'rooms',i:'fa-bed',l:'Rooms'},
-
-        {k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices'},
+                {k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices'},
         {k:'finance',i:'fa-coins',l:'Finance'},
         {k:'reports',i:'fa-chart-bar',l:'Reports'},
         {k:'users',i:'fa-users',l:'Users'},
@@ -2503,7 +2533,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       </div>);
     }
 
-
     function MainContent({activeMenu,user,role}){
       switch(activeMenu){
         case 'dashboard': return <DashboardView user={user}/>;
@@ -2514,14 +2543,14 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         case 'restaurant': return <RestaurantView user={user}/>;
         case 'rooms': return <RoomsView user={user}/>;
         case 'customers': return <CustomersView user={user}/>;
-        case 'invoices': return <InvoicesView user={user}/>;
+                case 'invoices': return <InvoicesView user={user}/>;
         case 'finance': return <FinanceView user={user}/>;
         case 'reports': return <ReportsView user={user}/>;
         case 'settings': return <SettingsView user={user}/>;
         case 'users': return <UsersView user={user}/>;
         case 'account': return <AccountView user={user}/>;
         case 'about': return <AboutView/>;
-        default: return null;
+                default: return null;
       }
     }
 

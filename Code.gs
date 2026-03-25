@@ -52,13 +52,14 @@ const AMOUNT_PAID_COL      = 14;  // Numeric amount paid so far
 const CHECKIN_TIME_COL     = 15;
 const CHECKOUT_TIME_COL    = 16;
 const FOOD_PLAN_COL        = 17;
-const ADVANCE_PAID_COL     = 18;
-const NUM_ROOMS_COL        = 19;
-const LINKED_CHECKIN_COL   = 20;
-const BOOKING_GST_TYPE_COL = 21;
-const BOOKING_FIX_RENT_COL = 22;
-const BOOKING_FIX_RENT_AMT_COL = 23;
-const BOOKING_DISC_PCT_COL = 24; // Added back to prevent ReferenceError in Booking.gs
+const EXTRA_PERSON_COL     = 18;
+const ADVANCE_PAID_COL     = 19;
+const NUM_ROOMS_COL        = 20;
+const LINKED_CHECKIN_COL   = 21;
+const BOOKING_GST_TYPE_COL = 22;
+const BOOKING_FIX_RENT_COL = 23;
+const BOOKING_FIX_RENT_AMT_COL = 24;
+const BOOKING_DISC_PCT_COL = 25; // Added back to prevent ReferenceError in Booking.gs
 
 // LOGIN sheet columns (0-based)
 const LOGIN_USERNAME_COL   = 0;
@@ -296,6 +297,12 @@ function changePassword(username, oldPassword, newPassword) {
 }
 
 /***************************************************
+ * CREATE ACCOUNT (Self-Registration)
+ ***************************************************/
+/***************************************************
+ * FORGOT PASSWORD — OTP FLOW
+ ***************************************************/
+/***************************************************
  * HELPER FUNCTIONS
  ***************************************************/
 function generateTicketId() {
@@ -411,6 +418,7 @@ function bookRoom(bookingDetails) {
     const checkInTime = bookingDetails.checkInTime || "14:00";
     const checkOutTime = bookingDetails.checkOutTime || "12:00";
     const foodPlan = bookingDetails.foodPlan || "None";
+    const extraPerson = parseInt(bookingDetails.extraPerson || "0") || 0;
     const advancePaid = parseFloat(bookingDetails.advancePaid || "0") || 0;
 
     let totalRoomRate = parseFloat(bookingDetails.roomRate || "0") || 0;
@@ -446,6 +454,7 @@ function bookRoom(bookingDetails) {
       checkInTime,
       checkOutTime,
       foodPlan,
+      extraPerson,
       advancePaid,
       roomNosArr.length,
       "",
@@ -751,6 +760,7 @@ function updateBooking(rowIndex, bookingData) {
     const existingCheckInTime = (sheet.getRange(rowIndex, CHECKIN_TIME_COL + 1).getValue() || '14:00').toString();
     const existingCheckOutTime = (sheet.getRange(rowIndex, CHECKOUT_TIME_COL + 1).getValue() || '12:00').toString();
     const existingFoodPlan = (sheet.getRange(rowIndex, FOOD_PLAN_COL + 1).getValue() || 'None').toString();
+    const existingExtraPerson = parseInt(sheet.getRange(rowIndex, EXTRA_PERSON_COL + 1).getValue()) || 0;
     const existingLinkedCheckIn = (sheet.getRange(rowIndex, LINKED_CHECKIN_COL + 1).getValue() || '').toString();
 
     const row = [
@@ -772,6 +782,7 @@ function updateBooking(rowIndex, bookingData) {
       bookingData.checkInTime || existingCheckInTime,
       bookingData.checkOutTime || existingCheckOutTime,
       bookingData.foodPlan || existingFoodPlan,
+      bookingData.extraPerson !== undefined ? parseInt(bookingData.extraPerson) : existingExtraPerson,
       advancePaidInput,
       totalRoomsCount,
       existingLinkedCheckIn,
@@ -781,7 +792,7 @@ function updateBooking(rowIndex, bookingData) {
       discountPercent
     ];
 
-    sheet.getRange(rowIndex, 1, 1, 25).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 26).setValues([row]);
     
     // Update room statuses for the new set of rooms
     if (existingStatus !== 'Cancelled' && existingStatus !== 'Checked Out') {
@@ -1135,6 +1146,7 @@ function getCheckInByRoomNo(roomNo) {
             companyName: '', gstNumber: '', identityProof: '',
             mobile: (bData[i][PHONE_COL] || '').toString(),
             email: (bData[i][EMAIL_COL] || '').toString(),
+            address: '',
             purposeOfVisit: '',
             checkInDate: (bData[i][CHECK_IN_COL] || '').toString(),
             checkInTime: (bData[i][CHECKIN_TIME_COL] || '14:00').toString(),
@@ -1145,7 +1157,7 @@ function getCheckInByRoomNo(roomNo) {
             numberOfRooms: parseInt(bData[i][NUM_ROOMS_COL]) || 1,
             pax: 1,
             advancePaid: parseFloat(bData[i][ADVANCE_PAID_COL]) || 0,
-            extraPerson: 0,
+            extraPerson: parseInt(bData[i][EXTRA_PERSON_COL]) || 0,
             foodPlan: (bData[i][FOOD_PLAN_COL] || 'None').toString(),
             gstType: 'Excluding', fixRoomRent: 'No', fixRoomRentAmount: 0,
             billTo: 'Individual',
@@ -1436,6 +1448,7 @@ function processFullCheckout(checkInId, checkoutData) {
           ci[CI_ROOM_NUMBERS_COL]  = (bData[i][BOOKING_ROOM_NO_COL] || '').toString();
           ci[CI_NUM_ROOMS_COL]     = parseInt(bData[i][NUM_ROOMS_COL]) || 1;
           ci[CI_PAX_COL]           = 1;
+          ci[CI_EXTRA_PERSON_COL]  = parseInt(bData[i][EXTRA_PERSON_COL]) || 0;
           ci[CI_ADVANCE_PAID_COL]  = parseFloat(bData[i][ADVANCE_PAID_COL]) || 0;
           ci[CI_FOOD_PLAN_COL]     = (bData[i][FOOD_PLAN_COL] || 'None').toString();
           ci[CI_GST_TYPE_COL]      = 'Excluding';
@@ -2029,8 +2042,9 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       invoiceRow[20] = billAmount; 
       invoiceRow[21] = `Merged: ${Object.keys(roomsByCi).join(', ')}`; 
       invoiceRow[22] = ""; 
-      invoiceRow[23] = "System";
-      invoiceRow[24] = nowStr;
+      invoiceRow[23] = "";
+      invoiceRow[24] = "System";
+      invoiceRow[25] = nowStr;
 
       masterInvSheet.appendRow(invoiceRow);
     }
@@ -2478,6 +2492,7 @@ function getAllBookings() {
         checkInTime: (row[CHECKIN_TIME_COL] || "14:00").toString(),
         checkOutTime: (row[CHECKOUT_TIME_COL] || "12:00").toString(),
         foodPlan: (row[FOOD_PLAN_COL] || "None").toString(),
+        extraPerson: parseInt(row[EXTRA_PERSON_COL]) || 0,
         advancePaid: parseFloat(row[ADVANCE_PAID_COL]) || 0,
         numberOfRooms: parseInt(row[NUM_ROOMS_COL]) || 1,
         linkedCheckInId: (row[LINKED_CHECKIN_COL] || "").toString(),
@@ -3778,7 +3793,6 @@ function getMonthlyReport(month, year, reportType) {
  * @param {Array<Object>} configArray - Array of sheet configurations: {sheetName: "Name", headers: ["Col1", "Col2"], deleteSheet: false}
  */
 function manageSheetsDataStructure(configArray) {
-  if (!configArray || !Array.isArray(configArray)) return;
   const ss = SpreadsheetApp.openById(SS_ID);
   const currentSheets = ss.getSheets().reduce((acc, sheet) => {
     acc[sheet.getName()] = sheet;
@@ -3843,7 +3857,7 @@ function initDataStructure() {
   const config = [
     { sheetName: LOGIN_SHEET_NAME, headers: ["Username", "Password", "Role"] },
     { sheetName: ROOMS_SHEET_NAME, headers: ["Room No", "Room Type", "Room Rate", "Room Status"] },
-    { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
+    { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Extra Person", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "GreenTaxEnabled", "GreenTaxPerNight", "GreenTaxPax", "GreenTaxNights", "GreenTaxAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
     { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "GreenTaxDefaultRate", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
@@ -3913,7 +3927,7 @@ function setupDemoData() {
   ];
   roomsSheet.getRange(2, 1, roomsData.length, 4).setValues(roomsData);
 
-  // ===== BOOKINGS (9 bookings - varied dates/statuses for calendar testing, 21 columns) =====
+  // ===== BOOKINGS (9 bookings - varied dates/statuses for calendar testing, 25 columns) =====
   const bookingsData = [
     ["TKT-20260201-001", "104", "Demo Guest 1", "+960-1000001", "user1@demo.com",   "2026-02-01T14:00:00Z", "2026-02-04T12:00:00Z", "Checked In",  1200, 0,   60,  "Cash",        3660,  "Unpaid",  0,    "14:00", "12:00", "Including Breakfast", 0, 1, "CHK-0001"],
     ["TKT-20260203-002", "107", "Demo Guest 2", "+960-1000002", "user2@demo.com",   "2026-02-03T14:00:00Z", "2026-02-06T12:00:00Z", "Booked",      1800, 100, 85,  "Card",        5385,  "Partial", 3000, "14:00", "12:00", "Including Breakfast and Dinner", 3000, 1, ""],
@@ -3925,7 +3939,7 @@ function setupDemoData() {
     ["TKT-20260220-008", "110", "Demo Guest 8", "+960-1000008", "guest8@demo.com",  "2026-02-20T14:00:00Z", "2026-02-25T12:00:00Z", "Checked In",  1800, 200, 80,  "Bank Transfer", 8880,  "Unpaid",  0,    "14:00", "12:00", "Including Breakfast and Dinner", 0, 1, "CHK-0002"],
     ["TKT-20260225-009", "102", "Demo Guest 9", "+960-1000009", "guest9@demo.com",  "2026-02-25T14:00:00Z", "2026-02-28T12:00:00Z", "Checked In",  800,  0,   48,  "Cash",        2448,  "Unpaid",  0,    "14:00", "12:00", "None", 0, 1, "CHK-0003"]
   ];
-  bookingsSheet.getRange(2, 1, bookingsData.length, 25).setValues(bookingsData);
+  bookingsSheet.getRange(2, 1, bookingsData.length, 26).setValues(bookingsData);
 
   // ===== INVOICES (3 invoices) =====
   const invItems1 = JSON.stringify([
