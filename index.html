@@ -1355,9 +1355,9 @@
 
       const [editRowIndex, setEditRowIndex] = useState(null);
 
-      const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);};
+      const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);setWalkinStep(1);};
 
-      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');};
+      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setWalkinStep(3);};
       
       const handleCheckout=(ci)=>{Swal.fire({title:'Checkout Guest?',text:`Initiate checkout for ${ci.guestName}?`,icon:'question',showCancelButton:true,confirmButtonText:'Yes, Checkout'}).then((res)=>{if(res.isConfirmed){Swal.fire({title:'Processing...',didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(r=>{if(r.success){Swal.fire({icon:'success',title:'Checked Out',timer:2000,showConfirmButton:false});loadCheckIns();google.script.run.withSuccessHandler(r2=>{setRooms(Array.isArray(r2)?r2:[]);}).getAllRooms();}else{Swal.fire('Error',r.message,'error');}}).withFailureHandler(e=>Swal.fire('Error',e.message,'error')).processFullCheckout(ci.checkInId);}});};
 
@@ -2560,30 +2560,14 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       return(<div className="app-container"><Sidebar activeMenu={am} setActiveMenu={setAm} role={role} user={user} onLogout={onLogout} isOpen={so} setIsOpen={setSo}/><div className="main-content"><div className="header"><div style={{display:'flex',alignItems:'center',gap:'10px'}}><button className="hamburger" onClick={()=>setSo(!so)}><i className="fas fa-bars"></i></button><h1><i className="fas fa-hotel"></i> Hill View Eco Retreat</h1></div><div style={{fontSize:'14px',color:'#666'}}>Welcome, {user}</div></div><MainContent activeMenu={am} user={user} role={role}/></div><BottomNav activeMenu={am} setActiveMenu={setAm} role={role} onLogout={onLogout}/></div>);
     }
 
-    const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in ms
-
     function App(){
-      const getSession=()=>{try{const s=localStorage.getItem('mri_session');if(!s)return null;const d=JSON.parse(s);if(Date.now()-d.loginTime>=SESSION_TIMEOUT){localStorage.removeItem('mri_session');return null;}return d;}catch(e){localStorage.removeItem('mri_session');return null;}};
+      const getSession=()=>{try{const s=localStorage.getItem('mri_session');if(!s)return null;const d=JSON.parse(s);return d;}catch(e){localStorage.removeItem('mri_session');return null;}};
       const saved=getSession();
       const [li,setLi]=useState(!!saved);const [cu,setCu]=useState(saved?saved.user:null);const [ur,setUr]=useState(saved?saved.role:null);
 
       const doLogout=()=>{localStorage.removeItem('mri_session');setLi(false);setCu(null);setUr(null);};
 
-      const handleLogin=(u,r)=>{const session={user:u,role:r,loginTime:Date.now()};localStorage.setItem('mri_session',JSON.stringify(session));setLi(true);setCu(u);setUr(r);};
-
-      // Check session expiry every 30 seconds
-      useEffect(()=>{
-        if(!li)return;
-        const timer=setInterval(()=>{
-          const s=getSession();
-          if(!s){
-            clearInterval(timer);
-            doLogout();
-            Swal.fire({icon:'info',title:'Session Expired',text:'Your session has expired after 1 hour. Please login again.',confirmButtonColor:'#001f3f'});
-          }
-        },30000);
-        return()=>clearInterval(timer);
-      },[li]);
+      const handleLogin=(u,r)=>{const session={user:u,role:r};localStorage.setItem('mri_session',JSON.stringify(session));setLi(true);setCu(u);setUr(r);};
 
       return(<div>{!li?<LoginPage onLogin={handleLogin}/>:<Dashboard user={cu} role={ur} onLogout={doLogout}/>}</div>);
     }
