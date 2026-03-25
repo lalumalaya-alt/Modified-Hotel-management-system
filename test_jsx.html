@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // Mock for google.script.run
+    window.google = { script: { run: {
+      withSuccessHandler: () => window.google.script.run,
+      withFailureHandler: () => window.google.script.run,
+      getAllRooms: () => {}, getAllCheckIns: () => {}, getAllBookings: () => {}
+    }}};
+    window.Swal = { fire: () => Promise.resolve({isConfirmed: false}), close: () => {} };
+    window.$ = function() { return { DataTable: () => ({ destroy: () => {}, row: () => ({data: () => {}}) }), off: function() { return this; }, on: function() { return this; }, empty: () => {} } };
+  </script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    function App() {
+      // test component
+      return <div>Hello</div>
+    }
+  </script>
+</body>
+</html>
