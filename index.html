@@ -1622,9 +1622,11 @@
       const CATEGORIES=['FoodBeverage','ExtraBed','MiniBar','EarlyClean','Xerox','Laundry','Fax','SPBUC','Travels','Misc'];
       const CAT_LABELS={FoodBeverage:'Food & Beverage',ExtraBed:'Extra Bed',MiniBar:'Mini Bar',EarlyClean:'Early Clean',Xerox:'Xerox',Laundry:'Laundry',Fax:'Fax',SPBUC:'SP/BUC',Travels:'Travels',Misc:'Miscellaneous'};
       const [fd,setFd]=useState({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
+      const [menuItems,setMenuItems]=useState([]);
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
+        google.script.run.withSuccessHandler(r=>{setMenuItems(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllMenuItems();
         loadOrders();
         return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};
       },[]);
@@ -1702,6 +1704,23 @@
             </div>
             <div className="form-grid" style={{marginBottom: '15px'}}>
               <div className="form-group"><label>Date</label><input type="date" value={fd.orderDate} onChange={e=>setFd({...fd,orderDate:e.target.value})}/></div>
+              <div className="form-group"><label>Category</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}</select></div>
+              <div className="form-group">
+                <label>Item Name / Description *</label>
+                {fd.category === 'FoodBeverage' ? (
+                  <select value={fd.description} onChange={e=>{
+                    const val = e.target.value;
+                    const mItem = menuItems.find(m => m.itemName === val);
+                    setFd({...fd, description: val, amount: mItem ? mItem.defaultPrice : fd.amount});
+                  }} required style={{width: '100%', padding: '14px 16px', border: '1.5px solid #d0d0d0', borderRadius: '3px', fontSize: '16px', background: 'white'}}>
+                    <option value="">Select Menu Item</option>
+                    {menuItems.map(m => <option key={m.itemName} value={m.itemName}>{m.itemName} ({m.category})</option>)}
+                  </select>
+                ) : (
+                  <input value={fd.description} onChange={e=>setFd({...fd,description:e.target.value})} required/>
+                )}
+              </div>
+              <div className="form-group"><label>Amount ({APP_CURRENCY}) *</label><input type="number" step="0.01" min="0" value={fd.amount} onChange={e=>setFd({...fd,amount:e.target.value})} required/></div>
             </div>
             {selGuestName&&<p style={{fontSize:'13px',color:'#666',marginBottom:'15px'}}><i className="fas fa-info-circle"></i> Selected Guest: <strong>{selGuestName}</strong> | Check-In ID: <strong>{selCheckIn}</strong></p>}
             <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> {editOrder?'Update':'Add'} Order</>}</button>{editOrder&&<button type="button" className="btn btn-secondary" onClick={resetOrderForm}><i className="fas fa-times"></i> Cancel Edit</button>}</div>
