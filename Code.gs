@@ -176,21 +176,25 @@ const CI_STATUS_COL         = 26;
 const CI_CREATED_AT_COL     = 27;
 
 // RESTAURANT sheet columns (0-based)
-const REST_ORDER_ID_COL     = 0;
-const REST_ROOM_NO_COL      = 1;
-const REST_CHECKIN_ID_COL   = 2;
-const REST_ORDER_DATE_COL   = 3;
-const REST_CATEGORY_COL     = 4;
-const REST_DESC_COL         = 5;
-const REST_AMOUNT_COL       = 6;
-const REST_STATUS_COL       = 7;
-const REST_CREATED_AT_COL   = 8;
-const REST_BILLED_CHECKIN_COL = 8; // Assuming index 8 is used for BilledCheckInID as per new schema. Note: CREATED_AT might actually be 9 if BilledCheckInID is 8. Let's fix this properly.
+const REST_ORDER_ID_COL          = 0;
+const REST_CHECKIN_ID_COL        = 1;
+const REST_ROOM_NO_COL           = 2;
+const REST_ORDER_DATE_COL        = 3;
+const REST_MEAL_PERIOD_COL       = 4;
+const REST_ITEM_NAME_COL         = 5;
+const REST_QUANTITY_COL          = 6;
+const REST_RATE_COL              = 7;
+const REST_TOTAL_AMOUNT_COL      = 8;
+const REST_STATUS_COL            = 9;
+const REST_BILLED_CHECKIN_ID_COL = 10;
+const REST_ADDED_BY_COL          = 11;
 
-// Let's redefine REST_ columns based on manageSheetsDataStructure new schema:
-// ["OrderID", "CheckInID", "RoomNo", "Date", "Category", "Description", "Amount", "Status", "BilledCheckInID", "AddedBy"]
-const REST_BILLED_CHECKIN_ID_COL = 8;
-const REST_ADDED_BY_COL = 9;
+// Aliases for backward compatibility
+const REST_CATEGORY_COL          = REST_MEAL_PERIOD_COL;
+const REST_DESC_COL              = REST_ITEM_NAME_COL;
+const REST_AMOUNT_COL            = REST_TOTAL_AMOUNT_COL;
+const REST_CREATED_AT_COL        = REST_ADDED_BY_COL;
+const REST_BILLED_CHECKIN_COL    = REST_BILLED_CHECKIN_ID_COL;
 
 // SETTINGS sheet NEW columns (appended)
 const SET_NEXT_CHECKIN_COL  = 13;
@@ -1269,19 +1273,44 @@ function addFoodOrder(orderData) {
 
     const orderId = generateOrderId();
     const now = new Date().toISOString();
+    const orderDate = orderData.orderDate || now.split('T')[0];
+    const checkInId = orderData.checkInId || '';
+    const roomNo = orderData.roomNo || '';
+    const addedBy = orderData.addedBy || 'System'; // Or capture from session
 
-    sheet.appendRow([
-      orderId,
-      orderData.roomNo || '',
-      orderData.checkInId || '',
-      orderData.orderDate || now.split('T')[0],
-      orderData.category || 'FoodBeverage',
-      orderData.description || '',
-      parseFloat(orderData.amount) || 0,
-      'Active',
-      now
-    ]);
-    SpreadsheetApp.flush();
+    if (!orderData.items || !Array.isArray(orderData.items)) {
+      return { success: false, message: "No items provided in orderData." };
+    }
+
+    const rowsToAppend = [];
+    orderData.items.forEach(item => {
+      // "OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"
+      const quantity = parseInt(item.quantity) || 1;
+      const rate = parseFloat(item.rate) || 0;
+      const totalAmount = quantity * rate;
+
+      const row = [
+        orderId,
+        checkInId,
+        roomNo,
+        orderDate,
+        item.mealPeriod || 'FoodBeverage', // Using MealPeriod for Category
+        item.itemName || '',               // ItemName for Description
+        quantity,
+        rate,
+        totalAmount,
+        'Active',
+        '', // BilledCheckInID
+        addedBy
+      ];
+      rowsToAppend.push(row);
+    });
+
+    if (rowsToAppend.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+      SpreadsheetApp.flush();
+    }
+
     return { success: true, message: "Order added successfully.", orderId };
   } catch (e) {
     Logger.log("Error in addFoodOrder: " + e.toString());
@@ -3862,7 +3891,7 @@ function initDataStructure() {
     { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "GreenTaxDefaultRate", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
     { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
-    { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "Category", "Description", "Amount", "Status", "BilledCheckInID", "AddedBy"] },
+    { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
     { sheetName: STAY_SEGMENTS_SHEET_NAME, headers: ["Segment ID", "CheckIn ID", "Room Numbers", "Rate", "Pax", "Start Date", "End Date", "Created By", "Timestamp"] }
   ];
   manageSheetsDataStructure(config);
