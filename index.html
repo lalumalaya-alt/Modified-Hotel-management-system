@@ -1619,16 +1619,9 @@
       const [saving,setSaving]=useState(false);
       const [editOrder,setEditOrder]=useState(null);
       const tRef=useRef(null);
-      const MEAL_PERIODS=['Breakfast','Lunch','Dinner','Snacks'];
-      const [fd,setFd]=useState({
-        mealPeriod:'Breakfast',
-        orderDate:new Date().toISOString().split('T')[0]
-      });
-      const [items,setItems]=useState([{itemName:'',quantity:1,rate:''}]);
-      const addLineItem=()=>{setItems([...items,{itemName:'',quantity:1,rate:''}]);};
-      const removeLineItem=(i)=>{if(items.length>1)setItems(items.filter((_,idx)=>idx!==i));};
-      const updateItem=(idx,field,val)=>{const newItems=[...items];newItems[idx][field]=val;setItems(newItems);};
-      const grandTotal=items.reduce((sum,it)=>sum+((parseFloat(it.quantity)||0)*(parseFloat(it.rate)||0)),0);
+      const CATEGORIES=['FoodBeverage','ExtraBed','MiniBar','EarlyClean','Xerox','Laundry','Fax','SPBUC','Travels','Misc'];
+      const CAT_LABELS={FoodBeverage:'Food & Beverage',ExtraBed:'Extra Bed',MiniBar:'Mini Bar',EarlyClean:'Early Clean',Xerox:'Xerox',Laundry:'Laundry',Fax:'Fax',SPBUC:'SP/BUC',Travels:'Travels',Misc:'Miscellaneous'};
+      const [fd,setFd]=useState({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
@@ -1649,41 +1642,24 @@
           {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
           {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
         ],order:[[0,'desc']]});
-        $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRoom(rd.roomNo);setSelCheckIn(rd.checkInId);setFd({mealPeriod:rd.category||'Breakfast',orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});setItems([{itemName:rd.description,quantity:1,rate:rd.amount}]);}else if(a==='delete')delOrder(rd);});
+        $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRoom(rd.roomNo);setSelCheckIn(rd.checkInId);setFd({category:rd.category,description:rd.description,amount:rd.amount,orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});}else if(a==='delete')delOrder(rd);});
         tRef.current=t;}catch(e){console.error(e);}},150);};
 
       const pickRoom=(rn)=>{setSelRoom(rn);const rm=activeRooms.find(r=>r.roomNo===rn);if(rm){setSelCheckIn(rm.checkInId);setSelGuestName(rm.guestName);}else{setSelCheckIn('');setSelGuestName('');}};
 
       const submit=(e)=>{e.preventDefault();
         if(!selRoom){Swal.fire({icon:'warning',text:'Select a room first.'});return;}
-        const validItems = items.filter(it => it.itemName.trim() !== '');
-        if(validItems.length === 0){Swal.fire({icon:'warning',text:'Add at least one valid item.'});return;}
         setSaving(true);
-
-        const payload = {
-          roomNo:selRoom,
-          checkInId:selCheckIn,
-          orderDate:fd.orderDate,
-          addedBy:user,
-          items: validItems.map(it => ({
-            mealPeriod: fd.mealPeriod,
-            itemName: it.itemName,
-            quantity: it.quantity,
-            rate: it.rate
-          }))
-        };
-
         if(editOrder){
-          // Assuming edit updates a single row for now, or might need a more complex edit flow based on how backend is set up
-          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex, { roomNo: payload.roomNo, checkInId: payload.checkInId, orderDate: payload.orderDate, category: payload.items[0].mealPeriod, description: payload.items[0].itemName, amount: (parseFloat(payload.items[0].quantity)||1)*(parseFloat(payload.items[0].rate)||0), status: 'Active' });
+          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex,{roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:'FoodBeverage',description:'Food Order',amount:'0',status:'Active'});
         }else{
-          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).addFoodOrder(payload);
+          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).addFoodOrder({roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:'FoodBeverage',description:'Food Order',amount:'0'});
         }
       };
 
       const delOrder=(ord)=>{Swal.fire({icon:'warning',title:'Delete Order?',text:'Delete order '+ord.orderId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteFoodOrder(ord.rowIndex);});};
 
-      const resetOrderForm=()=>{setEditOrder(null);setFd({mealPeriod:'Breakfast',orderDate:new Date().toISOString().split('T')[0]});setItems([{itemName:'',quantity:1,rate:''}]);};
+      const resetOrderForm=()=>{setEditOrder(null);setFd({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
 
       return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-utensils"></i> Restaurant / Services</h2><button className="btn btn-primary" onClick={()=>{loadOrders();google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).getActiveCheckInRooms();}}><i className="fas fa-sync"></i> Refresh</button></div>
         <div style={{background:'#f8f9fa',padding:'20px',borderRadius:'4px',border:'1px solid #dee2e6',marginBottom:'20px'}}>
@@ -1702,15 +1678,9 @@
                   }, {})).map(([ciId, group]) => (
                     <div key={ciId} style={{display: 'flex', flexDirection: 'column', gap: '5px', padding: '10px', backgroundColor: '#f9f9f9', border: '1px solid #ddd', borderRadius: '6px', minWidth: '150px'}}>
                       <div style={{fontWeight: 'bold', color: 'var(--navy-primary)', fontSize: '14px', marginBottom: '5px'}}>
-                        <label style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', margin: '0'}}>
-                          <input type="radio" name="restaurant_checkin_group" checked={selCheckIn === ciId} onChange={() => {
-                            // If user clicks the group level, select the first room in the group
-                            pickRoom(group.rooms[0].roomNo);
-                          }} style={{cursor: 'pointer', margin: '0'}}/>
-                          <i className="fas fa-user-circle"></i> {group.guestName} <span style={{fontSize: '12px', color: '#888', fontWeight: 'normal'}}>(ID: {ciId})</span>
-                        </label>
+                        <i className="fas fa-user-circle"></i> {group.guestName} <span style={{fontSize: '12px', color: '#888', fontWeight: 'normal'}}>(ID: {ciId})</span>
                       </div>
-                      <div style={{display:'flex', flexWrap:'wrap', gap:'15px', marginLeft: '25px'}}>
+                      <div style={{display:'flex', flexWrap:'wrap', gap:'15px'}}>
                         {group.rooms.map(rm => (
                           <label key={rm.roomNo} style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', margin: '0', fontSize: '14px'}}>
                             <input 
@@ -1730,29 +1700,9 @@
                 </div>
               )}
             </div>
-
             <div className="form-grid" style={{marginBottom: '15px'}}>
               <div className="form-group"><label>Date</label><input type="date" value={fd.orderDate} onChange={e=>setFd({...fd,orderDate:e.target.value})}/></div>
-              <div className="form-group"><label>Meal Period</label><select value={fd.mealPeriod} onChange={e=>setFd({...fd,mealPeriod:e.target.value})}>{MEAL_PERIODS.map(m=><option key={m}>{m}</option>)}</select></div>
             </div>
-
-            <div className="line-items-section">
-              <h4>Order Items <button type="button" className="btn btn-sm btn-primary" onClick={addLineItem}><i className="fas fa-plus"></i> Item</button></h4>
-              {items.map((it, i) => (
-                <div key={i} className="line-item-row" style={{gridTemplateColumns: '2fr 1fr 1fr 1.2fr auto', display: 'grid', gap: '10px', alignItems: 'end', marginBottom: '10px', padding: '12px', background: 'white', border: '1px solid #e0e0e0', borderRadius: '4px'}}>
-                  <div><label>Item Name</label><input value={it.itemName} onChange={e=>updateItem(i, 'itemName', e.target.value)} required placeholder="Item description" /></div>
-                  <div><label>Quantity</label><input type="number" min="1" value={it.quantity} onChange={e=>updateItem(i, 'quantity', e.target.value)} required /></div>
-                  <div><label>Rate</label><input type="number" step="0.01" min="0" value={it.rate} onChange={e=>updateItem(i, 'rate', e.target.value)} required /></div>
-                  <div><label>Total</label><input value={fmtCur((parseFloat(it.quantity)||0) * (parseFloat(it.rate)||0), APP_CURRENCY)} readOnly style={{background:'#f0f0f0'}}/></div>
-                  <button type="button" className="remove-item" onClick={()=>removeLineItem(i)} disabled={items.length<=1} style={{background: 'none', border: 'none', color: items.length<=1?'#ccc':'var(--danger)', cursor: items.length<=1?'not-allowed':'pointer', fontSize: '20px', padding: '8px'}}><i className="fas fa-times"></i></button>
-                </div>
-              ))}
-            </div>
-
-            <div className="totals-section" style={{marginBottom: '20px'}}>
-              <div className="totals-row grand-total"><span>Grand Total</span><span>{fmtCur(grandTotal, APP_CURRENCY)}</span></div>
-            </div>
-
             {selGuestName&&<p style={{fontSize:'13px',color:'#666',marginBottom:'15px'}}><i className="fas fa-info-circle"></i> Selected Guest: <strong>{selGuestName}</strong> | Check-In ID: <strong>{selCheckIn}</strong></p>}
             <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> {editOrder?'Update':'Add'} Order</>}</button>{editOrder&&<button type="button" className="btn btn-secondary" onClick={resetOrderForm}><i className="fas fa-times"></i> Cancel Edit</button>}</div>
           </form>
