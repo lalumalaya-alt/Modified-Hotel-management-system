@@ -621,44 +621,6 @@
     const statusCls = (s) => { if(!s) return ''; const m = {available:'status-available',booked:'status-booked',checkedout:'status-checkedout',maintenance:'status-maintenance',draft:'status-draft',sent:'status-sent',accepted:'status-accepted',expired:'status-expired',income:'status-income',expense:'status-expense',paid:'status-paid',partial:'status-partial',unpaid:'status-unpaid',overdue:'status-overdue',cancelled:'status-cancelled',converted:'status-converted',reserved:'status-reserved'}; return m[s.toLowerCase().replace(/\s+/g,'')] || ''; };
     const CURRENCIES = ['MVR','USD','EUR','GBP','AED','SAR','INR','PKR','LKR','BDT','JPY','CNY','AUD','CAD','SGD','MYR','THB','IDR','PHP','VND','KRW','TWD','HKD','NZD','CHF','SEK','NOK','DKK','PLN','CZK','HUF','RON','BGN','HRK','RUB','UAH','TRY','ZAR','EGP','NGN','KES','GHS','TZS','UGX','MAD','TND','QAR','KWD','BHD','OMR','JOD','ILS','BRL','ARS','CLP','COP','PEN','MXN','UYU','DOP','CRC','GTQ','PYG','BOB','VES','TTD','JMD','BBD','BZD','BMD','BSD','KYD','XCD','FJD','PGK','WST','TOP','VUV','SBD','MWK','ZMW','BWP','MUR','SCR','NPR','BTN','MMK','KHR','LAK','MNT','KZT','UZS','GEL','AMD','AZN','AFN','IQD','IRR','SYP','LBP','YER','ETB','RWF','BIF','DJF','ERN','SOS','SDG','LSL','SZL','NAD','GMD','SLL','GNF','LRD','CVE','STN','XOF','XAF','XPF','CDF','AOA','MZN','MDL','ALL','MKD','BAM','RSD','ISK','GIP','FKP','SHP','HTG','NIO','HNL','PAB','CUP'];
 
-    const downloadQuotePdf = (quote) => {
-      const cur = quote.currency || APP_CURRENCY;
-      const fc = (a) => fmtCur(a, cur);
-      const items = (() => { try { return JSON.parse(typeof quote.items === 'string' ? quote.items : '[]'); } catch(e) { return []; } })();
-      const roomItems = items.filter(i=>i.type==='room');
-      const actItems = items.filter(i=>i.type==='activity');
-      const svcItems = items.filter(i=>i.type==='service');
-      const tBody = [];
-      if(roomItems.length>0){
-        tBody.push([{text:'Room Type',style:'th'},{text:'Qty',style:'th',alignment:'center'},{text:'Nights',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        roomItems.forEach(it=>{const qty=it.quantity||1;tBody.push([it.roomType||'Room',{text:String(qty),alignment:'center'},{text:String(it.nights),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]);});
-      }
-      if(actItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Activity',style:'th',colSpan:2},{},{text:'Pax',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        actItems.forEach(it=>tBody.push([{text:it.description||'Activity',colSpan:2},{},{text:String(it.pax||1),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
-      }
-      if(svcItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Service',style:'th',colSpan:4},{},{},{},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        svcItems.forEach(it=>tBody.push([{text:it.description||'Service',colSpan:4},{},{},{},{text:fc(it.amount),alignment:'right'}]));
-      }
-      tBody.push([{text:'Subtotal',bold:true,colSpan:4},{},{},{},{text:fc(quote.subTotal),alignment:'right',bold:true}]);
-      if(quote.discount>0)tBody.push([{text:'Discount',colSpan:4},{},{},{},{text:'- '+fc(quote.discount),alignment:'right'}]);
-      if(quote.gstEnabled)tBody.push([{text:'GST ('+quote.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(quote.gstAmount),alignment:'right'}]);
-      if(quote.greenTaxEnabled)tBody.push([{text:'Green Tax ('+cur+' '+quote.greenTaxPerNight+' x '+quote.greenTaxPax+' pax x '+quote.greenTaxNights+' nights)',colSpan:4},{},{},{},{text:fc(quote.greenTaxAmount),alignment:'right'}]);
-      tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(quote.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
-      const guestInfo = [{text:'Guest: ',bold:true},(quote.guestName||'')+'\n',{text:'Phone: ',bold:true},(quote.phone||'-')+'\n',{text:'Email: ',bold:true},(quote.email||'-')+'\n'];
-      if(quote.customerTIN)guestInfo.push({text:'TIN: ',bold:true},quote.customerTIN+'\n');
-      const doc = {content:[{text:'MRI HOTEL - QUOTATION',style:'hdr',alignment:'center'},{text:'Quote #'+(quote.quoteId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
-        {columns:[{text:guestInfo},{text:[{text:'Date: ',bold:true},fmtDate(quote.createdDate)+'\n',{text:'Valid Until: ',bold:true},fmtDate(quote.validUntil)+'\n',{text:'Status: ',bold:true},(quote.status||'Draft')+'\n']}]},
-        {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
-        quote.notes?{text:'\nNotes: '+quote.notes,margin:[0,10,0,0],italics:true}:{text:''},
-        {text:'\nThank you for your interest!',alignment:'center',margin:[0,20,0,0],italics:true}],
-        styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
-      pdfMake.createPdf(doc).download('Quote-'+(quote.quoteId||'new')+'.pdf');
-    };
-
     const downloadInvoicePdf = (inv) => {
       const cur = inv.currency || APP_CURRENCY;
       const fc = (a) => fmtCur(a, cur);
@@ -692,13 +654,12 @@
         {columns:[{text:guestInfo},{text:[{text:'Invoice Date: ',bold:true},fmtDate(inv.createdDate)+'\n',{text:'Due Date: ',bold:true},fmtDate(inv.dueDate)+'\n',{text:'Status: ',bold:true},(inv.status||'Draft')+'\n']}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         inv.notes?{text:'\nNotes: '+inv.notes,margin:[0,10,0,0],italics:true}:{text:''},
-        inv.sourceQuoteId?{text:'Source Quote: '+inv.sourceQuoteId,margin:[0,5,0,0],fontSize:10,color:'#888'}:{text:''},
-        {text:'\nThank you for your business!',alignment:'center',margin:[0,20,0,0],italics:true}],
+                {text:'\nThank you for your business!',alignment:'center',margin:[0,20,0,0],italics:true}],
         styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
       pdfMake.createPdf(doc).download('Invoice-'+(inv.invoiceId||'new')+'.pdf');
     };
 
-    const savePdfToDriveHelper = (record, type) => {
+    const savePdfToDriveHelper = (record) => {
       const cur = record.currency || APP_CURRENCY;
       const fc = (a) => fmtCur(a, cur);
       const items = (() => { try { return JSON.parse(typeof record.items === 'string' ? record.items : '[]'); } catch(e) { return []; } })();
@@ -725,8 +686,8 @@
       if(record.gstEnabled)tBody.push([{text:'GST ('+record.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(record.gstAmount),alignment:'right'}]);
       if(record.greenTaxEnabled)tBody.push([{text:'Green Tax',colSpan:4},{},{},{},{text:fc(record.greenTaxAmount),alignment:'right'}]);
       tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(record.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
-      const id = type==='invoice'?record.invoiceId:record.quoteId;
-      const title = type==='invoice'?'INVOICE':'QUOTATION';
+      const id = record.invoiceId;
+      const title = 'INVOICE';
       const doc = {content:[{text:'MRI HOTEL - '+title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
         {columns:[{text:[{text:'Guest: ',bold:true},(record.guestName||'')+'\n',{text:'Phone: ',bold:true},(record.phone||'-')+'\n',{text:'Email: ',bold:true},(record.email||'-')]},{text:[{text:'Date: ',bold:true},fmtDate(record.createdDate)+'\n',{text:'Status: ',bold:true},(record.status||'Draft')]}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
@@ -735,7 +696,7 @@
       Swal.fire({title:'Saving to Drive...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
       pdfMake.createPdf(doc).getBase64((base64)=>{
         const fileName = title+'-'+id+'.pdf';
-        google.script.run.withSuccessHandler((r)=>{Swal.close();if(r.success)Swal.fire({icon:'success',title:'Saved!',text:'PDF saved to Google Drive.',timer:2000,showConfirmButton:false});else Swal.fire({icon:'error',title:'Error',text:r.message});}).withFailureHandler((e)=>{Swal.close();Swal.fire({icon:'error',title:'Error',text:e.message});}).savePdfToDrive(base64,fileName,id,type);
+        google.script.run.withSuccessHandler((r)=>{Swal.close();if(r.success)Swal.fire({icon:'success',title:'Saved!',text:'PDF saved to Google Drive.',timer:2000,showConfirmButton:false});else Swal.fire({icon:'error',title:'Error',text:r.message});}).withFailureHandler((e)=>{Swal.close();Swal.fire({icon:'error',title:'Error',text:e.message});}).savePdfToDrive(base64,fileName,id,'invoice');
       });
     };
 
@@ -792,15 +753,13 @@
           <div className="login-box">
             <img src={LOGO} alt="Logo" className="login-logo"/>
             <h2>Hill View Eco Retreat</h2>
-            {view==='login' && <LoginForm onLogin={onLogin} setView={setView}/>}
-            {view==='signup' && <SignUpForm setView={setView}/>}
-            {view==='forgot' && <ForgotPasswordForm setView={setView}/>}
-          </div>
+            <LoginForm onLogin={onLogin} />
+                                  </div>
         </div>
       );
     }
 
-    function LoginForm({onLogin,setView}){
+    function LoginForm({onLogin}){
       const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [ld,setLd]=useState(false);
       const submit=(e)=>{e.preventDefault();setLd(true);setErr('');
         google.script.run.withSuccessHandler((r)=>{setLd(false);if(r.success)onLogin(r.username,r.role);else setErr(r.message);}).withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);}).checkLogin(u,p);};
@@ -810,162 +769,13 @@
           <div className="form-group"><label>Password</label><input type="password" value={p} onChange={(e)=>setP(e.target.value)} required placeholder="Enter your password"/></div>
           <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Logging in...</>:<><i className="fas fa-sign-in-alt"></i> Login</>}</button>
           {err&&<div className="error">{err}</div>}
-          <div className="login-links">
-            <a onClick={()=>setView('forgot')}><i className="fas fa-key"></i> Forgot Password?</a>
-            <span className="login-divider">|</span>
-            <a onClick={()=>setView('signup')}><i className="fas fa-user-plus"></i> Create Account</a>
-          </div>
         </form>
-      );
-    }
-
-    function SignUpForm({setView}){
-      const [email,setEmail]=useState('');const [pw,setPw]=useState('');const [cpw,setCpw]=useState('');
-      const [err,setErr]=useState('');const [ld,setLd]=useState(false);
-      const submit=(e)=>{
-        e.preventDefault();setErr('');
-        const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if(!emailRegex.test(email)){setErr('Please enter a valid email address.');return;}
-        if(pw.length<4){setErr('Password must be at least 4 characters.');return;}
-        if(pw!==cpw){Swal.fire({icon:'error',text:'Passwords do not match.'});return;}
-        setLd(true);
-        google.script.run
-          .withSuccessHandler((r)=>{setLd(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});setTimeout(()=>setView('login'),2500);}else{setErr(r.message);}})
-          .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
-          .createAccount(email,pw);
-      };
-      return(
-        <div>
-          <button className="back-link" onClick={()=>setView('login')}><i className="fas fa-arrow-left"></i> Back to Login</button>
-          <h3 style={{color:'var(--navy-primary)',marginBottom:'20px',fontSize:'20px'}}><i className="fas fa-user-plus"></i> Create Account</h3>
-          <form onSubmit={submit}>
-            <div className="form-group"><label>Email Address *</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="your.email@example.com"/></div>
-            <div className="form-group"><label>Password * <span style={{fontWeight:400,color:'#999',fontSize:'12px'}}>(min 4 characters)</span></label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} required placeholder="Create a password"/></div>
-            <div className="form-group"><label>Confirm Password *</label><input type="password" value={cpw} onChange={e=>setCpw(e.target.value)} required placeholder="Confirm your password"/></div>
-            <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Creating Account...</>:<><i className="fas fa-user-plus"></i> Create Account</>}</button>
-            {err&&<div className="error">{err}</div>}
-          </form>
-          <div className="login-links" style={{marginTop:'15px'}}><span style={{color:'#666'}}>Already have an account?</span> <a onClick={()=>setView('login')}>Login</a></div>
-        </div>
-      );
-    }
-
-    function ForgotPasswordForm({setView}){
-      const [step,setStep]=useState(1);
-      const [email,setEmail]=useState('');
-      const [otp,setOtp]=useState(['','','','']);
-      const [newPw,setNewPw]=useState('');const [confPw,setConfPw]=useState('');
-      const [err,setErr]=useState('');const [ld,setLd]=useState(false);
-      const [timer,setTimer]=useState(0);
-      const otpRefs=[useRef(null),useRef(null),useRef(null),useRef(null)];
-
-      useEffect(()=>{
-        if(timer<=0)return;
-        const interval=setInterval(()=>setTimer(t=>t-1),1000);
-        return()=>clearInterval(interval);
-      },[timer]);
-
-      const sendOtp=(e)=>{
-        if(e)e.preventDefault();setErr('');
-        const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if(!emailRegex.test(email)){setErr('Please enter a valid email address.');return;}
-        setLd(true);
-        google.script.run
-          .withSuccessHandler((r)=>{
-            setLd(false);
-            if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setStep(2);setTimer(60);setOtp(['','','','']);setTimeout(()=>{if(otpRefs[0].current)otpRefs[0].current.focus();},100);}
-            else{setErr(r.message);}
-          })
-          .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
-          .sendForgotPasswordOTP(email);
-      };
-
-      const handleOtpChange=(index,value)=>{
-        if(value.length>1)value=value.slice(-1);
-        if(value&&!/^\d$/.test(value))return;
-        const newOtp=[...otp];newOtp[index]=value;setOtp(newOtp);
-        if(value&&index<3&&otpRefs[index+1].current){otpRefs[index+1].current.focus();}
-      };
-      const handleOtpKeyDown=(index,e)=>{
-        if(e.key==='Backspace'&&!otp[index]&&index>0&&otpRefs[index-1].current){otpRefs[index-1].current.focus();}
-      };
-
-      const verifyOtp=(e)=>{
-        e.preventDefault();setErr('');
-        const otpStr=otp.join('');
-        if(otpStr.length!==4){setErr('Please enter the complete 4-digit OTP.');return;}
-        setLd(true);
-        google.script.run
-          .withSuccessHandler((r)=>{setLd(false);if(r.success){Swal.fire({icon:'success',text:'OTP verified!',timer:1500,showConfirmButton:false});setStep(3);}else{setErr(r.message);}})
-          .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
-          .verifyOTP(email,otpStr);
-      };
-
-      const doReset=(e)=>{
-        e.preventDefault();setErr('');
-        if(newPw.length<4){setErr('Password must be at least 4 characters.');return;}
-        if(newPw!==confPw){Swal.fire({icon:'error',text:'Passwords do not match.'});return;}
-        setLd(true);
-        const otpStr=otp.join('');
-        google.script.run
-          .withSuccessHandler((r)=>{setLd(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});setTimeout(()=>setView('login'),2500);}else{setErr(r.message);}})
-          .withFailureHandler((e)=>{setLd(false);setErr('Connection error: '+e.message);})
-          .resetPassword(email,otpStr,newPw);
-      };
-
-      return(
-        <div>
-          <button className="back-link" onClick={()=>{if(step===1)setView('login');else{setStep(step-1);setErr('');}}}><i className="fas fa-arrow-left"></i> {step===1?'Back to Login':'Back'}</button>
-          <h3 style={{color:'var(--navy-primary)',marginBottom:'10px',fontSize:'20px'}}><i className="fas fa-key"></i> Reset Password</h3>
-          <div className="step-indicator">
-            <div className={'step-dot'+(step>=1?' active':'')+(step>1?' completed':'')}></div>
-            <div className={'step-dot'+(step>=2?' active':'')+(step>2?' completed':'')}></div>
-            <div className={'step-dot'+(step>=3?' active':'')}></div>
-          </div>
-
-          {step===1&&(
-            <form onSubmit={sendOtp}>
-              <p style={{color:'#666',fontSize:'14px',marginBottom:'20px'}}>Enter the email address associated with your account. We'll send you a 4-digit OTP to reset your password.</p>
-              <div className="form-group"><label>Email Address *</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="your.email@example.com"/></div>
-              <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Sending OTP...</>:<><i className="fas fa-paper-plane"></i> Send OTP</>}</button>
-              {err&&<div className="error">{err}</div>}
-            </form>
-          )}
-
-          {step===2&&(
-            <form onSubmit={verifyOtp}>
-              <p style={{color:'#666',fontSize:'14px',marginBottom:'10px'}}>We sent a 4-digit code to <strong>{email}</strong></p>
-              <div className="otp-inputs">
-                {otp.map((digit,i)=>(
-                  <input key={i} ref={otpRefs[i]} type="text" inputMode="numeric" maxLength="1" className="otp-input" value={digit} onChange={e=>handleOtpChange(i,e.target.value)} onKeyDown={e=>handleOtpKeyDown(i,e)} autoFocus={i===0}/>
-                ))}
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Verifying...</>:<><i className="fas fa-check-circle"></i> Verify OTP</>}</button>
-              {err&&<div className="error">{err}</div>}
-              <div className="timer-text">
-                {timer>0?(<span>Resend OTP in <strong>{timer}s</strong></span>):(<button className="resend-link" type="button" onClick={sendOtp} disabled={ld}><i className="fas fa-redo"></i> Resend OTP</button>)}
-              </div>
-            </form>
-          )}
-
-          {step===3&&(
-            <form onSubmit={doReset}>
-              <p style={{color:'#666',fontSize:'14px',marginBottom:'20px'}}><i className="fas fa-check-circle" style={{color:'var(--success)'}}></i> OTP verified for <strong>{email}</strong>. Enter your new password below.</p>
-              <div className="form-group"><label>New Password * <span style={{fontWeight:400,color:'#999',fontSize:'12px'}}>(min 4 characters)</span></label><input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} required placeholder="Enter new password"/></div>
-              <div className="form-group"><label>Confirm New Password *</label><input type="password" value={confPw} onChange={e=>setConfPw(e.target.value)} required placeholder="Confirm new password"/></div>
-              <button type="submit" className="btn btn-primary" disabled={ld} style={{width:'100%'}}>{ld?<><i className="fas fa-spinner fa-spin"></i> Resetting...</>:<><i className="fas fa-save"></i> Reset Password</>}</button>
-              {err&&<div className="error">{err}</div>}
-            </form>
-          )}
-
-          <div className="login-links" style={{marginTop:'15px'}}><span style={{color:'#666'}}>Remember your password?</span> <a onClick={()=>setView('login')}>Login</a></div>
-        </div>
       );
     }
 
     function Sidebar({activeMenu,setActiveMenu,role,user,onLogout,isOpen,setIsOpen}){
       const adm=role==='admin';
-      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'rooms',i:'fa-bed',l:'Rooms',a:true},{k:'quotes',i:'fa-file-invoice',l:'Quotes',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'finance',i:'fa-coins',l:'Finance',a:true},{k:'reports',i:'fa-chart-bar',l:'Reports',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'aichat',i:'fa-robot',l:'AI Assistant',a:false},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
+      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'rooms',i:'fa-bed',l:'Rooms',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'finance',i:'fa-coins',l:'Finance',a:true},{k:'reports',i:'fa-chart-bar',l:'Reports',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
       const click=(k)=>{setActiveMenu(k);setIsOpen(false);};
       return(<><div className={`sidebar-overlay ${isOpen?'open':''}`} onClick={()=>setIsOpen(false)}></div><div className={`sidebar ${isOpen?'open':''}`}><div style={{padding:'24px',borderBottom:'1px solid rgba(255,255,255,0.1)',textAlign:'center'}}><div style={{color:'white',fontSize:'20px',fontWeight:'700'}}><i className="fas fa-hotel"></i> Hill View Eco Retreat</div></div><div className="sidebar-user-info"><div className="sidebar-user-name">{user}</div><div className="sidebar-user-role">{role}</div></div><div className="sidebar-menu-section"><div className="sidebar-menu-title">Navigation</div><ul className="sidebar-menu">{items.filter(m=>adm||!m.a).map(m=>(<li key={m.k}><button className={activeMenu===m.k?'active':''} onClick={()=>click(m.k)}><i className={`fas ${m.i}`}></i><span>{m.l}</span></button></li>))}</ul></div><div className="sidebar-logout"><button onClick={onLogout}><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div></div></>);
     }
@@ -982,7 +792,7 @@
         if(c5){const iv=d.invoiceStats||{};cr.current.is=new Chart(c5,{type:'doughnut',data:{labels:['Draft','Sent','Paid','Overdue','Cancelled'],datasets:[{data:[iv.draftInvoices||0,iv.sentInvoices||0,iv.paidInvoices||0,iv.overdueInvoices||0,iv.cancelledInvoices||0],backgroundColor:['#6c757d','#006d6f','#00a89d','#f39c12','#d35400'],borderColor:'#fff',borderWidth:2,hoverOffset:10}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#333',padding:12,usePointStyle:true}},title:{display:true,text:'Invoice Status',color:'#001f3f',font:{size:16,weight:'bold'}}}}});}
       };
       if(ld)return(<div><div className="kpi-cards">{[...Array(4)].map((_,i)=><div key={i} className="skeleton" style={{height:'130px',borderRadius:'8px'}}></div>)}</div><div className="dashboard-grid-9">{[...Array(9)].map((_,i)=><DashboardCardSkeleton key={i}/>)}</div><div className="dashboard-split"><ChartSkeleton/><div className="skeleton" style={{height:'380px',borderRadius:'4px'}}></div></div><div className="dashboard-grid-2"><ChartSkeleton/><ChartSkeleton/><ChartSkeleton/><ChartSkeleton/></div></div>);
-      const f=st?.financeSummary||{};const b=st?.bookingRevenue||{};const q=st?.quoteStats||{};const inv=st?.invoiceStats||{};const bdg=st?.currentBudget||null;const rb=st?.recentBookings||[];
+      const f=st?.financeSummary||{};const b=st?.bookingRevenue||{};const inv=st?.invoiceStats||{};const bdg=st?.currentBudget||null;const rb=st?.recentBookings||[];
       const occRate=st?.totalRooms>0?Math.round((st?.bookedRooms/st?.totalRooms)*100):0;
       return(<div>
         {/* Row 1: 4 Colorful KPI Cards */}
@@ -1003,7 +813,7 @@
           <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-file-invoice-dollar"></i></div><div className="stat-card-value">{inv.totalInvoices||0}</div><div className="stat-card-label">Invoices</div></div>
           <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-check-double"></i></div><div className="stat-card-value">{inv.paidInvoices||0}</div><div className="stat-card-label">Paid</div></div>
           <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-exclamation-triangle"></i></div><div className="stat-card-value">{inv.overdueInvoices||0}</div><div className="stat-card-label">Overdue</div></div>
-          <div className="stat-card purple"><div className="stat-card-icon"><i className="fas fa-file-alt"></i></div><div className="stat-card-value">{q.totalQuotes||0}</div><div className="stat-card-label">Quotes</div></div>
+          
         </div>
 
         {/* Room Block View & Recent Bookings */}
@@ -1142,7 +952,7 @@
           }
           return acc;
         }, {}) : {});
-      const [fd,setFd]=useState({guestName:booking?.guestName||'',phone:booking?.phone||'',email:booking?.email||'',checkIn:booking?.checkIn?booking.checkIn.slice(0,10):'',checkOut:booking?.checkOut?booking.checkOut.slice(0,10):'',checkInTime:booking?.checkInTime||'14:00',checkOutTime:booking?.checkOutTime||'12:00',advancePaid:booking?.advancePaid||'0',paymentMethod:booking?.paymentMethod||'Cash',foodPlan:booking?.foodPlan||'None',discountPercent:booking?.discountPercent||'0',gstType:booking?.gstType||'Excluding'});
+      const [fd,setFd]=useState({guestName:booking?.guestName||'',phone:booking?.phone||'',email:booking?.email||'',checkIn:booking?.checkIn?booking.checkIn.slice(0,10):'',checkOut:booking?.checkOut?booking.checkOut.slice(0,10):'',checkInTime:booking?.checkInTime||'14:00',checkOutTime:booking?.checkOutTime||'12:00',advancePaid:booking?.advancePaid||'0',paymentMethod:booking?.paymentMethod||'',foodPlan:booking?.foodPlan||'None',discountPercent:booking?.discountPercent||'0',gstType:booking?.gstType||'Excluding',extraPerson:booking?.extraPerson||'0'});
       const [sv,setSv]=useState(false);
       const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
       useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();},[]);
@@ -1166,7 +976,7 @@
         // 2. Count overlapping bookings
         const overlaps = {};
         const overlappingBks = allBookings.filter(b => {
-          if (b.status === 'Cancelled' || b.status === 'Checked Out') return false;
+          if (b.status === 'Cancelled' || b.status === 'Checked Out' || b.status === 'Checked In') return false;
           if (isEdit && b.ticketId === booking.ticketId) return false;
           const bCi = new Date(b.checkIn); const bCo = new Date(b.checkOut);
           return (ci < bCo && co > bCi);
@@ -1187,10 +997,16 @@
         });
         
         // 3. Count active check-ins (since they hold physical rooms)
-        allCheckIns.filter(ci => ci.status === 'Active').forEach(c => {
+        const overlappingCis = allCheckIns.filter(c => {
+          if (c.status !== 'Active') return false;
+          const cCi = new Date(c.checkInDate); const cCo = new Date(c.checkOutDate);
+          return (ci < cCo && co > cCi);
+        });
+
+        overlappingCis.forEach(c => {
           const rNos = (c.roomNumbers||'').split(',').map(r=>r.trim()).filter(r=>r);
           rNos.forEach(rn => {
-            const roomObj = rooms.find(rx => rx.roomNo === rn);
+            const roomObj = rooms.find(rx => rx.roomNo.toString() === rn);
             if (roomObj) overlaps[roomObj.roomType] = (overlaps[roomObj.roomType]||0) + 1;
           });
         });
@@ -1251,8 +1067,9 @@
           <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
           <div className="form-group"><label>Mobile *</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})} required/></div>
           <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+          <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={fd.extraPerson} onChange={e=>setFd({...fd,extraPerson:e.target.value})}/></div>
           <div className="form-group"><label>Advance Paid</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
-          <div className="form-group"><label>Mode of Payment</label><select value={fd.paymentMethod} onChange={e=>setFd({...fd,paymentMethod:e.target.value})}><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option><option>UPI</option></select></div>
+          <div className="form-group"><label>Mode of Payment</label><select value={fd.paymentMethod} onChange={e=>setFd({...fd,paymentMethod:e.target.value})}><option value="">Please Select</option><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option><option>UPI</option></select></div>
           <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
           <div className="form-group"><label>Discount (%)</label><input type="number" step="0.01" min="0" max="100" value={fd.discountPercent} onChange={e=>setFd({...fd,discountPercent:e.target.value})}/></div>
           <div className="form-group"><label>GST Type</label><select value={fd.gstType} onChange={e=>setFd({...fd,gstType:e.target.value})}><option>Excluding</option><option>Including</option><option>None</option></select></div>
@@ -1265,17 +1082,21 @@
     function BookingsView({user,role}){
       const isAdmin=role==='admin';
       const [ld,setLd]=useState(true);const [bks,setBks]=useState([]);const [rooms,setRooms]=useState([]);const [cis,setCis]=useState([]);const [show,setShow]=useState(false);const [editBooking,setEditBooking]=useState(null);const tRef=useRef(null);
-      const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:'',payment:'',paymentStatus:''});
+      
       useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
+      
       const load=()=>{setLd(true);
-        google.script.run.withSuccessHandler(r=>{const data=Array.isArray(r)?r:[];const filtered=isAdmin?data:data.filter(b=>b.email===user);setBks(filtered);
+        google.script.run.withSuccessHandler(r=>{const data=Array.isArray(r)?r:[];
+          let filtered=isAdmin?data:data.filter(b=>b.email===user);
+          filtered=filtered.filter(b=>b.status==='Booked');
+          setBks(filtered);
           google.script.run.withSuccessHandler(rm=>{setRooms(Array.isArray(rm)?rm:[]);
             google.script.run.withSuccessHandler(ci=>{setCis(Array.isArray(ci)?ci:[]);setLd(false);initT(filtered);}).withFailureHandler(()=>{setLd(false);initT(filtered);}).getAllCheckIns();
           }).withFailureHandler(()=>{setLd(false);initT(filtered);}).getAllRooms();
         }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllBookings();};
+        
       const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#bkT').empty();}catch(e){}}
         setTimeout(()=>{try{
-          $.fn.dataTable.ext.search=[];
           const t=$('#bkT').DataTable({data,destroy:true,columns:[
             {data:'ticketId',title:'Ticket ID'},{data:'roomNo',title:'Room'},{data:'guestName',title:'Guest'},
             {data:'checkIn',title:'Check-in',render:d=>fmtDate(d)},{data:'checkOut',title:'Check-out',render:d=>fmtDate(d)},
@@ -1290,28 +1111,8 @@
           ],order:[[0,'desc']]});
           $('#bkT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditBooking(rd);setShow(true);}else if(a==='delete'){Swal.fire({icon:'warning',title:'Delete Booking?',text:'Ticket '+rd.ticketId+' (Room #'+rd.roomNo+') will be permanently deleted and the room will be freed.',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete',cancelButtonText:'Cancel'}).then(res=>{if(res.isConfirmed){Swal.fire({title:'Deleting...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(r=>{Swal.close();if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setTimeout(()=>load(),100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).deleteBooking(rd.rowIndex);}});}});
           tRef.current=t;}catch(e){console.error(e);}},150);};
-      useEffect(()=>{if(!tRef.current||bks.length===0)return;
-        $.fn.dataTable.ext.search=[];
-        $.fn.dataTable.ext.search.push(function(settings,searchData,idx){
-          const row=bks[idx];if(!row)return true;
-          if(filters.dateFrom){const d=new Date(row.checkIn);if(d<new Date(filters.dateFrom))return false;}
-          if(filters.dateTo){const d=new Date(row.checkIn);if(d>new Date(filters.dateTo+'T23:59:59'))return false;}
-          return true;
-        });
-        if(filters.status)tRef.current.column(5).search(filters.status);else tRef.current.column(5).search('');
-        if(filters.paymentStatus)tRef.current.column(6).search(filters.paymentStatus);else tRef.current.column(6).search('');
-        if(filters.payment)tRef.current.column(7).search(filters.payment);else tRef.current.column(7).search('');
-        tRef.current.draw();
-      },[filters]);
-      const clearF=()=>{setFilters({dateFrom:'',dateTo:'',status:'',payment:'',paymentStatus:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
+
       return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-calendar-check"></i> Bookings</h2><button className="btn btn-success" onClick={()=>{setEditBooking(null);setShow(true);}}><i className="fas fa-plus"></i> New Booking</button></div>
-        {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear All</button></div><div className="filters-grid">
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-check-circle"></i> Status</label><select className="filter-input" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All</option><option>Booked</option><option>Checked Out</option></select></div>
-          <div className="filter-group"><label><i className="fas fa-money-bill-wave"></i> Pay Status</label><select className="filter-input" value={filters.paymentStatus} onChange={e=>setFilters({...filters,paymentStatus:e.target.value})}><option value="">All</option><option>Paid</option><option>Partial</option><option>Unpaid</option></select></div>
-          <div className="filter-group"><label><i className="fas fa-credit-card"></i> Method</label><select className="filter-input" value={filters.payment} onChange={e=>setFilters({...filters,payment:e.target.value})}><option value="">All</option><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Online</option></select></div>
-        </div></div>}
         {ld&&<TableSkeleton rows={6} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="bkT" className="display" style={{width:'100%'}}></table></div>
         {show&&<BookingModal rooms={rooms} allBookings={bks} allCheckIns={cis} booking={editBooking} onClose={()=>{setShow(false);setEditBooking(null);}} onBooked={load} role={role}/>}
       </div>);
@@ -1332,6 +1133,7 @@
       const [updateRec,setUpdateRec]=useState(null);
       const [fd,setFd]=useState({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});
       const [activeCis, setActiveCis] = useState([]);
+      const [showModal, setShowModal] = useState(false);
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllRooms();
@@ -1342,8 +1144,9 @@
       const loadCheckIns=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{
         setLd(false);
         const data = Array.isArray(r) ? r : [];
-        setActiveCis(data.filter(ci => ci.status === 'Active'));
-        initT(data);
+        const activeOnly = data.filter(ci => ci.status === 'Active');
+        setActiveCis(activeOnly);
+        initT(activeOnly);
       }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllCheckIns();};
 
       const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#ciT').empty();}catch(e){}}
@@ -1522,13 +1325,17 @@
 
       const [selAdvBkId, setSelAdvBkId] = useState('');
 
+      const loadAdvanceBookings = () => {
+        setAdvLd(true);
+        google.script.run.withSuccessHandler(r => {
+          setAdvLd(false);
+          setAdvBks((Array.isArray(r) ? r : []).filter(b => (b.status || '').toLowerCase() === 'booked'));
+        }).withFailureHandler(() => setAdvLd(false)).getAllBookings();
+      };
+
       useEffect(() => {
         if (mode === 'advance' || mode === 'walkin') { // need advBks even in walkin to block freeRooms
-          setAdvLd(true);
-          google.script.run.withSuccessHandler(r => {
-            setAdvLd(false);
-            setAdvBks((Array.isArray(r) ? r : []).filter(b => b.status === 'Booked'));
-          }).withFailureHandler(() => setAdvLd(false)).getAllBookings();
+          loadAdvanceBookings();
         }
       }, [mode]);
 
@@ -1564,7 +1371,7 @@
 
       const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);};
 
-      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');};
+      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setShowModal(true);};
       
       const handleCheckout=(ci)=>{Swal.fire({title:'Checkout Guest?',text:`Initiate checkout for ${ci.guestName}?`,icon:'question',showCancelButton:true,confirmButtonText:'Yes, Checkout'}).then((res)=>{if(res.isConfirmed){Swal.fire({title:'Processing...',didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(r=>{if(r.success){Swal.fire({icon:'success',title:'Checked Out',timer:2000,showConfirmButton:false});loadCheckIns();google.script.run.withSuccessHandler(r2=>{setRooms(Array.isArray(r2)?r2:[]);}).getAllRooms();}else{Swal.fire('Error',r.message,'error');}}).withFailureHandler(e=>Swal.fire('Error',e.message,'error')).processFullCheckout(ci.checkInId);}});};
 
@@ -1593,23 +1400,30 @@
 
         if (editRowIndex) {
           google.script.run.withSuccessHandler(res=>{Swal.close();setSaving(false);
-            if(res.success){Swal.fire({icon:'success',title:'Update Successful!',text:res.message,timer:2500,showConfirmButton:false});resetForm();loadCheckIns();
+            if(res.success){Swal.fire({icon:'success',title:'Update Successful!',text:res.message,timer:2500,showConfirmButton:false});resetForm();setShowModal(false);loadCheckIns();loadAdvanceBookings();
               google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();
             }else Swal.fire({icon:'error',text:res.message});
           }).withFailureHandler(e=>{Swal.close();setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateCheckIn(editRowIndex, payload);
         } else {
           google.script.run.withSuccessHandler(res=>{Swal.close();setSaving(false);
-            if(res.success){Swal.fire({icon:'success',title:'Check-In Successful!',text:res.message,timer:2500,showConfirmButton:false});resetForm();loadCheckIns();
+            if(res.success){Swal.fire({icon:'success',title:'Check-In Successful!',text:res.message,timer:2500,showConfirmButton:false});resetForm();setShowModal(false);loadCheckIns();loadAdvanceBookings();
               google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();
             }else Swal.fire({icon:'error',text:res.message});
           }).withFailureHandler(e=>{Swal.close();setSaving(false);Swal.fire({icon:'error',text:e.message});}).addCheckIn(payload);
         }
       };
 
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-door-open"></i> Check-In</h2><button className="btn btn-primary" onClick={()=>{loadCheckIns();google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();}}><i className="fas fa-sync"></i> Refresh</button></div>
-        <div className="checkin-mode-toggle"><button className={mode==='advance'?'active':''} onClick={()=>{setMode('advance');resetForm();}}><i className="fas fa-calendar-check"></i> Advance Booking</button><button className={mode==='walkin'?'active':''} onClick={()=>{setMode('walkin');resetForm();}}><i className="fas fa-walking"></i> Walk-In</button></div>
-
-        {mode === 'advance' && (
+      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-door-open"></i> Check-In</h2><div style={{display:'flex',gap:'10px'}}><button className="btn btn-success" onClick={()=>{setMode('advance');resetForm();setShowModal(true);}}><i className="fas fa-calendar-check"></i> From Advance Booking</button><button className="btn btn-success" onClick={()=>{setMode('walkin');resetForm();setShowModal(true);}}><i className="fas fa-walking"></i> Walk-In Check-In</button><button className="btn btn-primary" onClick={()=>{loadCheckIns();google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();}}><i className="fas fa-sync"></i> Refresh</button></div></div>
+        
+        {showModal && (
+          <div className="modal-overlay" onClick={() => {resetForm(); setShowModal(false);}}>
+            <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3><i className="fas fa-door-open"></i> {editRowIndex ? 'Edit Check-In' : (mode === 'advance' ? 'Check-In from Advance Booking' : 'Walk-In Check-In')}</h3>
+                <button className="close-btn" onClick={() => {resetForm(); setShowModal(false);}}><i className="fas fa-times"></i></button>
+              </div>
+              <div className="modal-body">
+        {mode === 'advance' && !editRowIndex && (
           <div style={{ marginBottom: '20px', background: '#f8f9fa', padding: '15px', borderRadius: '4px', border: '1px solid #dee2e6' }}>
             <h4 style={{ color: 'var(--navy-primary)', marginBottom: '10px' }}><i className="fas fa-calendar-check"></i> Select Advance Booking</h4>
             <div style={{ maxWidth: '600px' }}>
@@ -1646,27 +1460,11 @@
         )}
 
         <form onSubmit={submit}>
-          <div className="form-grid">
-            <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
-            <div className="form-group"><label>Company Name</label><input value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
-            <div className="form-group"><label>GST Number</label><input value={fd.gstNumber} onChange={e=>setFd({...fd,gstNumber:e.target.value})}/></div>
-            <div className="form-group"><label>Identity Proof</label><input value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="Aadhar/Passport No."/></div>
-            <div className="form-group"><label>Mobile</label><input value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})}/></div>
-            <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
-            <div className="form-group" style={{gridColumn:'1/-1'}}><label>Address</label><input value={fd.address} onChange={e=>setFd({...fd,address:e.target.value})}/></div>
-            <div className="form-group"><label>Purpose of Visit</label><input value={fd.purposeOfVisit} onChange={e=>setFd({...fd,purposeOfVisit:e.target.value})}/></div>
+          <div className="form-grid" style={{marginBottom:'20px'}}>
             <div className="form-group"><label>Check-In Date *</label><input type="date" value={fd.checkInDate} onChange={e=>setFd({...fd,checkInDate:e.target.value})} required/></div>
             <div className="form-group"><label>Check-In Time</label><input type="time" value={fd.checkInTime} onChange={e=>setFd({...fd,checkInTime:e.target.value})}/></div>
             <div className="form-group"><label>Expected Check-Out Date</label><input type="date" value={fd.checkOutDate} onChange={e=>setFd({...fd,checkOutDate:e.target.value})}/></div>
             <div className="form-group"><label>Check-Out Time</label><input type="time" value={fd.checkOutTime} onChange={e=>setFd({...fd,checkOutTime:e.target.value})}/></div>
-            <div className="form-group"><label>Pax</label><input type="number" min="1" value={fd.pax} onChange={e=>setFd({...fd,pax:e.target.value})}/></div>
-            <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={fd.extraPerson} onChange={e=>setFd({...fd,extraPerson:e.target.value})}/></div>
-            <div className="form-group"><label>Advance Paid ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
-            <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
-            <div className="form-group"><label>GST</label><select value={fd.gstType} onChange={e=>setFd({...fd,gstType:e.target.value})}><option value="Excluding">Excluding GST</option><option value="Including">Including GST</option></select></div>
-            <div className="form-group"><label>Bill To</label><select value={fd.billTo} onChange={e=>setFd({...fd,billTo:e.target.value})}><option value="Individual">Individual</option><option value="Company">Company</option><option value="Agent">Agent</option></select></div>
-            <div className="form-group"><label>Discount %</label><input type="number" step="0.01" min="0" max="100" value={fd.discountPercent} onChange={e=>setFd({...fd,discountPercent:e.target.value})}/></div>
-            <div className="form-group"><label>Fixed Rent Amount ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" placeholder="Leave blank for standard rent" value={fd.fixRoomRentAmount} onChange={e=>setFd({...fd,fixRoomRentAmount:e.target.value})}/></div>
           </div>
 
           <div style={{marginBottom:'15px'}}><label style={{display:'block',marginBottom:'8px',color:'#555',fontWeight:500,fontSize:'14px'}}>Select Rooms * ({selectedRooms.length} selected)</label>
@@ -1687,8 +1485,31 @@
             {rooms.length === 0 && <p style={{color:'#666',fontSize:'13px',fontStyle:'italic'}}>No rooms exist in the system.</p>}
           </div>
 
-          <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-door-open"></i> Complete Check-In</>}</button><button type="button" className="btn btn-secondary" onClick={resetForm}><i className="fas fa-undo"></i> Reset</button></div>
+          <div className="form-grid">
+            <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
+            <div className="form-group"><label>Company Name</label><input value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
+            <div className="form-group"><label>GST Number</label><input value={fd.gstNumber} onChange={e=>setFd({...fd,gstNumber:e.target.value})}/></div>
+            <div className="form-group"><label>Identity Proof</label><input value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="Aadhar/Passport No."/></div>
+            <div className="form-group"><label>Mobile</label><input value={fd.mobile} onChange={e=>setFd({...fd,mobile:e.target.value})}/></div>
+            <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
+            <div className="form-group" style={{gridColumn:'1/-1'}}><label>Address</label><input value={fd.address} onChange={e=>setFd({...fd,address:e.target.value})}/></div>
+            <div className="form-group"><label>Purpose of Visit</label><input value={fd.purposeOfVisit} onChange={e=>setFd({...fd,purposeOfVisit:e.target.value})}/></div>
+            <div className="form-group"><label>Pax</label><input type="number" min="1" value={fd.pax} onChange={e=>setFd({...fd,pax:e.target.value})}/></div>
+            <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={fd.extraPerson} onChange={e=>setFd({...fd,extraPerson:e.target.value})}/></div>
+            <div className="form-group"><label>Advance Paid ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
+            <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
+            <div className="form-group"><label>GST</label><select value={fd.gstType} onChange={e=>setFd({...fd,gstType:e.target.value})}><option value="Excluding">Excluding GST</option><option value="Including">Including GST</option></select></div>
+            <div className="form-group"><label>Bill To</label><select value={fd.billTo} onChange={e=>setFd({...fd,billTo:e.target.value})}><option value="Individual">Individual</option><option value="Company">Company</option><option value="Agent">Agent</option></select></div>
+            <div className="form-group"><label>Discount %</label><input type="number" step="0.01" min="0" max="100" value={fd.discountPercent} onChange={e=>setFd({...fd,discountPercent:e.target.value})}/></div>
+            <div className="form-group"><label>Fixed Rent Amount ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" placeholder="Leave blank for standard rent" value={fd.fixRoomRentAmount} onChange={e=>setFd({...fd,fixRoomRentAmount:e.target.value})}/></div>
+          </div>
+
+          <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-door-open"></i> {editRowIndex ? 'Update Check-In' : 'Complete Check-In'}</>}</button><button type="button" className="btn btn-secondary" onClick={()=>{resetForm(); setShowModal(false);}}><i className="fas fa-times"></i> Cancel</button></div>
         </form>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{marginTop:'30px'}}><h3 style={{marginBottom:'15px',color:'var(--navy-primary)'}}><i className="fas fa-list"></i> All Check-Ins</h3>
           {ld&&<TableSkeleton rows={5} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="ciT" className="display" style={{width:'100%'}}></table></div>
@@ -1813,8 +1634,7 @@
       const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#restT').empty();}catch(e){}}
         setTimeout(()=>{try{const t=$('#restT').DataTable({data,destroy:true,columns:[
           {data:'orderId',title:'Order ID'},{data:'roomNo',title:'Room'},{data:'checkInId',title:'Check-In'},
-          {data:'orderDate',title:'Date',render:d=>fmtDate(d)},{data:'category',title:'Category',render:d=>CAT_LABELS[d]||d},
-          {data:'description',title:'Description'},{data:'amount',title:'Amount',render:d=>fmtCur(d)},
+          {data:'orderDate',title:'Date',render:d=>fmtDate(d)},
           {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase()+'">'+d+'</span>'},
           {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
         ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
@@ -1829,12 +1649,11 @@
 
       const submit=(e)=>{e.preventDefault();
         if(!selRoom){Swal.fire({icon:'warning',text:'Select a room first.'});return;}
-        if(!fd.amount||parseFloat(fd.amount)<=0){Swal.fire({icon:'warning',text:'Enter a valid amount.'});return;}
         setSaving(true);
         if(editOrder){
-          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex,{roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:fd.category,description:fd.description,amount:fd.amount,status:'Active'});
+          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex,{roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:'FoodBeverage',description:'Food Order',amount:'0',status:'Active'});
         }else{
-          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).addFoodOrder({roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:fd.category,description:fd.description,amount:fd.amount});
+          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).addFoodOrder({roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:'FoodBeverage',description:'Food Order',amount:'0'});
         }
       };
 
@@ -1846,19 +1665,50 @@
         <div style={{background:'#f8f9fa',padding:'20px',borderRadius:'4px',border:'1px solid #dee2e6',marginBottom:'20px'}}>
           <h4 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-plus-circle"></i> {editOrder?'Edit':'Add New'} Order</h4>
           <form onSubmit={submit}>
-            <div className="form-grid">
-              <div className="form-group"><label>Room *</label><select value={selRoom} onChange={e=>pickRoom(e.target.value)}><option value="">{activeRooms.length===0?'No active check-ins found':'Select Room'}</option>{activeRooms.map(rm=><option key={rm.roomNo} value={rm.roomNo}>#{rm.roomNo} — {rm.guestName}</option>)}</select>{activeRooms.length===0&&<small style={{color:'#e74c3c',fontSize:'12px'}}><i className="fas fa-info-circle"></i> Check in guests first from the Check-In page.</small>}</div>
-              <div className="form-group"><label>Category *</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}</select></div>
-              <div className="form-group"><label>Description</label><input value={fd.description} onChange={e=>setFd({...fd,description:e.target.value})} placeholder="Item description"/></div>
-              <div className="form-group"><label>Amount ({APP_CURRENCY}) *</label><input type="number" step="0.01" min="0" value={fd.amount} onChange={e=>setFd({...fd,amount:e.target.value})} required/></div>
+            <div className="form-group">
+              <label>Select Room *</label>
+              {activeRooms.length===0 ? (
+                <div style={{color:'#e74c3c',fontSize:'14px',marginBottom:'15px'}}><i className="fas fa-info-circle"></i> No active check-ins found. Check in guests first from the Check-In page.</div>
+              ) : (
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '15px'}}>
+                  {Object.entries(activeRooms.reduce((acc, rm) => {
+                    if (!acc[rm.checkInId]) acc[rm.checkInId] = { guestName: rm.guestName, rooms: [] };
+                    acc[rm.checkInId].rooms.push(rm);
+                    return acc;
+                  }, {})).map(([ciId, group]) => (
+                    <div key={ciId} style={{display: 'flex', flexDirection: 'column', gap: '5px', padding: '10px', backgroundColor: '#f9f9f9', border: '1px solid #ddd', borderRadius: '6px', minWidth: '150px'}}>
+                      <div style={{fontWeight: 'bold', color: 'var(--navy-primary)', fontSize: '14px', marginBottom: '5px'}}>
+                        <i className="fas fa-user-circle"></i> {group.guestName} <span style={{fontSize: '12px', color: '#888', fontWeight: 'normal'}}>(ID: {ciId})</span>
+                      </div>
+                      <div style={{display:'flex', flexWrap:'wrap', gap:'15px'}}>
+                        {group.rooms.map(rm => (
+                          <label key={rm.roomNo} style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', margin: '0', fontSize: '14px'}}>
+                            <input 
+                              type="radio" 
+                              name="restaurant_room_selection" 
+                              value={rm.roomNo} 
+                              checked={selRoom === rm.roomNo} 
+                              onChange={() => pickRoom(rm.roomNo)} 
+                              style={{cursor: 'pointer', margin: '0'}}
+                            />
+                            <span>#{rm.roomNo}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="form-grid" style={{marginBottom: '15px'}}>
               <div className="form-group"><label>Date</label><input type="date" value={fd.orderDate} onChange={e=>setFd({...fd,orderDate:e.target.value})}/></div>
             </div>
-            {selGuestName&&<p style={{fontSize:'13px',color:'#666',marginBottom:'10px'}}><i className="fas fa-info-circle"></i> Guest: <strong>{selGuestName}</strong> | Check-In: <strong>{selCheckIn}</strong></p>}
+            {selGuestName&&<p style={{fontSize:'13px',color:'#666',marginBottom:'15px'}}><i className="fas fa-info-circle"></i> Selected Guest: <strong>{selGuestName}</strong> | Check-In ID: <strong>{selCheckIn}</strong></p>}
             <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> {editOrder?'Update':'Add'} Order</>}</button>{editOrder&&<button type="button" className="btn btn-secondary" onClick={resetOrderForm}><i className="fas fa-times"></i> Cancel Edit</button>}</div>
           </form>
         </div>
         <h3 style={{marginBottom:'15px',color:'var(--navy-primary)'}}><i className="fas fa-list"></i> All Orders</h3>
-        {ld&&<TableSkeleton rows={5} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="restT" className="display" style={{width:'100%'}}></table></div>
+        {ld&&<TableSkeleton rows={5} columns={5}/>}<div style={{display:ld?'none':'block'}}><table id="restT" className="display" style={{width:'100%'}}></table></div>
       </div>);
     }
 
@@ -2176,130 +2026,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       </div>);
     }
 
-    function QuoteModal({quote,onClose,onSave,user}){
-      const parseItems=(q)=>{try{return JSON.parse(q?.items||'[]');}catch(e){return[];}};
-      const [fd,setFd]=useState({guestName:quote?.guestName||'',phone:quote?.phone||'',email:quote?.email||'',customerTIN:quote?.customerTIN||'',currency:quote?.currency||APP_CURRENCY,validUntil:quote?.validUntil?quote.validUntil.slice(0,10):'',status:quote?.status||'Draft',notes:quote?.notes||'',discount:quote?.discount||0,gstEnabled:quote?.gstEnabled||false,gstPercent:quote?.gstPercent||16,greenTaxEnabled:quote?.greenTaxEnabled||false,greenTaxPerNight:quote?.greenTaxPerNight||6,greenTaxPax:quote?.greenTaxPax||0,greenTaxNights:quote?.greenTaxNights||0});
-      const [items,setItems]=useState(parseItems(quote));
-      const [sv,setSv]=useState(false);
-      const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
-      const [availRooms,setAvailRooms]=useState([]);
-      useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();google.script.run.withSuccessHandler(r=>{setAvailRooms((Array.isArray(r)?r:[]).filter(rm=>{const s=(rm.roomStatus||'').toLowerCase();return s==='available'||s==='reserved';}));}).withFailureHandler(()=>{}).getAllRooms();},[]);
-      const pickCustomer=(val)=>{setSelCust(val);if(val){const c=customers.find(x=>x.customerId===val);if(c)setFd(p=>({...p,guestName:c.name||p.guestName,phone:c.phone||p.phone,email:c.email||p.email,customerTIN:c.customerTIN||p.customerTIN}));}};
-      const addRoom=()=>setItems([...items,{type:'room',description:'',roomType:'Standard',quantity:1,nights:1,rate:0,amount:0,reservedRoomNo:''}]);
-      const addActivity=()=>setItems([...items,{type:'activity',description:'',pax:1,rate:0,amount:0}]);
-      const addSvc=()=>setItems([...items,{type:'service',description:'',amount:0}]);
-      const upd=(idx,field,val)=>{const n=[...items];n[idx]={...n[idx],[field]:val};if(n[idx].type==='room'){const qty=parseFloat(n[idx].quantity)||1;const nts=parseFloat(n[idx].nights)||0;const rt=parseFloat(n[idx].rate)||0;n[idx].amount=qty*nts*rt;n[idx].description=(qty>1?qty+' x ':'')+n[idx].roomType+' Room - '+n[idx].nights+' Night(s)';}else if(n[idx].type==='activity'){const px=parseFloat(n[idx].pax)||1;const r=parseFloat(n[idx].rate)||0;n[idx].amount=px*r;}setItems(n);};
-      const rem=(idx)=>setItems(items.filter((_,i)=>i!==idx));
-      const subTotal=items.reduce((s,it)=>s+(parseFloat(it.amount)||0),0);
-      const disc=parseFloat(fd.discount)||0;
-      const gstAmt=fd.gstEnabled?(subTotal-disc)*(parseFloat(fd.gstPercent)||0)/100:0;
-      const gtAmt=fd.greenTaxEnabled?(parseFloat(fd.greenTaxPerNight)||0)*(parseFloat(fd.greenTaxPax)||0)*(parseFloat(fd.greenTaxNights)||0):0;
-      const total=subTotal-disc+gstAmt+gtAmt;
-      const buildPdfData=(quoteId)=>({quoteId:quoteId||'',guestName:fd.guestName,phone:fd.phone,email:fd.email,customerTIN:fd.customerTIN,currency:fd.currency,createdDate:new Date().toISOString(),validUntil:fd.validUntil,status:fd.status,items:JSON.stringify(items),subTotal,discount:disc,gstEnabled:fd.gstEnabled,gstPercent:fd.gstPercent,gstAmount:gstAmt,greenTaxEnabled:fd.greenTaxEnabled,greenTaxPerNight:fd.greenTaxPerNight,greenTaxPax:fd.greenTaxPax,greenTaxNights:fd.greenTaxNights,greenTaxAmount:gtAmt,totalAmount:total,notes:fd.notes});
-      const onSuccess=(r,isEdit)=>{setSv(false);if(r.success){
-        const pdfData=buildPdfData(isEdit?quote.quoteId:r.quoteId);
-        Swal.fire({icon:'success',title:'Quote Saved!',text:r.message,showCancelButton:true,confirmButtonText:'<i class="fas fa-file-pdf"></i> Download PDF',cancelButtonText:'Close',confirmButtonColor:'#001f3f'}).then(res=>{if(res.isConfirmed)downloadQuotePdf(pdfData);});
-        onClose();setTimeout(onSave,100);
-      }else Swal.fire({icon:'error',text:r.message});};
-      const submit=(e)=>{e.preventDefault();if(items.length===0){Swal.fire({icon:'warning',text:'Add at least one item'});return;}setSv(true);
-        const qd={...fd,items:JSON.stringify(items),subTotal,gstAmount:gstAmt,greenTaxAmount:gtAmt,totalAmount:total,createdBy:user};
-        if(quote){google.script.run.withSuccessHandler(r=>onSuccess(r,true)).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateQuote(quote.rowIndex,qd);}
-        else{google.script.run.withSuccessHandler(r=>onSuccess(r,false)).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).addQuote(qd);}};
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice"></i> {quote?'Edit':'New'} Quote</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
-        {!quote&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer (auto-fills guest info)</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
-        <div className="form-grid">
-          <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
-          <div className="form-group"><label>Phone</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})}/></div>
-          <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
-          <div className="form-group"><label>Customer TIN</label><input value={fd.customerTIN} onChange={e=>setFd({...fd,customerTIN:e.target.value})} placeholder="Optional"/></div>
-          <div className="form-group"><label>Valid Until</label><input type="date" value={fd.validUntil} onChange={e=>setFd({...fd,validUntil:e.target.value})}/></div>
-          <div className="form-group"><label>Status</label><select value={fd.status} onChange={e=>setFd({...fd,status:e.target.value})}><option>Draft</option><option>Sent</option><option>Accepted</option><option>Expired</option></select></div>
-          <div className="form-group"><label>Currency</label><select value={fd.currency} onChange={e=>setFd({...fd,currency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-        </div>
-        <div className="line-items-section"><h4>Room Items <button type="button" className="btn btn-sm btn-success" onClick={addRoom}><i className="fas fa-plus"></i> Add</button></h4>
-          {items.filter(it=>it.type==='room').map((it,idx)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row room-item"><div><label>Room Type</label><select value={it.roomType} onChange={e=>upd(ri,'roomType',e.target.value)}><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div><div><label>Qty (Rooms)</label><input type="number" min="1" value={it.quantity||1} onChange={e=>upd(ri,'quantity',e.target.value)}/></div><div><label>Nights</label><input type="number" min="1" value={it.nights} onChange={e=>upd(ri,'nights',e.target.value)}/></div><div><label>Rate/Night</label><input type="number" step="0.01" min="0" value={it.rate} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div>{availRooms.length>0&&<div><label>Reserve Room #</label><SearchableSelect value={it.reservedRoomNo||''} onChange={v=>upd(ri,'reservedRoomNo',v)} options={[{value:'',label:'-- None --'},...availRooms.map(rm=>({value:rm.roomNo,label:'#'+rm.roomNo+' ('+rm.roomType+')'}))] } placeholder="Optional" /></div>}<button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
-        </div>
-        <div className="line-items-section"><h4>Activity Items <button type="button" className="btn btn-sm btn-success" onClick={addActivity}><i className="fas fa-plus"></i> Add</button></h4>
-          {items.filter(it=>it.type==='activity').map((it)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row activity-item"><div><label>Description</label><input value={it.description||''} onChange={e=>upd(ri,'description',e.target.value)} placeholder="e.g. Snorkeling Trip"/></div><div><label>Pax</label><input type="number" min="1" value={it.pax||''} onChange={e=>upd(ri,'pax',e.target.value)}/></div><div><label>Rate/Person</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
-        </div>
-        <div className="line-items-section"><h4>Service Items <button type="button" className="btn btn-sm btn-success" onClick={addSvc}><i className="fas fa-plus"></i> Add</button></h4>
-          {items.filter(it=>it.type==='service').map((it,idx)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row service-item"><div><label>Description</label><input value={it.description} onChange={e=>upd(ri,'description',e.target.value)}/></div><div><label>Amount</label><input type="number" step="0.01" min="0" value={it.amount} onChange={e=>upd(ri,'amount',parseFloat(e.target.value)||0)}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-trash"></i></button></div>);})}
-        </div>
-        <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.gstEnabled} onChange={e=>setFd({...fd,gstEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>GST</label></div>
-          {fd.gstEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>GST %</label><input type="number" step="0.01" value={fd.gstPercent} onChange={e=>setFd({...fd,gstPercent:e.target.value})}/></div></div>}
-        </div>
-        <div className="tax-toggle-section"><div className="tax-toggle-header"><label className="toggle-switch"><input type="checkbox" checked={fd.greenTaxEnabled} onChange={e=>setFd({...fd,greenTaxEnabled:e.target.checked})}/><span className="toggle-slider"></span></label><label>Green Tax</label></div>
-          {fd.greenTaxEnabled&&<div className="tax-inputs"><div className="form-group" style={{marginBottom:0}}><label>Rate/Night</label><input type="number" step="0.01" value={fd.greenTaxPerNight} onChange={e=>setFd({...fd,greenTaxPerNight:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Pax</label><input type="number" min="0" value={fd.greenTaxPax} onChange={e=>setFd({...fd,greenTaxPax:e.target.value})}/></div><div className="form-group" style={{marginBottom:0}}><label>Nights</label><input type="number" min="0" value={fd.greenTaxNights} onChange={e=>setFd({...fd,greenTaxNights:e.target.value})}/></div></div>}
-        </div>
-        <div className="form-group"><label>Discount</label><input type="number" step="0.01" min="0" value={fd.discount} onChange={e=>setFd({...fd,discount:e.target.value})}/></div>
-        <div className="totals-section">
-          <div className="totals-row"><span>Subtotal</span><span>{fmtCur(subTotal,fd.currency)}</span></div>
-          {disc>0&&<div className="totals-row"><span>Discount</span><span>- {fmtCur(disc,fd.currency)}</span></div>}
-          {fd.gstEnabled&&<div className="totals-row"><span>GST ({fd.gstPercent}%)</span><span>{fmtCur(gstAmt,fd.currency)}</span></div>}
-          {fd.greenTaxEnabled&&<div className="totals-row"><span>Green Tax</span><span>{fmtCur(gtAmt,fd.currency)}</span></div>}
-          <div className="totals-row grand-total"><span>Total</span><span>{fmtCur(total,fd.currency)}</span></div>
-        </div>
-        <div className="form-group" style={{marginTop:'15px'}}><label>Notes</label><textarea rows="3" value={fd.notes} onChange={e=>setFd({...fd,notes:e.target.value})}></textarea></div>
-        <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save Quote</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div>
-      </form></div></div></div>);
-    }
-
-    function QuotePreviewModal({quote,onClose}){
-      const cur=quote.currency||APP_CURRENCY;const fc=(a)=>fmtCur(a,cur);
-      const items=(() => {try{return JSON.parse(quote.items||'[]');}catch(e){return[];}})();
-      const roomItems=items.filter(i=>i.type==='room');const actItems=items.filter(i=>i.type==='activity');const svcItems=items.filter(i=>i.type==='service');
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-eye"></i> Quote Preview</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
-        <div className="invoice-preview"><h2>Hill View Eco Retreat - Quotation</h2><p className="subtitle">#{quote.quoteId} | Status: {quote.status}</p><hr style={{marginBottom:'20px'}}/>
-          <div className="invoice-detail-grid"><p><strong>Guest:</strong> {quote.guestName}</p><p><strong>Date:</strong> {fmtDate(quote.createdDate)}</p><p><strong>Phone:</strong> {quote.phone||'-'}</p><p><strong>Valid Until:</strong> {fmtDate(quote.validUntil)}</p><p><strong>Email:</strong> {quote.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>{quote.customerTIN&&<p><strong>Customer TIN:</strong> {quote.customerTIN}</p>}</div>
-          {roomItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px'}}>Room Items</h4><table className="invoice-table"><thead><tr><th>Room Type</th><th>Qty</th><th>Nights</th><th>Rate</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{roomItems.map((it,i)=><tr key={i}><td>{it.roomType}</td><td>{it.quantity||1}</td><td>{it.nights}</td><td>{fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
-          {actItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px',marginTop:'15px'}}>Activity Items</h4><table className="invoice-table"><thead><tr><th>Description</th><th>Pax</th><th>Rate/Person</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{actItems.map((it,i)=><tr key={i}><td>{it.description||'Activity'}</td><td>{it.pax}</td><td>{fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
-          {svcItems.length>0&&<><h4 style={{color:'var(--navy-primary)',marginBottom:'10px',marginTop:'15px'}}>Service Items</h4><table className="invoice-table"><thead><tr><th>Description</th><th className="right">Amount ({cur})</th></tr></thead><tbody>{svcItems.map((it,i)=><tr key={i}><td>{it.description}</td><td className="right">{fc(it.amount)}</td></tr>)}</tbody></table></>}
-          <div className="totals-section" style={{marginTop:'15px'}}><div className="totals-row"><span>Subtotal</span><span>{fc(quote.subTotal)}</span></div>{quote.discount>0&&<div className="totals-row"><span>Discount</span><span>- {fc(quote.discount)}</span></div>}{quote.gstEnabled&&<div className="totals-row"><span>GST ({quote.gstPercent}%)</span><span>{fc(quote.gstAmount)}</span></div>}{quote.greenTaxEnabled&&<div className="totals-row"><span>Green Tax ({cur} {quote.greenTaxPerNight} x {quote.greenTaxPax} pax x {quote.greenTaxNights} nights)</span><span>{fc(quote.greenTaxAmount)}</span></div>}<div className="totals-row grand-total"><span>Total</span><span>{fc(quote.totalAmount)}</span></div></div>
-          {quote.notes&&<p style={{marginTop:'15px',fontStyle:'italic',color:'#666'}}>Notes: {quote.notes}</p>}
-          <div className="preview-actions"><button className="btn btn-primary" onClick={()=>downloadQuotePdf(quote)}><i className="fas fa-download"></i> Download PDF</button><button className="btn btn-success" onClick={()=>savePdfToDriveHelper(quote,'quote')}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button><button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button></div>
-        </div></div></div></div>);
-    }
-
-    function QuotesView({user}){
-      const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [preview,setPreview]=useState(null);const tRef=useRef(null);
-      const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:''});const [quotes,setQuotes]=useState([]);
-      useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
-      const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);const d=Array.isArray(r)?r:[];setQuotes(d);initT(d);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllQuotes();};
-      const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#qtT').empty();}catch(e){}}
-        setTimeout(()=>{try{$.fn.dataTable.ext.search=[];const t=$('#qtT').DataTable({data,destroy:true,columns:[
-          {data:'quoteId',title:'Quote ID'},{data:'guestName',title:'Guest'},{data:'createdDate',title:'Created',render:d=>fmtDate(d)},{data:'validUntil',title:'Valid Until',render:d=>fmtDate(d)},
-          {data:'status',title:'Status',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},{data:'currency',title:'Cur'},{data:'totalAmount',title:'Total',render:(d,t,row)=>fmtCur(d,row.currency)},
-          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,t,row)=>{let btns='<button class="action-icon view-icon" data-action="view" title="Preview"><i class="fas fa-eye"></i></button><button class="action-icon" data-action="email" title="Email Quote" style="color:#0074D9"><i class="fas fa-envelope"></i></button><button class="action-icon" data-action="dlpdf" title="Download PDF" style="color:#001f3f"><i class="fas fa-file-pdf"></i></button>';if(!row.convertedToInvoice&&(row.status==='Accepted'||row.status==='Sent'))btns+='<button class="action-icon" data-action="convert" title="Convert to Invoice" style="color:#34a853"><i class="fas fa-exchange-alt"></i></button>';btns+='<button class="action-icon edit-icon" data-action="edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete" title="Delete"><i class="fas fa-trash"></i></button>';return btns;}}
-        ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
-          {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
-        ],order:[[0,'desc']]});
-        $('#qtT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='view')setPreview(rd);else if(a==='email')emailQt(rd);else if(a==='dlpdf')downloadQuotePdf(rd);else if(a==='convert')convertQuote(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='delete')delQuote(rd);});
-        tRef.current=t;}catch(e){console.error(e);}},150);};
-      const delQuote=(q)=>{Swal.fire({icon:'warning',title:'Delete Quote?',text:'Delete quote '+q.quoteId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteQuote(q.rowIndex);});};
-      const convertQuote=(q)=>{Swal.fire({icon:'question',title:'Convert to Invoice?',text:'Convert quote '+q.quoteId+' to a new invoice?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Convert'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Converting...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success){Swal.fire({icon:'success',title:'Invoice Created!',text:'Invoice '+res.invoiceId+' created from '+q.quoteId});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).convertQuoteToInvoice(q.rowIndex,user);}});};
-      const emailQt=(q)=>{if(!q.email)return Swal.fire({icon:'warning',text:'No email address on this quote.'});Swal.fire({icon:'question',title:'Email Quote?',text:'Send quote '+q.quoteId+' to '+q.email+'?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Send Email'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Sending email...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success)Swal.fire({icon:'success',text:res.message,timer:3000,showConfirmButton:false});else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).emailQuote(q.quoteId);}});};
-      useEffect(()=>{if(!tRef.current||quotes.length===0)return;
-        $.fn.dataTable.ext.search=[];
-        $.fn.dataTable.ext.search.push(function(s,d,idx){const row=quotes[idx];if(!row)return true;
-          if(filters.dateFrom){const dt=new Date(row.createdDate);if(dt<new Date(filters.dateFrom))return false;}
-          if(filters.dateTo){const dt=new Date(row.createdDate);if(dt>new Date(filters.dateTo+'T23:59:59'))return false;}return true;});
-        if(filters.status)tRef.current.column(4).search('^'+filters.status+'$',true,false);else tRef.current.column(4).search('');
-        tRef.current.draw();},[filters]);
-      const clearF=()=>{setFilters({dateFrom:'',dateTo:'',status:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-file-invoice"></i> Quotes</h2><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> New Quote</button></div>
-        {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear</button></div><div className="filters-grid">
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-tag"></i> Status</label><select className="filter-input" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}><option value="">All</option><option>Draft</option><option>Sent</option><option>Accepted</option><option>Expired</option><option>Converted</option></select></div>
-        </div></div>}
-        {ld&&<TableSkeleton rows={5} columns={7}/>}<div style={{display:ld?'none':'block'}}><table id="qtT" className="display" style={{width:'100%'}}></table></div>
-        {show&&<QuoteModal quote={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load} user={user}/>}
-        {preview&&<QuotePreviewModal quote={preview} onClose={()=>setPreview(null)}/>}
-      </div>);
-    }
-
     function FinanceEntryModal({record,onClose,onSave,user}){
       const [fd,setFd]=useState({date:record?.date?record.date.slice(0,10):'',type:record?.type||'Income',description:record?.description||'',shopSource:record?.shopSource||'',amount:record?.amount||'',category:record?.category||'',currency:record?.currency||APP_CURRENCY});
       const [sv,setSv]=useState(false);const [cats,setCats]=useState([]);
@@ -2430,20 +2156,19 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
     function AboutView(){
       return(<div className="about-section">
         <div className="about-header"><div className="about-logo"><img src={LOGO} alt="Logo"/></div><div className="about-title"><h1>Hill View Eco Retreat</h1><p className="about-dev">Develped by <strong>Mohammad Rameez Imdad</strong> (Rameez Scripts)</p></div></div>
-        <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices and quotes, and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
+        <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices, and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
         <div className="about-card"><h2><i className="fas fa-clipboard-list"></i> What Can You Do With It?</h2><ul className="about-features">
           <li><i className="fas fa-check"></i> <strong>Room Management</strong> - Add, edit, and manage hotel rooms with diffrent types and rates</li>
           <li><i className="fas fa-check"></i> <strong>Bookings</strong> - Create new bookings, track guest details, and manage reservations</li>
           <li><i className="fas fa-check"></i> <strong>Checkout & Invoicing</strong> - Process checkouts and generate professional PDF invoices</li>
           <li><i className="fas fa-check"></i> <strong>Standalone Invoices</strong> - Create invoices with rooms, activities, and services with auto-numbering (INV-0001)</li>
-          <li><i className="fas fa-check"></i> <strong>Quotes</strong> - Create quotations with rooms, activities, and services. Convert accepted quotes to invoices</li>
-          <li><i className="fas fa-check"></i> <strong>Multi-Currency</strong> - Support for MVR and USD currencies per document</li>
-          <li><i className="fas fa-check"></i> <strong>Tax System</strong> - Optional GST (percentage) and Green Tax (per person per night) on invoices and quotes</li>
+                    <li><i className="fas fa-check"></i> <strong>Multi-Currency</strong> - Support for MVR and USD currencies per document</li>
+          <li><i className="fas fa-check"></i> <strong>Tax System</strong> - Optional GST (percentage) and Green Tax (per person per night) on invoices</li>
           <li><i className="fas fa-check"></i> <strong>Finance Tracking</strong> - Record income and expenses with categories, currency support, and running balance</li>
           <li><i className="fas fa-check"></i> <strong>Budget Management</strong> - Set monthly budgets and track spending with visual progress bars</li>
           <li><i className="fas fa-check"></i> <strong>Categories</strong> - Manage income and expense categories for better financial tracking</li>
           <li><i className="fas fa-check"></i> <strong>Monthly Reports</strong> - Generate detailed financial reports with category breakdowns</li>
-          <li><i className="fas fa-check"></i> <strong>PDF to Drive</strong> - Save invoice and quote PDFs directly to Google Drive</li>
+          <li><i className="fas fa-check"></i> <strong>PDF to Drive</strong> - Save invoice PDFs directly to Google Drive</li>
           <li><i className="fas fa-check"></i> <strong>Hotel Settings</strong> - Configure hotel details, logo, default currency, and tax rates</li>
           <li><i className="fas fa-check"></i> <strong>Dashboard</strong> - Visual overview with charts showing room occupancy, revenue, invoices, and budget</li>
           <li><i className="fas fa-check"></i> <strong>User Management</strong> - Manage staff accounts with Admin and User roles</li>
@@ -2455,8 +2180,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
           <tr><td>View All Bookings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i> Own only</td></tr>
           <tr><td>Checkout Guests</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Manage Rooms</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Manage Quotes</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Manage Invoices</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
+                    <tr><td>Manage Invoices</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Finance Tracking</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Monthly Reports</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Hotel Settings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
@@ -2535,7 +2259,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
             <p><strong>Phone:</strong> {invoice.phone||'-'}</p><p><strong>Status:</strong> <span className={`status-badge ${statusCls(invoice.status)}`}>{invoice.status}</span></p>
             <p><strong>Email:</strong> {invoice.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>
             {invoice.customerTIN&&<p><strong>Customer TIN:</strong> {invoice.customerTIN}</p>}
-            {invoice.sourceQuoteId&&<p><strong>Source Quote:</strong> {invoice.sourceQuoteId}</p>}
+            
           </div>
           <table className="invoice-table"><thead><tr><th>Description</th><th>Details</th><th className="right">Amount ({cur})</th></tr></thead><tbody>
             {roomItems.map((it,i)=><tr key={'r'+i}><td>{it.roomType||'Room'}</td><td>{it.quantity||1} room(s) x {it.nights} night(s) x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
@@ -2551,7 +2275,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         </div>
         <div className="preview-actions">
           <button className="btn btn-primary" onClick={()=>downloadInvoicePdf(invoice)}><i className="fas fa-download"></i> Download PDF</button>
-          <button className="btn btn-success" onClick={()=>savePdfToDriveHelper(invoice,'invoice')}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button>
+          <button className="btn btn-success" onClick={()=>savePdfToDriveHelper(invoice)}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button>
           <button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button>
         </div>
       </div></div></div>);
@@ -2577,7 +2301,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
           {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},{extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},{extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}],order:[[2,'desc']]});
         $('#invT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();
-          if(a==='view')setPreview(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='email')emailInv(rd);else if(a==='pdf')downloadInvoicePdf(rd);else if(a==='drive')savePdfToDriveHelper(rd,'invoice');else if(a==='delete')delRec(rd);});
+          if(a==='view')setPreview(rd);else if(a==='edit'){setEdit(rd);setShow(true);}else if(a==='email')emailInv(rd);else if(a==='pdf')downloadInvoicePdf(rd);else if(a==='drive')savePdfToDriveHelper(rd);else if(a==='delete')delRec(rd);});
         tRef.current=t;}catch(e){console.error(e);}},150);};
       const delRec=(rec)=>{Swal.fire({icon:'warning',title:'Delete?',text:'Delete invoice '+rec.invoiceId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteInvoice(rec.rowIndex);});};
       const emailInv=(inv)=>{if(!inv.email)return Swal.fire({icon:'warning',text:'No email address on this invoice.'});Swal.fire({icon:'question',title:'Email Invoice?',text:'Send invoice '+inv.invoiceId+' to '+inv.email+'?',showCancelButton:true,confirmButtonColor:'#001f3f',confirmButtonText:'Send Email'}).then(r=>{if(r.isConfirmed){Swal.fire({title:'Sending email...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(res=>{Swal.close();if(res.success)Swal.fire({icon:'success',text:res.message,timer:3000,showConfirmButton:false});else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).emailInvoice(inv.invoiceId);}});};
@@ -2688,14 +2412,12 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const items=adm?[
         {k:'dashboard',i:'fa-chart-line',l:'Home'},
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
-        {k:'aichat',i:'fa-robot',l:'AI Chat'},
-        {k:'checkout',i:'fa-sign-out-alt',l:'Checkout'},
+                {k:'checkout',i:'fa-sign-out-alt',l:'Checkout'},
         {k:'more',i:'fa-ellipsis-h',l:'More'}
       ]:[
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
         {k:'calendar',i:'fa-calendar-alt',l:'Calendar'},
-        {k:'aichat',i:'fa-robot',l:'AI Chat'},
-        {k:'account',i:'fa-user-circle',l:'Account'},
+                {k:'account',i:'fa-user-circle',l:'Account'},
         {k:'about',i:'fa-info-circle',l:'About'}
       ];
       const [showMore,setShowMore]=useState(false);
@@ -2704,8 +2426,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         {k:'checkin',i:'fa-door-open',l:'Check-In'},
         {k:'restaurant',i:'fa-utensils',l:'Restaurant'},
         {k:'rooms',i:'fa-bed',l:'Rooms'},
-        {k:'quotes',i:'fa-file-invoice',l:'Quotes'},
-        {k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices'},
+                {k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices'},
         {k:'finance',i:'fa-coins',l:'Finance'},
         {k:'reports',i:'fa-chart-bar',l:'Reports'},
         {k:'users',i:'fa-users',l:'Users'},
@@ -2742,7 +2463,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
           <p><strong>Room:</strong> #{booking.roomNo}</p>
           <p><strong>Phone:</strong> {booking.phone||'-'}</p>
           <p><strong>Email:</strong> {booking.email||'-'}</p>
-          <p><strong>City:</strong> {booking.city||'-'}</p>
           <p><strong>Check-in:</strong> {fmtDate(booking.checkIn)}</p>
           <p><strong>Check-out:</strong> {fmtDate(booking.checkOut)}</p>
           <p><strong>Nights:</strong> {nights}</p>
@@ -2820,86 +2540,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       </div>);
     }
 
-    function AIChatView({user,role}){
-      const chatKey='mri_chat_'+user;
-      const [msgs,setMsgs]=useState(()=>{try{const s=localStorage.getItem(chatKey);return s?JSON.parse(s):[];}catch(e){return[];}});
-      const [input,setInput]=useState('');
-      const [loading,setLoading]=useState(false);
-      const msgEnd=useRef(null);
-      const scrollBottom=()=>{setTimeout(()=>{if(msgEnd.current)msgEnd.current.scrollIntoView({behavior:'smooth'});},100);};
-      const isAdmin=role==='admin';
-
-      // Save msgs to localStorage whenever they change
-      useEffect(()=>{try{localStorage.setItem(chatKey,JSON.stringify(msgs));}catch(e){}},[msgs]);
-      // Scroll to bottom on load if there are messages
-      useEffect(()=>{if(msgs.length>0)scrollBottom();},[]);
-
-      const send=(q)=>{
-        const question=(q||input).trim();
-        if(!question||loading)return;
-        const newMsgs=[...msgs,{role:'user',text:question,time:new Date()}];
-        setMsgs(newMsgs);setInput('');setLoading(true);scrollBottom();
-        // Build chat history for context (strip time, keep role+text only)
-        const history=msgs.map(m=>({role:m.role,text:m.text}));
-        google.script.run.withSuccessHandler((r)=>{
-          setLoading(false);
-          const updated=r.success
-            ?[...newMsgs,{role:'ai',text:r.reply,time:new Date()}]
-            :[...newMsgs,{role:'ai',text:'<span style="color:#ea4335">'+(r.message||'Something went wrong.')+'</span>',time:new Date()}];
-          setMsgs(updated);
-          scrollBottom();
-        }).withFailureHandler((e)=>{
-          setLoading(false);
-          setMsgs([...newMsgs,{role:'ai',text:'<span style="color:#ea4335">Connection error: '+e.message+'</span>',time:new Date()}]);
-          scrollBottom();
-        }).askAIAssistant(question,user,role,history);
-      };
-
-      const clearChat=()=>{Swal.fire({title:'Clear Conversation?',text:'This will remove all messages from this chat.',icon:'question',showCancelButton:true,confirmButtonColor:'#001f3f',cancelButtonColor:'#6c757d',confirmButtonText:'Yes, clear it'}).then(r=>{if(r.isConfirmed){setMsgs([]);try{localStorage.removeItem(chatKey);}catch(e){}}});};
-
-      const handleKey=(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}};
-
-      const suggestions=isAdmin?['Monthly revenue breakdown','Total income vs expenses','Show all bookings','Show overdue invoices']:['What are my bookings?','My checkout details','My booking status','My payment summary'];
-
-      const fmtTime=(d)=>{if(!d)return '';return new Date(d).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});};
-
-      return(<div className="chat-container">
-        <div className="chat-header">
-          <div className="chat-header-avatar"><i className="fas fa-robot"></i></div>
-          <div className="chat-header-info"><h3>AI Assistant</h3><span>{isAdmin?'Full access to hotel data':'Access to your bookings'}</span></div>
-          {msgs.length>0&&<button className="chat-clear-btn" onClick={clearChat} title="Clear Conversation"><i className="fas fa-trash-alt"></i></button>}
-        </div>
-        <div className="chat-messages">
-          {msgs.length===0&&<div className="chat-welcome">
-            <i className="fas fa-robot"></i>
-            <h4>Hello, {user}!</h4>
-            <p className="chat-subtitle">{isAdmin?'Your AI-powered hotel management assistant. Ask me anything about your hotel data.':'I\'m here to help you with your booking information and stay details.'}</p>
-            <div className="chat-capabilities">
-              {isAdmin?<>
-                <div className="chat-cap-card"><i className="fas fa-bed"></i><div><strong>Bookings & Rooms</strong>View occupancy, guest details, and booking status</div></div>
-                <div className="chat-cap-card"><i className="fas fa-chart-line"></i><div><strong>Revenue & Finance</strong>Monthly income, expenses, profit breakdowns</div></div>
-                <div className="chat-cap-card"><i className="fas fa-file-invoice-dollar"></i><div><strong>Invoices & Quotes</strong>Track payments, overdue invoices, and quotations</div></div>
-                <div className="chat-cap-card"><i className="fas fa-users"></i><div><strong>Users & Budgets</strong>Staff info, monthly budgets, and spending</div></div>
-              </>:<>
-                <div className="chat-cap-card"><i className="fas fa-calendar-check"></i><div><strong>My Bookings</strong>Check-in/out dates, room info, and status</div></div>
-                <div className="chat-cap-card"><i className="fas fa-receipt"></i><div><strong>Payment Details</strong>Amount due, payment status, and balance</div></div>
-              </>}
-            </div>
-            <div className="chat-divider">Try asking</div>
-            <div className="chat-suggestions">{suggestions.map((s,i)=><button key={i} onClick={()=>send(s)}>{s}</button>)}</div>
-            <p style={{fontSize:'11px',color:'#aaa',marginTop:'16px'}}>Your conversation is saved locally and remembered across sessions. Use <i className="fas fa-trash-alt" style={{fontSize:'10px'}}></i> to clear.</p>
-          </div>}
-          {msgs.map((m,i)=><div key={i} className={`chat-bubble ${m.role}`}>{m.role==='ai'?<div dangerouslySetInnerHTML={{__html:m.text}}/>:m.text}<div className="chat-bubble-time">{fmtTime(m.time)}</div></div>)}
-          {loading&&<div className="typing-indicator"><div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div></div>}
-          <div ref={msgEnd}/>
-        </div>
-        <div className="chat-input-bar">
-          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} placeholder={isAdmin?'Ask about hotel data...':'Ask about your bookings...'} disabled={loading}/>
-          <button onClick={()=>send()} disabled={loading||!input.trim()}><i className={loading?'fas fa-spinner fa-spin':'fas fa-paper-plane'}></i></button>
-        </div>
-      </div>);
-    }
-
     function MainContent({activeMenu,user,role}){
       switch(activeMenu){
         case 'dashboard': return <DashboardView user={user}/>;
@@ -2910,16 +2550,14 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
         case 'restaurant': return <RestaurantView user={user}/>;
         case 'rooms': return <RoomsView user={user}/>;
         case 'customers': return <CustomersView user={user}/>;
-        case 'quotes': return <QuotesView user={user}/>;
-        case 'invoices': return <InvoicesView user={user}/>;
+                case 'invoices': return <InvoicesView user={user}/>;
         case 'finance': return <FinanceView user={user}/>;
         case 'reports': return <ReportsView user={user}/>;
         case 'settings': return <SettingsView user={user}/>;
         case 'users': return <UsersView user={user}/>;
         case 'account': return <AccountView user={user}/>;
         case 'about': return <AboutView/>;
-        case 'aichat': return <AIChatView user={user} role={role}/>;
-        default: return null;
+                default: return null;
       }
     }
 
