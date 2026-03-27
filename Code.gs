@@ -1287,8 +1287,8 @@ function addFoodOrder(orderData) {
       orderData.orderDate || now.split('T')[0],
       orderData.category || 'FoodBeverage',
       orderData.description || '',
-      1,
-      parseFloat(orderData.amount) || 0,
+        parseInt(orderData.quantity) || 1,
+        parseFloat(orderData.rate) || parseFloat(orderData.amount) || 0,
       parseFloat(orderData.amount) || 0,
       'Active',
       '',
@@ -1374,8 +1374,8 @@ function updateFoodOrder(rowIndex, orderData) {
       orderData.orderDate || '',
       orderData.category || 'FoodBeverage',
       orderData.description || '',
-      1,
-      parseFloat(orderData.amount) || 0,
+      parseInt(orderData.quantity) || 1,
+      parseFloat(orderData.rate) || parseFloat(orderData.amount) || 0,
       parseFloat(orderData.amount) || 0,
       orderData.status || 'Active',
       '',
@@ -3902,7 +3902,7 @@ function initDataStructure() {
     { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
     { sheetName: STAY_SEGMENTS_SHEET_NAME, headers: ["Segment ID", "CheckIn ID", "Room Numbers", "Rate", "Pax", "Start Date", "End Date", "Created By", "Timestamp"] },
-    { sheetName: MENU_SHEET_NAME, headers: ["ItemName", "Category", "DefaultPrice"] }
+    { sheetName: MENU_SHEET_NAME, headers: ["ItemName", "FoodCategory", "DefaultPrice"] }
   ];
   manageSheetsDataStructure(config);
 }
@@ -4093,11 +4093,11 @@ function setupDemoData() {
 
   // ===== MENU (5 demo items) =====
   const menuData = [
-    ["Continental Breakfast", "Breakfast", 150],
-    ["Club Sandwich", "Lunch", 120],
-    ["Grilled Salmon", "Dinner", 350],
-    ["French Fries", "Snacks", 80],
-    ["Coffee", "Breakfast", 40]
+    ["Paneer Tikka", "Starter", 150],
+    ["Butter Naan", "Roti/Rice", 40],
+    ["Mix Veg Curry", "Veg", 220],
+    ["Chicken Masala", "Non Veg", 350],
+    ["Tandoori Chicken", "Tandoori", 450]
   ];
   menuSheet.getRange(2, 1, menuData.length, 3).setValues(menuData);
 
@@ -4131,7 +4131,7 @@ function getAllMenuItems() {
       if (itemName) {
         items.push({
           itemName: itemName,
-          category: (row[MENU_CATEGORY_COL] || "").toString().trim(),
+          foodCategory: (row[MENU_CATEGORY_COL] || "").toString().trim(),
           defaultPrice: parseFloat(row[MENU_PRICE_COL]) || 0
         });
       }
