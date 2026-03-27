@@ -182,21 +182,25 @@ const CI_STATUS_COL         = 26;
 const CI_CREATED_AT_COL     = 27;
 
 // RESTAURANT sheet columns (0-based)
-const REST_ORDER_ID_COL     = 0;
-const REST_ROOM_NO_COL      = 1;
-const REST_CHECKIN_ID_COL   = 2;
-const REST_ORDER_DATE_COL   = 3;
-const REST_CATEGORY_COL     = 4;
-const REST_DESC_COL         = 5;
-const REST_AMOUNT_COL       = 6;
-const REST_STATUS_COL       = 7;
-const REST_CREATED_AT_COL   = 8;
-const REST_BILLED_CHECKIN_COL = 8; // Assuming index 8 is used for BilledCheckInID as per new schema. Note: CREATED_AT might actually be 9 if BilledCheckInID is 8. Let's fix this properly.
+const REST_ORDER_ID_COL          = 0;
+const REST_CHECKIN_ID_COL        = 1;
+const REST_ROOM_NO_COL           = 2;
+const REST_ORDER_DATE_COL        = 3;
+const REST_MEAL_PERIOD_COL       = 4;
+const REST_ITEM_NAME_COL         = 5;
+const REST_QUANTITY_COL          = 6;
+const REST_RATE_COL              = 7;
+const REST_TOTAL_AMOUNT_COL      = 8;
+const REST_STATUS_COL            = 9;
+const REST_BILLED_CHECKIN_ID_COL = 10;
+const REST_ADDED_BY_COL          = 11;
 
-// Let's redefine REST_ columns based on manageSheetsDataStructure new schema:
-// ["OrderID", "CheckInID", "RoomNo", "Date", "Category", "Description", "Amount", "Status", "BilledCheckInID", "AddedBy"]
-const REST_BILLED_CHECKIN_ID_COL = 8;
-const REST_ADDED_BY_COL = 9;
+// Aliases for backward compatibility
+const REST_CATEGORY_COL          = REST_MEAL_PERIOD_COL;
+const REST_DESC_COL              = REST_ITEM_NAME_COL;
+const REST_AMOUNT_COL            = REST_TOTAL_AMOUNT_COL;
+const REST_CREATED_AT_COL        = REST_ADDED_BY_COL;
+const REST_BILLED_CHECKIN_COL    = REST_BILLED_CHECKIN_ID_COL;
 
 // SETTINGS sheet NEW columns (appended)
 const SET_NEXT_CHECKIN_COL  = 13;
@@ -1278,14 +1282,17 @@ function addFoodOrder(orderData) {
 
     sheet.appendRow([
       orderId,
-      orderData.roomNo || '',
       orderData.checkInId || '',
+      orderData.roomNo || '',
       orderData.orderDate || now.split('T')[0],
       orderData.category || 'FoodBeverage',
       orderData.description || '',
+      1,
+      parseFloat(orderData.amount) || 0,
       parseFloat(orderData.amount) || 0,
       'Active',
-      now
+      '',
+      'Admin'
     ]);
     SpreadsheetApp.flush();
     return { success: true, message: "Order added successfully.", orderId };
@@ -1310,11 +1317,18 @@ function getAllFoodOrders() {
         roomNo: (row[REST_ROOM_NO_COL] || '').toString(),
         checkInId: (row[REST_CHECKIN_ID_COL] || '').toString(),
         orderDate: (row[REST_ORDER_DATE_COL] || '').toString(),
-        category: (row[REST_CATEGORY_COL] || '').toString(),
-        description: (row[REST_DESC_COL] || '').toString(),
-        amount: parseFloat(row[REST_AMOUNT_COL]) || 0,
+        mealPeriod: (row[REST_MEAL_PERIOD_COL] || '').toString(),
+        itemName: (row[REST_ITEM_NAME_COL] || '').toString(),
+        quantity: parseInt(row[REST_QUANTITY_COL]) || 1,
+        rate: parseFloat(row[REST_RATE_COL]) || 0,
+        totalAmount: parseFloat(row[REST_TOTAL_AMOUNT_COL]) || 0,
         status: (row[REST_STATUS_COL] || 'Active').toString(),
-        createdAt: (row[REST_CREATED_AT_COL] || '').toString()
+        addedBy: (row[REST_ADDED_BY_COL] || '').toString(),
+
+        // Backward compatibility properties needed by unmodified frontend code
+        category: (row[REST_MEAL_PERIOD_COL] || '').toString(),
+        description: (row[REST_ITEM_NAME_COL] || '').toString(),
+        amount: parseFloat(row[REST_TOTAL_AMOUNT_COL]) || 0
       });
     }
     return orders;
@@ -1355,16 +1369,19 @@ function updateFoodOrder(rowIndex, orderData) {
 
     const row = [
       existingId,
-      orderData.roomNo || '',
       orderData.checkInId || '',
+      orderData.roomNo || '',
       orderData.orderDate || '',
       orderData.category || 'FoodBeverage',
       orderData.description || '',
+      1,
+      parseFloat(orderData.amount) || 0,
       parseFloat(orderData.amount) || 0,
       orderData.status || 'Active',
-      existingCreated
+      '',
+      'Admin'
     ];
-    sheet.getRange(rowIndex, 1, 1, 9).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 12).setValues([row]);
     SpreadsheetApp.flush();
     return { success: true, message: "Order updated successfully." };
   } catch (e) {
@@ -1599,9 +1616,9 @@ function processFullCheckout(checkInId, checkoutData) {
         if ((restData[i][REST_CHECKIN_ID_COL] || '').toString() === checkInId && (restData[i][REST_STATUS_COL] || '').toString() === 'Active') {
           foodOrders.push({
             orderDate: (restData[i][REST_ORDER_DATE_COL] || '').toString(),
-            category: (restData[i][REST_CATEGORY_COL] || '').toString(),
-            description: (restData[i][REST_DESC_COL] || '').toString(),
-            amount: parseFloat(restData[i][REST_AMOUNT_COL]) || 0
+            category: (restData[i][REST_MEAL_PERIOD_COL] || '').toString(),
+            description: (restData[i][REST_ITEM_NAME_COL] || '').toString(),
+            amount: parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0
           });
         }
       }
@@ -1614,9 +1631,17 @@ function processFullCheckout(checkInId, checkoutData) {
     let categoryTotals = {};
     foodOrders.forEach(o => {
       categoryTotals[o.category] = (categoryTotals[o.category] || 0) + o.amount;
-      if (o.category === 'FoodBeverage') totalFooding += o.amount;
-      else if (o.category === 'ExtraBed') totalExtraBed += o.amount;
-      else totalOtherServices += o.amount;
+
+      if (['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'FoodBeverage'].includes(o.category)) {
+        totalFooding += o.amount;
+        o.mappedCategory = 'FoodBeverage'; // used in dayByDay generator
+      } else if (o.category === 'ExtraBed') {
+        totalExtraBed += o.amount;
+        o.mappedCategory = 'ExtraBed';
+      } else {
+        totalOtherServices += o.amount;
+        o.mappedCategory = o.category;
+      }
     });
 
     let subtotal = totalRoomRent + totalFooding + totalExtraBed + totalOtherServices;
@@ -1673,8 +1698,8 @@ function processFullCheckout(checkInId, checkoutData) {
 
       foodOrders.forEach(o => {
         let oDate = o.orderDate.split('T')[0];
-        if (oDate === dateStr && dayCats.hasOwnProperty(o.category)) {
-          dayCats[o.category] += o.amount;
+        if (oDate === dateStr && dayCats.hasOwnProperty(o.mappedCategory || o.category)) {
+          dayCats[o.mappedCategory || o.category] += o.amount;
         }
       });
 
@@ -1918,9 +1943,9 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
           foodOrders.push({
             rowIndex: i,
             orderDate: (restData[i][REST_ORDER_DATE_COL] || '').toString(),
-            category: (restData[i][REST_CATEGORY_COL] || '').toString(),
-            description: (restData[i][REST_DESC_COL] || '').toString(),
-            amount: parseFloat(restData[i][REST_AMOUNT_COL]) || 0
+            category: (restData[i][REST_MEAL_PERIOD_COL] || '').toString(),
+            description: (restData[i][REST_ITEM_NAME_COL] || '').toString(),
+            amount: parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0
           });
         }
       }
@@ -1930,9 +1955,16 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
     let categoryTotals = {};
     foodOrders.forEach(o => {
       categoryTotals[o.category] = (categoryTotals[o.category] || 0) + o.amount;
-      if (o.category === 'FoodBeverage') totalFooding += o.amount;
-      else if (o.category === 'ExtraBed') totalExtraBed += o.amount;
-      else totalOtherServices += o.amount;
+      if (['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'FoodBeverage'].includes(o.category)) {
+        totalFooding += o.amount;
+        o.mappedCategory = 'FoodBeverage';
+      } else if (o.category === 'ExtraBed') {
+        totalExtraBed += o.amount;
+        o.mappedCategory = 'ExtraBed';
+      } else {
+        totalOtherServices += o.amount;
+        o.mappedCategory = o.category;
+      }
     });
 
     // 3. Billing Math
@@ -1974,8 +2006,8 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       let dayCats = { ExtraBed: 0, FoodBeverage: 0, MiniBar: 0, EarlyClean: 0, Xerox: 0, Laundry: 0, Fax: 0, SPBUC: 0, Travels: 0, Misc: 0 };
       foodOrders.forEach(o => {
         let oDate = o.orderDate.split('T')[0];
-        if (oDate === dateStr && dayCats.hasOwnProperty(o.category)) {
-          dayCats[o.category] += o.amount;
+        if (oDate === dateStr && dayCats.hasOwnProperty(o.mappedCategory || o.category)) {
+          dayCats[o.mappedCategory || o.category] += o.amount;
         }
       });
       
@@ -3868,7 +3900,7 @@ function initDataStructure() {
     { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "GreenTaxDefaultRate", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
     { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
-    { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "Category", "Description", "Amount", "Status", "BilledCheckInID", "AddedBy"] },
+    { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
     { sheetName: STAY_SEGMENTS_SHEET_NAME, headers: ["Segment ID", "CheckIn ID", "Room Numbers", "Rate", "Pax", "Start Date", "End Date", "Created By", "Timestamp"] },
     { sheetName: MENU_SHEET_NAME, headers: ["ItemName", "Category", "DefaultPrice"] }
   ];

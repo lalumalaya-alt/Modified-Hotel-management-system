@@ -1619,8 +1619,8 @@
       const [saving,setSaving]=useState(false);
       const [editOrder,setEditOrder]=useState(null);
       const tRef=useRef(null);
-      const CATEGORIES=['FoodBeverage','ExtraBed','MiniBar','EarlyClean','Xerox','Laundry','Fax','SPBUC','Travels','Misc'];
-      const CAT_LABELS={FoodBeverage:'Food & Beverage',ExtraBed:'Extra Bed',MiniBar:'Mini Bar',EarlyClean:'Early Clean',Xerox:'Xerox',Laundry:'Laundry',Fax:'Fax',SPBUC:'SP/BUC',Travels:'Travels',Misc:'Miscellaneous'};
+      const CATEGORIES=['Breakfast','Lunch','Dinner','Snacks','FoodBeverage'];
+      const CAT_LABELS={Breakfast:'Breakfast',Lunch:'Lunch',Dinner:'Dinner',Snacks:'Snacks',FoodBeverage:'Other Food & Beverage'};
       const [fd,setFd]=useState({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
       const [menuItems,setMenuItems]=useState([]);
 
@@ -1637,11 +1637,16 @@
         setTimeout(()=>{try{const t=$('#restT').DataTable({data,destroy:true,columns:[
           {data:'orderId',title:'Order ID'},{data:'roomNo',title:'Room'},{data:'checkInId',title:'Check-In'},
           {data:'orderDate',title:'Date',render:d=>fmtDate(d)},
+          {data:'mealPeriod',title:'Category'},
+          {data:'itemName',title:'Item Name'},
+          {data:'quantity',title:'Qty'},
+          {data:'rate',title:'Rate',render:d=>fmtCur(d)},
+          {data:'totalAmount',title:'Total',render:d=>fmtCur(d)},
           {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase()+'">'+d+'</span>'},
           {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
         ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
           {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'},orientation:'landscape'},
           {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
         ],order:[[0,'desc']]});
         $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRoom(rd.roomNo);setSelCheckIn(rd.checkInId);setFd({category:rd.category,description:rd.description,amount:rd.amount,orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});}else if(a==='delete')delOrder(rd);});
@@ -1707,7 +1712,7 @@
               <div className="form-group"><label>Category</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}</select></div>
               <div className="form-group">
                 <label>Item Name / Description *</label>
-                {fd.category === 'FoodBeverage' ? (
+                {['Breakfast','Lunch','Dinner','Snacks','FoodBeverage'].includes(fd.category) ? (
                   <select value={fd.description} onChange={e=>{
                     const val = e.target.value;
                     const mItem = menuItems.find(m => m.itemName === val);
