@@ -1619,6 +1619,8 @@
       const [saving,setSaving]=useState(false);
       const [editOrder,setEditOrder]=useState(null);
       const tRef=useRef(null);
+      const [orderType,setOrderType]=useState('checkin');
+      const [tableNo,setTableNo]=useState('');
       const CATEGORIES=['Breakfast','Lunch','Dinner','Snacks','FoodBeverage'];
       const CAT_LABELS={Breakfast:'Breakfast',Lunch:'Lunch',Dinner:'Dinner',Snacks:'Snacks',FoodBeverage:'Other Food & Beverage'};
       const [fd,setFd]=useState({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
@@ -1655,23 +1657,47 @@
       const pickRoom=(rn)=>{setSelRoom(rn);const rm=activeRooms.find(r=>r.roomNo===rn);if(rm){setSelCheckIn(rm.checkInId);setSelGuestName(rm.guestName);}else{setSelCheckIn('');setSelGuestName('');}};
 
       const submit=(e)=>{e.preventDefault();
-        if(!selRoom){Swal.fire({icon:'warning',text:'Select a room first.'});return;}
+        let finalRoomNo = '';
+        let finalCheckInId = '';
+        if(orderType === 'checkin') {
+          if(!selRoom){Swal.fire({icon:'warning',text:'Select a room first.'});return;}
+          finalRoomNo = selRoom;
+          finalCheckInId = selCheckIn;
+        } else {
+          if(!tableNo){Swal.fire({icon:'warning',text:'Enter a Table Number.'});return;}
+          finalRoomNo = tableNo;
+          finalCheckInId = 'Walk-in';
+        }
         setSaving(true);
         if(editOrder){
-          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex,{roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:'FoodBeverage',description:'Food Order',amount:'0',status:'Active'});
+          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex,{roomNo:finalRoomNo,checkInId:finalCheckInId,orderDate:fd.orderDate,category:fd.category,description:fd.description,amount:fd.amount,status:'Active'});
         }else{
-          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).addFoodOrder({roomNo:selRoom,checkInId:selCheckIn,orderDate:fd.orderDate,category:'FoodBeverage',description:'Food Order',amount:'0'});
+          google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).addFoodOrder({roomNo:finalRoomNo,checkInId:finalCheckInId,orderDate:fd.orderDate,category:fd.category,description:fd.description,amount:fd.amount});
         }
       };
 
       const delOrder=(ord)=>{Swal.fire({icon:'warning',title:'Delete Order?',text:'Delete order '+ord.orderId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteFoodOrder(ord.rowIndex);});};
 
-      const resetOrderForm=()=>{setEditOrder(null);setFd({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
+      const resetOrderForm=()=>{setEditOrder(null);setOrderType('checkin');setTableNo('');setFd({category:'FoodBeverage',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
 
       return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-utensils"></i> Restaurant / Services</h2><button className="btn btn-primary" onClick={()=>{loadOrders();google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).getActiveCheckInRooms();}}><i className="fas fa-sync"></i> Refresh</button></div>
         <div style={{background:'#f8f9fa',padding:'20px',borderRadius:'4px',border:'1px solid #dee2e6',marginBottom:'20px'}}>
           <h4 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-plus-circle"></i> {editOrder?'Edit':'Add New'} Order</h4>
           <form onSubmit={submit}>
+            <div className="form-grid" style={{marginBottom:'20px'}}>
+              <div className="form-group" style={{gridColumn:'1/-1', display:'flex', gap:'10px'}}>
+                <button type="button" onClick={()=>setOrderType('table')} className={`btn ${orderType==='table'?'btn-primary':'btn-secondary'}`} style={{flex:1, padding:'10px'}}>
+                  <i className="fas fa-chair"></i> Table Order
+                </button>
+                <button type="button" onClick={()=>setOrderType('checkin')} className={`btn ${orderType==='checkin'?'btn-primary':'btn-secondary'}`} style={{flex:1, padding:'10px'}}>
+                  <i className="fas fa-bed"></i> From Checkin
+                </button>
+              </div>
+            </div>
+
+            {orderType === 'table' ? (
+              <div className="form-group"><label>Table Number *</label><input value={tableNo} onChange={e=>setTableNo(e.target.value)} required placeholder="e.g. T-01"/></div>
+            ) : (
             <div className="form-group">
               <label>Select Room *</label>
               {activeRooms.length===0 ? (
@@ -1707,6 +1733,7 @@
                 </div>
               )}
             </div>
+            )}
             <div className="form-grid" style={{marginBottom: '15px'}}>
               <div className="form-group"><label>Date</label><input type="date" value={fd.orderDate} onChange={e=>setFd({...fd,orderDate:e.target.value})}/></div>
               <div className="form-group"><label>Category</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}</select></div>
