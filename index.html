@@ -1612,7 +1612,7 @@
 
     function RestaurantView({user}){
       const [activeRooms,setActiveRooms]=useState([]);
-      const [selRoom,setSelRoom]=useState('');
+      const [selRooms,setSelRooms]=useState([]);
       const [selCheckIn,setSelCheckIn]=useState('');
       const [selGuestName,setSelGuestName]=useState('');
       const [ld,setLd]=useState(true);
@@ -1654,17 +1654,39 @@
           {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'},orientation:'landscape'},
           {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
         ],order:[[0,'desc']]});
-        $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRoom(rd.roomNo);setSelCheckIn(rd.checkInId);if(rd.checkInId==='Walk-in'){setOrderType('table');setTableNo(rd.roomNo);}else{setOrderType('checkin');}setOrderItems([{itemName:rd.itemName,quantity:rd.quantity,defaultPrice:rd.rate,totalAmount:rd.totalAmount}]);setFd({category:rd.category,description:rd.itemName,amount:rd.totalAmount,orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});}else if(a==='delete')delOrder(rd);});
+        $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRooms((rd.roomNo||'').split(',').map(r=>r.trim()).filter(Boolean));setSelCheckIn(rd.checkInId);if(rd.checkInId==='Walk-in'){setOrderType('table');setTableNo(rd.roomNo);}else{setOrderType('checkin');}setOrderItems([{itemName:rd.itemName,quantity:rd.quantity,defaultPrice:rd.rate,totalAmount:rd.totalAmount}]);setFd({category:rd.category,description:rd.itemName,amount:rd.totalAmount,orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});}else if(a==='delete')delOrder(rd);});
         tRef.current=t;}catch(e){console.error(e);}},150);};
 
-      const pickRoom=(rn)=>{setSelRoom(rn);const rm=activeRooms.find(r=>r.roomNo===rn);if(rm){setSelCheckIn(rm.checkInId);setSelGuestName(rm.guestName);}else{setSelCheckIn('');setSelGuestName('');}};
+      const toggleRoom=(rn, ciId, guestName)=>{
+        setSelRooms(prev => {
+          if (selCheckIn !== ciId && prev.length > 0) {
+            Swal.fire({icon:'warning',text:'You can only select multiple rooms from the same Check-In ID. Selection has been reset.'});
+            setSelCheckIn(ciId);
+            setSelGuestName(guestName);
+            return [rn];
+          }
+          if (selCheckIn !== ciId) {
+            setSelCheckIn(ciId);
+            setSelGuestName(guestName);
+          }
+          if (prev.includes(rn)) {
+            const newRooms = prev.filter(r => r !== rn);
+            if (newRooms.length === 0) {
+              setSelCheckIn('');
+              setSelGuestName('');
+            }
+            return newRooms;
+          }
+          return [...prev, rn];
+        });
+      };
 
       const submit=(e)=>{e.preventDefault();
         let finalRoomNo = '';
         let finalCheckInId = '';
         if(orderType === 'checkin') {
-          if(!selRoom){Swal.fire({icon:'warning',text:'Select a room first.'});return;}
-          finalRoomNo = selRoom;
+          if(selRooms.length === 0){Swal.fire({icon:'warning',text:'Select at least one room first.'});return;}
+          finalRoomNo = selRooms.join(', ');
           finalCheckInId = selCheckIn;
         } else {
           if(!tableNo){Swal.fire({icon:'warning',text:'Enter a Table Number.'});return;}
@@ -1698,7 +1720,7 @@
 
       const delOrder=(ord)=>{Swal.fire({icon:'warning',title:'Delete Order?',text:'Delete order '+ord.orderId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteFoodOrder(ord.rowIndex);});};
 
-      const resetOrderForm=()=>{setEditOrder(null);setOrderType('checkin');setTableNo('');setOrderItems([]);setFd({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
+      const resetOrderForm=()=>{setEditOrder(null);setOrderType('checkin');setTableNo('');setOrderItems([]);setSelRooms([]);setSelCheckIn('');setSelGuestName('');setFd({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
 
       const addItemToOrder = (item) => {
           setOrderItems(prev => {
@@ -1730,7 +1752,7 @@
               <div className="form-group"><label>Table Number *</label><input value={tableNo} onChange={e=>setTableNo(e.target.value)} required placeholder="e.g. T-01"/></div>
             ) : (
             <div className="form-group">
-              <label>Select Room *</label>
+              <label>Select Rooms *</label>
               {activeRooms.length===0 ? (
                 <div style={{color:'#e74c3c',fontSize:'14px',marginBottom:'15px'}}><i className="fas fa-info-circle"></i> No active check-ins found. Check in guests first from the Check-In page.</div>
               ) : (
@@ -1748,11 +1770,10 @@
                         {group.rooms.map(rm => (
                           <label key={rm.roomNo} style={{display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', margin: '0', fontSize: '14px'}}>
                             <input 
-                              type="radio" 
-                              name="restaurant_room_selection" 
+                              type="checkbox"
                               value={rm.roomNo} 
-                              checked={selRoom === rm.roomNo} 
-                              onChange={() => pickRoom(rm.roomNo)} 
+                              checked={selRooms.includes(rm.roomNo)}
+                              onChange={() => toggleRoom(rm.roomNo, ciId, group.guestName)}
                               style={{cursor: 'pointer', margin: '0'}}
                             />
                             <span>#{rm.roomNo}</span>
