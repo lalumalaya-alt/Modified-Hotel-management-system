@@ -1738,13 +1738,15 @@
           <h4 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-plus-circle"></i> {editOrder?'Edit':'Add New'} Order</h4>
           <form onSubmit={submit}>
             <div className="form-grid" style={{marginBottom:'20px'}}>
-              <div className="form-group" style={{gridColumn:'1/-1', display:'flex', gap:'10px'}}>
-                <button type="button" onClick={()=>setOrderType('table')} className={`btn ${orderType==='table'?'btn-primary':'btn-secondary'}`} style={{flex:1, padding:'10px'}}>
-                  <i className="fas fa-chair"></i> Table Order
-                </button>
-                <button type="button" onClick={()=>setOrderType('checkin')} className={`btn ${orderType==='checkin'?'btn-primary':'btn-secondary'}`} style={{flex:1, padding:'10px'}}>
-                  <i className="fas fa-bed"></i> From Checkin
-                </button>
+              <div className="form-group" style={{gridColumn:'1/-1'}}>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '10px', marginBottom: '20px' }}>
+                  <button type="button" onClick={()=>setOrderType('table')} className={`btn ${orderType==='table'?'btn-primary':'btn-secondary'}`}>
+                    <i className="fas fa-chair"></i> Table Order
+                  </button>
+                  <button type="button" onClick={()=>setOrderType('checkin')} className={`btn ${orderType==='checkin'?'btn-primary':'btn-secondary'}`}>
+                    <i className="fas fa-bed"></i> From Checkin
+                  </button>
+                </div>
               </div>
             </div>
 
