@@ -1280,15 +1280,23 @@ function addFoodOrder(orderData) {
     const orderId = generateOrderId();
     const now = new Date().toISOString();
 
+    // Ensure roomNo supports comma-separated string if it's an array
+    let roomNos = orderData.roomNo;
+    if (Array.isArray(roomNos)) {
+      roomNos = roomNos.join(', ');
+    } else if (typeof roomNos !== 'string') {
+      roomNos = (roomNos || '').toString();
+    }
+
     sheet.appendRow([
       orderId,
       orderData.checkInId || '',
-      orderData.roomNo || '',
+      roomNos,
       orderData.orderDate || now.split('T')[0],
       orderData.category || 'FoodBeverage',
       orderData.description || '',
-        parseInt(orderData.quantity) || 1,
-        parseFloat(orderData.rate) || parseFloat(orderData.amount) || 0,
+      parseInt(orderData.quantity) || 1,
+      parseFloat(orderData.rate) || parseFloat(orderData.amount) || 0,
       parseFloat(orderData.amount) || 0,
       'Active',
       '',
@@ -1367,10 +1375,18 @@ function updateFoodOrder(rowIndex, orderData) {
     const existingId = sheet.getRange(rowIndex, REST_ORDER_ID_COL + 1).getValue();
     const existingCreated = sheet.getRange(rowIndex, REST_CREATED_AT_COL + 1).getValue();
 
+    // Ensure roomNo supports comma-separated string if it's an array
+    let roomNos = orderData.roomNo;
+    if (Array.isArray(roomNos)) {
+      roomNos = roomNos.join(', ');
+    } else if (typeof roomNos !== 'string') {
+      roomNos = (roomNos || '').toString();
+    }
+
     const row = [
       existingId,
       orderData.checkInId || '',
-      orderData.roomNo || '',
+      roomNos,
       orderData.orderDate || '',
       orderData.category || 'FoodBeverage',
       orderData.description || '',
