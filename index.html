@@ -1699,22 +1699,29 @@
           const item = orderItems[0];
           google.script.run.withSuccessHandler(res=>{setSaving(false);if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});resetOrderForm();loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>{setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateFoodOrder(editOrder.rowIndex,{roomNo:finalRoomNo,checkInId:finalCheckInId,orderDate:fd.orderDate,category:fd.category,description:item.itemName,quantity:item.quantity,rate:item.defaultPrice,amount:item.totalAmount,status:'Active'});
         }else{
-          let completed = 0;
-          let hasError = false;
-          orderItems.forEach((item) => {
-             google.script.run.withSuccessHandler(res=>{
-                completed++;
-                if(!res.success) hasError = true;
-                if(completed === orderItems.length) {
-                   setSaving(false);
-                   if(hasError) Swal.fire({icon:'error',text:'Some items failed to add.'});
-                   else { Swal.fire({icon:'success',text:'Order placed successfully',timer:2000,showConfirmButton:false}); resetOrderForm(); loadOrders(); }
+          const payload = {
+            roomNo: finalRoomNo,
+            checkInId: finalCheckInId,
+            orderDate: fd.orderDate,
+            category: fd.category,
+            items: orderItems
+          };
+          google.script.run
+             .withSuccessHandler(res=>{
+                setSaving(false);
+                if(!res.success) {
+                   Swal.fire({icon:'error',text:res.message || 'Failed to add order.'});
+                } else {
+                   Swal.fire({icon:'success',text:'Order placed successfully',timer:2000,showConfirmButton:false});
+                   resetOrderForm();
+                   loadOrders();
                 }
-             }).withFailureHandler(e=>{
-                completed++; hasError = true;
-                if(completed === orderItems.length) { setSaving(false); Swal.fire({icon:'error',text:e.message}); }
-             }).addFoodOrder({roomNo:finalRoomNo,checkInId:finalCheckInId,orderDate:fd.orderDate,category:fd.category,description:item.itemName,quantity:item.quantity,rate:item.defaultPrice,amount:item.totalAmount});
-          });
+             })
+             .withFailureHandler(e=>{
+                setSaving(false);
+                Swal.fire({icon:'error',text:e.message});
+             })
+             .addFoodOrder(payload);
         }
       };
 
