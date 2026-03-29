@@ -1570,12 +1570,19 @@
                 <div className="form-group">
                   <label>Current/New Rooms *</label>
                   <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'5px'}}>
-                    {allRooms.map(rm=>(
-                      <button key={rm.roomNo} type="button" onClick={()=>{ setRoomIds(p=>p.includes(rm.roomNo.toString())?p.filter(x=>x!==rm.roomNo.toString()):[...p,rm.roomNo.toString()]) }}
-                        className={`btn ${roomIds.includes(rm.roomNo.toString())?'btn-primary':'btn-secondary'}`} style={{padding:'6px 12px',fontSize:'13px',borderRadius:'4px'}}>
-                        #{rm.roomNo} ({rm.roomType})
-                      </button>
-                    ))}
+                    {allRooms.map(rm=>{
+                      const currentAssigned = (rec.roomNumbers||'').split(',').map(s=>s.trim());
+                      const isAvailable = rm.roomStatus === 'Available' || currentAssigned.includes(rm.roomNo.toString());
+                      return (
+                        <button key={rm.roomNo} type="button"
+                          onClick={()=>{ if(isAvailable) { setRoomIds(p=>p.includes(rm.roomNo.toString())?p.filter(x=>x!==rm.roomNo.toString()):[...p,rm.roomNo.toString()]) } }}
+                          className={`btn ${roomIds.includes(rm.roomNo.toString())?'btn-primary':'btn-secondary'}`}
+                          style={{padding:'6px 12px',fontSize:'13px',borderRadius:'4px', opacity: isAvailable ? 1 : 0.5, cursor: isAvailable ? 'pointer' : 'not-allowed'}}
+                          disabled={!isAvailable}>
+                          #{rm.roomNo} ({rm.roomType})
+                        </button>
+                      )
+                    })}
                     {(rec.roomNumbers||'').split(',').map(s=>s.trim()).filter(s=>s).map(rn=>{
                       if(!allRooms.find(x=>x.roomNo.toString()===rn)){
                         return(
