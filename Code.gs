@@ -1288,20 +1288,31 @@ function addFoodOrder(orderData) {
       roomNos = (roomNos || '').toString();
     }
 
-    sheet.appendRow([
-      orderId,
-      orderData.checkInId || '',
-      roomNos,
-      orderData.orderDate || now.split('T')[0],
-      orderData.category || 'FoodBeverage',
-      orderData.description || '',
-      parseInt(orderData.quantity) || 1,
-      parseFloat(orderData.rate) || parseFloat(orderData.amount) || 0,
-      parseFloat(orderData.amount) || 0,
-      'Active',
-      '',
-      'Admin'
-    ]);
+    // The new logic requires processing an array of items to prevent concurrency faults
+    // If frontend sends legacy single-item payload, wrap it in an array to maintain backwards compatibility
+    const items = Array.isArray(orderData.items) ? orderData.items : [{
+      itemName: orderData.description || '',
+      quantity: orderData.quantity || 1,
+      defaultPrice: orderData.rate || orderData.amount || 0,
+      totalAmount: orderData.amount || 0
+    }];
+
+    items.forEach(item => {
+      sheet.appendRow([
+        orderId,
+        orderData.checkInId || '',
+        roomNos,
+        orderData.orderDate || now.split('T')[0],
+        orderData.category || 'FoodBeverage',
+        item.itemName || '',
+        parseInt(item.quantity) || 1,
+        parseFloat(item.defaultPrice) || 0,
+        parseFloat(item.totalAmount) || 0,
+        'Active',
+        '',
+        'Admin'
+      ]);
+    });
     SpreadsheetApp.flush();
     return { success: true, message: "Order added successfully.", orderId };
   } catch (e) {
