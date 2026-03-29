@@ -1576,18 +1576,22 @@
         if(rec){
           setRoomIds((rec.roomNumbers||'').split(',').map(s=>s.trim()).filter(s=>s));
           setPax(parseInt(rec.pax)||1);
-          // Set an initial estimated rate based on the first mapped room or default to 0
-          const initialRooms = (rec.roomNumbers||'').split(',').map(s=>s.trim()).filter(s=>s);
-          if(initialRooms.length > 0 && allRooms){
-              let totalEst = 0;
-              initialRooms.forEach(rn => {
-                 const rm = allRooms.find(r=>r.roomNo.toString()===rn);
-                 if(rm) totalEst += parseFloat(rm.roomRate) || 0;
-              });
-              setNewRate(totalEst);
-          }
         }
-      }, [rec, allRooms]);
+      }, [rec]);
+
+      // Dynamically calculate the new rate based on currently selected rooms
+      useEffect(()=>{
+        if(roomIds.length > 0 && allRooms){
+          let totalEst = 0;
+          roomIds.forEach(rn => {
+            const rm = allRooms.find(r=>r.roomNo.toString()===rn);
+            if(rm) totalEst += parseFloat(rm.roomRate) || 0;
+          });
+          setNewRate(totalEst);
+        } else if (roomIds.length === 0) {
+          setNewRate(0);
+        }
+      }, [roomIds, allRooms]);
 
       const submit=(e)=>{
         e.preventDefault();
