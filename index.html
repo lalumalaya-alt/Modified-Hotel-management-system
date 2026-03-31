@@ -1524,6 +1524,8 @@
       const [newRate, setNewRate]=useState(0);
       const [sv, setSv]=useState(false);
       const [roomStates, setRoomStates]=useState({});
+      const [switchDate, setSwitchDate]=useState(new Date().toISOString().split('T')[0]);
+      const [switchTime, setSwitchTime]=useState(new Date().toTimeString().slice(0,5));
 
       useEffect(()=>{
         if(rec && allRooms){
@@ -1597,6 +1599,12 @@
         e.preventDefault();
         if(roomIds.length===0){ Swal.fire({icon:'warning',text:'Select at least one room.'}); return; }
         setSv(true);
+
+        let switchDateTime = null;
+        if(switchDate && switchTime){
+          switchDateTime = new Date(switchDate + 'T' + switchTime).toISOString();
+        }
+
         google.script.run.withSuccessHandler(r=>{
           setSv(false);
           if(r.success){
@@ -1606,7 +1614,7 @@
           } else { Swal.fire({icon:'error',text:r.message}); }
         }).withFailureHandler(err=>{
           setSv(false); Swal.fire({icon:'error',text:err.message});
-        }).updateStaySegment(rec.checkInId, roomIds.join(','), newRate, pax);
+        }).updateStaySegment(rec.checkInId, roomIds.join(','), newRate, pax, switchDateTime);
       };
 
       return(
@@ -1688,6 +1696,14 @@
                   </div>
                 </div>
                 <div className="form-grid" style={{marginTop:'15px'}}>
+                  <div className="form-group">
+                    <label>Switch Date *</label>
+                    <input type="date" value={switchDate} onChange={e=>setSwitchDate(e.target.value)} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Switch Time *</label>
+                    <input type="time" value={switchTime} onChange={e=>setSwitchTime(e.target.value)} required />
+                  </div>
                   <div className="form-group">
                     <label>Pax *</label>
                     <input type="number" min="1" value={pax} onChange={e=>setPax(e.target.value)} required />

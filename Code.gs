@@ -4171,7 +4171,7 @@ function getAllMenuItems() {
   }
 }
 
-function updateStaySegment(checkInId, newRoomNos, newRate, newPax) {
+function updateStaySegment(checkInId, newRoomNos, newRate, newPax, switchDateTime) {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
     const staySegmentsSheet = ss.getSheetByName(STAY_SEGMENTS_SHEET_NAME);
@@ -4182,7 +4182,7 @@ function updateStaySegment(checkInId, newRoomNos, newRate, newPax) {
       return { success: false, message: "Required sheets not found." };
     }
 
-    const now = new Date().toISOString();
+    const now = switchDateTime ? new Date(switchDateTime).toISOString() : new Date().toISOString();
     let oldRoomNosStr = "";
 
     // 1. Find the active segment for this checkInId and end it
