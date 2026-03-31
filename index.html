@@ -1737,11 +1737,18 @@
       const [tableNo,setTableNo]=useState('');
       const CATEGORIES=['Breakfast','Lunch','Dinner','Snacks','FoodBeverage'];
       const CAT_LABELS={Breakfast:'Breakfast',Lunch:'Lunch',Dinner:'Dinner',Snacks:'Snacks',FoodBeverage:'Other Food & Beverage'};
-      const FOOD_CATEGORIES=['Starter','Roti/Rice','Veg','Non Veg','Tandoori'];
       const [fd,setFd]=useState({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
       const [menuItems,setMenuItems]=useState([]);
-      const [selFoodCat,setSelFoodCat]=useState('Starter');
+      const [selFoodCat,setSelFoodCat]=useState('');
       const [orderItems,setOrderItems]=useState([]);
+
+      const dynamicFoodCategories = [...new Set(menuItems.map(item => item.foodCategory).filter(Boolean))];
+
+      useEffect(()=>{
+        if (dynamicFoodCategories.length > 0 && (!selFoodCat || !dynamicFoodCategories.includes(selFoodCat))) {
+          setSelFoodCat(dynamicFoodCategories[0]);
+        }
+      }, [menuItems, selFoodCat]);
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
@@ -1916,7 +1923,7 @@
 
             <div style={{marginBottom:'20px'}}>
               <div style={{display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'10px', marginBottom:'15px'}}>
-                 {FOOD_CATEGORIES.map(c => (
+                 {dynamicFoodCategories.map(c => (
                     <button type="button" key={c} onClick={()=>setSelFoodCat(c)} className={`btn ${selFoodCat===c?'btn-primary':'btn-secondary'}`} style={{whiteSpace:'nowrap', borderRadius:'20px', padding:'6px 16px'}}>{c}</button>
                  ))}
               </div>
