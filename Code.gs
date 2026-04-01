@@ -1197,11 +1197,11 @@ function getAllCheckIns() {
 
 function getCheckInByRoomNo(roomNo) {
   try {
-    const checkIns = getAllCheckIns();
-    if (!checkIns.error) {
+    const checkIns = getActiveCheckInsWithStats();
+    if (!checkIns.error && Array.isArray(checkIns)) {
       for (let i = 0; i < checkIns.length; i++) {
         if (checkIns[i].status === 'Active') {
-          let rooms = checkIns[i].roomNumbers.split(',').map(r => r.trim());
+          let rooms = (checkIns[i].roomNumbers || '').split(',').map(r => r.trim());
           if (rooms.indexOf(roomNo.toString().trim()) !== -1) {
             return checkIns[i];
           }
