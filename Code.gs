@@ -1078,6 +1078,75 @@ function addCheckIn(checkInData) {
   }
 }
 
+function getActiveCheckInsWithStats() {
+  try {
+    const checkIns = getAllCheckIns();
+    if (checkIns.error || !Array.isArray(checkIns)) return [];
+
+    const activeCis = checkIns.filter(ci => ci.status === 'Active');
+
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
+    const restSheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+
+    const roomsData = roomsSheet && roomsSheet.getLastRow() > 1 ? roomsSheet.getDataRange().getValues() : [];
+    const restData = restSheet && restSheet.getLastRow() > 1 ? restSheet.getDataRange().getValues() : [];
+
+    // Map room rates for quick lookup
+    const roomRates = {};
+    for (let i = 1; i < roomsData.length; i++) {
+      const rNo = (roomsData[i][ROOM_NO_COL] || '').toString();
+      const rate = parseFloat(roomsData[i][ROOM_RATE_COL]) || 0;
+      roomRates[rNo] = rate;
+    }
+
+    const now = new Date();
+
+    return activeCis.map(ci => {
+      // Calculate nightsStayed
+      let ciDate = new Date(ci.checkInDate);
+      if (isNaN(ciDate.getTime())) ciDate = now; // Fallback
+      let timeDiff = now.getTime() - ciDate.getTime();
+      let days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      if (days < 1) days = 1;
+
+      const nightsStayed = days;
+
+      // Calculate liveRoomRent
+      let liveRoomRent = 0;
+      const assignedRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
+      assignedRooms.forEach(rn => {
+        liveRoomRent += (roomRates[rn] || 0) * nightsStayed;
+      });
+
+      // Calculate liveFoodBill
+      let liveFoodBill = 0;
+      for (let i = 1; i < restData.length; i++) {
+        const cId = (restData[i][REST_CHECKIN_ID_COL] || '').toString();
+        const status = (restData[i][REST_STATUS_COL] || '').toString();
+        if (cId === ci.checkInId && status === 'Active') {
+           liveFoodBill += parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0;
+        }
+      }
+
+      // Calculate liveBalance
+      const advancePaid = parseFloat(ci.advancePaid) || 0;
+      const liveBalance = (liveRoomRent + liveFoodBill) - advancePaid;
+
+      return {
+        ...ci,
+        nightsStayed,
+        liveRoomRent,
+        liveFoodBill,
+        liveBalance
+      };
+    });
+  } catch (e) {
+    Logger.log("Error in getActiveCheckInsWithStats: " + e.toString());
+    return [];
+  }
+}
+
 function getAllCheckIns() {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
