@@ -2053,7 +2053,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
     }
 
     function CheckoutView({user}){
-      const [roomNo,setRoomNo]=useState('');
+      const [activeRooms, setActiveRooms] = useState([]);
       const [fetching,setFetching]=useState(false);
       
       const [queuedCis, setQueuedCis] = useState([]);
@@ -2073,8 +2073,12 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const [discountPercent,setDiscountPercent]=useState(0);
       const [advanceToApply,setAdvanceToApply]=useState(0);
 
-      const fetchRoom=()=>{
-        if(!roomNo.trim()){Swal.fire({icon:'warning',text:'Enter a room number.'});return;}
+      useEffect(()=>{
+        google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
+      },[]);
+
+      const fetchRoom=(selectedRoomNo)=>{
+        if(!selectedRoomNo){Swal.fire({icon:'warning',text:'Select a room.'});return;}
         setFetching(true);
         
         google.script.run.withSuccessHandler(res=>{
@@ -2082,7 +2086,6 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
             if (queuedCis.find(ci => ci.checkInId === res.checkInId)) {
               setFetching(false);
               Swal.fire({icon:'info', title:'Already Queued', text:'This check-in is already in the checkout queue.'});
-              setRoomNo('');
               return;
             }
 
@@ -2103,14 +2106,13 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
               
               // Recalculate advance
               setAdvanceToApply(prev => prev + (parseFloat(res.advancePaid)||0));
-              setRoomNo('');
             }).withFailureHandler(e=>{setFetching(false);Swal.fire('Error',e.message,'error')}).getAllFoodOrders();
             
           } else {
             setFetching(false);
-            Swal.fire({icon:'info',title:'Not Found',text:'No active check-in found for room #'+roomNo});
+            Swal.fire({icon:'info',title:'Not Found',text:'No active check-in found for room #'+selectedRoomNo});
           }
-        }).withFailureHandler(e=>{setFetching(false);Swal.fire({icon:'error',text:e.message});}).getCheckInByRoomNo(roomNo);
+        }).withFailureHandler(e=>{setFetching(false);Swal.fire({icon:'error',text:e.message});}).getCheckInByRoomNo(selectedRoomNo);
       };
 
       const removeQueued = (ciId) => {
@@ -2199,9 +2201,39 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const totalAdvanceAvailable = queuedCis.reduce((sum, ci) => sum + (parseFloat(ci.advancePaid) || 0), 0);
 
       return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-object-group"></i> Advanced Checkout</h2></div>
-        <div className="checkout-fetch-section">
-          <div className="form-group"><label><i className="fas fa-bed"></i> Add Room to Checkout Cart</label><input value={roomNo} onChange={e=>setRoomNo(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')fetchRoom();}} placeholder="Enter room number..."/></div>
-          <button className="btn btn-primary" onClick={fetchRoom} disabled={fetching} style={{height:'50px',marginBottom:'0'}}>{fetching?<i className="fas fa-spinner fa-spin"/>:<><i className="fas fa-cart-plus"></i> Add</>}</button>
+        <div className="form-group">
+          <label>Select Rooms to Checkout *</label>
+          {activeRooms.length===0 ? (
+            <div style={{color:'#e74c3c',fontSize:'14px',marginBottom:'15px'}}><i className="fas fa-info-circle"></i> No active check-ins found. Check in guests first from the Check-In page.</div>
+          ) : (
+            <div style={{display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '15px'}}>
+              {Object.entries(activeRooms.reduce((acc, rm) => {
+                if (!acc[rm.checkInId]) acc[rm.checkInId] = { guestName: rm.guestName, rooms: [] };
+                acc[rm.checkInId].rooms.push(rm);
+                return acc;
+              }, {})).map(([ciId, group]) => (
+                <div key={ciId} style={{display: 'flex', flexDirection: 'column', gap: '5px', padding: '10px', backgroundColor: '#f9f9f9', border: '1px solid #ddd', borderRadius: '6px', minWidth: '150px'}}>
+                  <div style={{fontWeight: 'bold', color: 'var(--navy-primary)', fontSize: '14px', marginBottom: '5px'}}>
+                    <i className="fas fa-user-circle"></i> {group.guestName} <span style={{fontSize: '12px', color: '#888', fontWeight: 'normal'}}>(ID: {ciId})</span>
+                  </div>
+                  <div style={{display:'flex', flexWrap:'wrap', gap:'15px'}}>
+                    {group.rooms.map(rm => {
+                       const isQueued = queuedCis.some(ci => ci.checkInId === ciId);
+                       return (
+                         <button key={rm.roomNo} type="button"
+                           onClick={() => fetchRoom(rm.roomNo.toString())}
+                           disabled={isQueued || fetching}
+                           className={`btn ${isQueued ? 'btn-secondary' : 'btn-primary'}`}
+                           style={{padding: '6px 12px', fontSize: '13px', borderRadius: '4px', opacity: isQueued ? 0.5 : 1, cursor: isQueued ? 'not-allowed' : 'pointer'}}>
+                           #{rm.roomNo}
+                         </button>
+                       );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {queuedCis.length > 0 && <>
