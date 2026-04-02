@@ -2462,12 +2462,18 @@ function getDashboardData() {
     // Booking Revenue
     let bookingRevenue = { totalRevenue: 0, checkedOutCount: 0, activeBookingCount: 0, totalBookings: 0 };
     let recentBookings = [];
+    let todaysCheckIns = [];
+
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
     try {
       const bookSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(BOOKINGS_SHEET_NAME);
       const bookData = bookSheet.getDataRange().getValues();
 
       for (let i = 1; i < bookData.length; i++) {
-        let bStatus = (bookData[i][BOOKING_STATUS_COL] || "").toString().toLowerCase();
+        let bStatusRaw = (bookData[i][BOOKING_STATUS_COL] || "").toString();
+        let bStatus = bStatusRaw.toLowerCase();
         let bAmount = parseFloat(bookData[i][TOTAL_AMOUNT_COL]) || 0;
         let ciDate = bookData[i][CHECK_IN_COL] ? new Date(bookData[i][CHECK_IN_COL]) : null;
         if (bStatus === "checked out" || bStatus === "completed") {
@@ -2482,6 +2488,17 @@ function getDashboardData() {
           if (monthlyBookings.hasOwnProperty(mKey)) {
             monthlyBookings[mKey]++;
             monthlyRevenue[mKey] += bAmount;
+          }
+
+          if (bStatusRaw === 'Booked') {
+             const ciStr = ciDate.getFullYear() + '-' + String(ciDate.getMonth() + 1).padStart(2, '0') + '-' + String(ciDate.getDate()).padStart(2, '0');
+             if (ciStr === todayStr) {
+               todaysCheckIns.push({
+                 guestName: (bookData[i][GUEST_NAME_COL] || '').toString(),
+                 roomNo: (bookData[i][BOOKING_ROOM_NO_COL] || '').toString(),
+                 totalAmount: bAmount
+               });
+             }
           }
         }
         recentBookings.push({
@@ -2539,6 +2556,30 @@ function getDashboardData() {
       }
     } catch (invErr) { Logger.log("Could not load invoice data: " + invErr); }
 
+    // Today's Expected Check-Outs
+    let todaysCheckOuts = [];
+    try {
+      const ciSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(CHECKIN_SHEET_NAME);
+      if (ciSheet && ciSheet.getLastRow() > 1) {
+        const ciData = ciSheet.getDataRange().getValues();
+        for (let i = 1; i < ciData.length; i++) {
+          if ((ciData[i][CI_STATUS_COL] || '').toString() === 'Active') {
+            let coDate = ciData[i][CI_CHECKOUT_DATE_COL] ? new Date(ciData[i][CI_CHECKOUT_DATE_COL]) : null;
+            if (coDate) {
+               const coStr = coDate.getFullYear() + '-' + String(coDate.getMonth() + 1).padStart(2, '0') + '-' + String(coDate.getDate()).padStart(2, '0');
+               if (coStr === todayStr) {
+                 todaysCheckOuts.push({
+                   guestName: (ciData[i][CI_GUEST_NAME_COL] || '').toString(),
+                   roomNo: (ciData[i][CI_ROOM_NUMBERS_COL] || '').toString(),
+                   checkInId: (ciData[i][CI_ID_COL] || '').toString()
+                 });
+               }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
     // Current month budget
     let currentBudget = null;
     try {
@@ -2569,6 +2610,8 @@ function getDashboardData() {
       incomeCategories,
       bookingRevenue,
       recentBookings,
+      todaysCheckIns,
+      todaysCheckOuts,
       invoiceStats,
       currentBudget,
       defaultCurrency: settingsDefaultCurrency,
