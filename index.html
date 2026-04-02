@@ -2880,30 +2880,14 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       return(<div className="app-container"><Sidebar activeMenu={am} setActiveMenu={setAm} role={role} user={user} onLogout={onLogout} isOpen={so} setIsOpen={setSo}/><div className="main-content"><div className="header"><div style={{display:'flex',alignItems:'center',gap:'10px'}}><button className="hamburger" onClick={()=>setSo(!so)}><i className="fas fa-bars"></i></button><h1><i className="fas fa-hotel"></i> Hill View Eco Retreat</h1></div><div style={{fontSize:'14px',color:'#666'}}>Welcome, {user}</div></div><MainContent activeMenu={am} user={user} role={role}/></div><BottomNav activeMenu={am} setActiveMenu={setAm} role={role} onLogout={onLogout}/></div>);
     }
 
-    const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in ms
-
     function App(){
-      const getSession=()=>{try{const s=localStorage.getItem('hotel_session');if(!s)return null;const d=JSON.parse(s);if(Date.now()-d.loginTime>=SESSION_TIMEOUT){localStorage.removeItem('hotel_session');return null;}return d;}catch(e){localStorage.removeItem('hotel_session');return null;}};
+      const getSession=()=>{try{const s=localStorage.getItem('hotel_session');if(!s)return null;return JSON.parse(s);}catch(e){localStorage.removeItem('hotel_session');return null;}};
       const saved=getSession();
       const [li,setLi]=useState(!!saved);const [cu,setCu]=useState(saved?saved.user:null);const [ur,setUr]=useState(saved?saved.role:null);
 
       const doLogout=()=>{localStorage.removeItem('hotel_session');setLi(false);setCu(null);setUr(null);};
 
-      const handleLogin=(u,r)=>{const session={user:u,role:r,loginTime:Date.now()};localStorage.setItem('hotel_session',JSON.stringify(session));setLi(true);setCu(u);setUr(r);};
-
-      // Check session expiry every 30 seconds
-      useEffect(()=>{
-        if(!li)return;
-        const timer=setInterval(()=>{
-          const s=getSession();
-          if(!s){
-            clearInterval(timer);
-            doLogout();
-            Swal.fire({icon:'info',title:'Session Expired',text:'Your session has expired after 1 hour. Please login again.',confirmButtonColor:'#001f3f'});
-          }
-        },30000);
-        return()=>clearInterval(timer);
-      },[li]);
+      const handleLogin=(u,r)=>{const session={user:u,role:r};localStorage.setItem('hotel_session',JSON.stringify(session));setLi(true);setCu(u);setUr(r);};
 
       return(<div>{!li?<LoginPage onLogin={handleLogin}/>:<Dashboard user={cu} role={ur} onLogout={doLogout}/>}</div>);
     }
