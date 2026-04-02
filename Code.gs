@@ -1088,9 +1088,11 @@ function getActiveCheckInsWithStats() {
     const ss = SpreadsheetApp.openById(SS_ID);
     const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
     const restSheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+    const staySegmentsSheet = ss.getSheetByName(STAY_SEGMENTS_SHEET_NAME);
 
     const roomsData = roomsSheet && roomsSheet.getLastRow() > 1 ? roomsSheet.getDataRange().getValues() : [];
     const restData = restSheet && restSheet.getLastRow() > 1 ? restSheet.getDataRange().getValues() : [];
+    const segmentsData = staySegmentsSheet && staySegmentsSheet.getLastRow() > 1 ? staySegmentsSheet.getDataRange().getValues() : [];
 
     // Map room rates for quick lookup
     const roomRates = {};
@@ -1103,6 +1105,34 @@ function getActiveCheckInsWithStats() {
     const now = new Date();
 
     return activeCis.map(ci => {
+      // Find StaySegments for this check-in
+      const ciSegments = [];
+      for (let i = 1; i < segmentsData.length; i++) {
+        if ((segmentsData[i][SEG_CHECKIN_ID_COL] || '').toString() === ci.checkInId) {
+          let sStart = new Date(segmentsData[i][SEG_START_DATE_COL]);
+          if (isNaN(sStart.getTime())) sStart = new Date(ci.checkInDate);
+
+          let endDateStr = (segmentsData[i][SEG_END_DATE_COL] || '').toString();
+          let sEnd = endDateStr ? new Date(endDateStr) : now;
+          if (isNaN(sEnd.getTime())) sEnd = now;
+
+          // Default minimum of 1 night for calculating
+          let sDiff = sEnd.getTime() - sStart.getTime();
+          let sDays = Math.ceil(sDiff / (1000 * 3600 * 24));
+          if (sDays < 1) sDays = 1;
+
+          let rate = parseFloat(segmentsData[i][SEG_RATE_COL]) || 0;
+          let roomNos = (segmentsData[i][SEG_ROOM_NOS_COL] || '').toString();
+
+          ciSegments.push({
+             roomNos: roomNos,
+             rate: rate,
+             nights: sDays,
+             segmentTotal: rate * sDays
+          });
+        }
+      }
+
       // Calculate nightsStayed
       let ciDate = new Date(ci.checkInDate);
       if (isNaN(ciDate.getTime())) ciDate = now; // Fallback
@@ -1114,10 +1144,16 @@ function getActiveCheckInsWithStats() {
 
       // Calculate liveRoomRent
       let liveRoomRent = 0;
-      const assignedRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
-      assignedRooms.forEach(rn => {
-        liveRoomRent += (roomRates[rn] || 0) * nightsStayed;
-      });
+      if (ciSegments.length > 0) {
+        ciSegments.forEach(seg => {
+          liveRoomRent += seg.segmentTotal;
+        });
+      } else {
+        const assignedRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
+        assignedRooms.forEach(rn => {
+          liveRoomRent += (roomRates[rn] || 0) * nightsStayed;
+        });
+      }
 
       // Calculate liveFoodBill
       let liveFoodBill = 0;
@@ -1138,7 +1174,8 @@ function getActiveCheckInsWithStats() {
         nightsStayed,
         liveRoomRent,
         liveFoodBill,
-        liveBalance
+        liveBalance,
+        staySegments: ciSegments
       };
     });
   } catch (e) {

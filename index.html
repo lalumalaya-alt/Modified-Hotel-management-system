@@ -2261,6 +2261,20 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
               {queuedCis.map(ci => {
                  const ciRooms = (ci.roomNumbers||'').split(',').map(r=>r.trim()).filter(Boolean);
                  const ciOrders = foodOrdersMap[ci.checkInId] || [];
+
+                 const roomStats = {};
+                 if (ci.staySegments && ci.staySegments.length > 0) {
+                   ci.staySegments.forEach(seg => {
+                     const segRooms = (seg.roomNos || '').split(',').map(r => r.trim()).filter(Boolean);
+                     const rCount = segRooms.length || 1;
+                     segRooms.forEach(rNo => {
+                       if (!roomStats[rNo]) roomStats[rNo] = { nights: 0, rent: 0 };
+                       roomStats[rNo].nights += seg.nights;
+                       roomStats[rNo].rent += (seg.segmentTotal / rCount);
+                     });
+                   });
+                 }
+
                  return (
                    <div key={ci.checkInId} style={{minWidth:'300px', flex:'0 0 auto', background:'#f8f9fa', border:'1px solid #dee2e6', borderRadius:'4px', padding:'15px'}}>
                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'10px'}}>
@@ -2275,15 +2289,26 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
                      </div>
                      
                      <div style={{marginTop:'15px'}}>
-                       <strong>Rooms ({ci.nightsStayed || 1} Nights - Rent: {fmtCur(ci.liveRoomRent || 0)})</strong>
+                       <strong>Rooms</strong>
                        {ciRooms.map(rn => (
                          <label key={rn} style={{display:'flex',alignItems:'center',gap:'8px',marginTop:'5px',cursor:'pointer',fontSize:'13px'}}>
                            <input type="checkbox" checked={(selectedRoomsMap[ci.checkInId]||[]).includes(rn)} onChange={()=>toggleRoom(ci.checkInId, rn)} />
-                           Room {rn}
+                           Room {rn} ({roomStats[rn]?.nights || ci.nightsStayed || 1} Nights - Rent: {fmtCur(roomStats[rn]?.rent || ci.liveRoomRent || 0)})
                          </label>
                        ))}
                      </div>
                      
+                     <div style={{marginTop:'10px', padding:'10px', background:'#e9ecef', borderRadius:'4px'}}>
+                       <strong style={{fontSize:'12px', color:'#666'}}>Past Room Shifts</strong>
+                       {Object.keys(roomStats).filter(rn => !ciRooms.includes(rn)).length === 0 && <div style={{fontSize:'11px', color:'#999', marginTop:'2px'}}>No past shifts recorded.</div>}
+                       {Object.keys(roomStats).filter(rn => !ciRooms.includes(rn)).map(rn => (
+                         <div key={rn} style={{fontSize:'12px', color:'#555', marginTop:'4px'}}>
+                           <i className="fas fa-history" style={{marginRight:'5px', color:'#999'}}></i>
+                           Room {rn}: {roomStats[rn].nights} Nights - Rent: {fmtCur(roomStats[rn].rent)}
+                         </div>
+                       ))}
+                     </div>
+
                      <div style={{marginTop:'15px'}}>
                        <strong>POS Orders</strong>
                        {ciOrders.length===0 && <div style={{fontSize:'12px',color:'#888',marginTop:'5px'}}>No pending orders</div>}
