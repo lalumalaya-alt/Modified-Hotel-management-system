@@ -1967,13 +1967,51 @@
 
     function HotelInvoiceModal({data,onClose}){
       const d=data;
+      const [billView, setBillView] = useState('Combined');
+
       const fmtD=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});};
       const fmtDShort=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});};
       const n2=(v)=>(parseFloat(v)||0).toFixed(2);
       const cats=['extraBed','foodBev','miniBar','earlyClean','xerox','laundry','fax','spbuc','travels','misc'];
-const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fax','SP/BUC','Travels','Misc'];
+      const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fax','SP/BUC','Travels','Misc'];
+
+      // Calculate dynamic active day rows based on view mode
+      const activeDayByDay = (d.dayByDay||[]).map(row => {
+         const newRow = {...row};
+         if (billView === 'Room Only') {
+            newRow.foodBev = 0;
+         } else if (billView === 'Food Only') {
+            newRow.rooms = 0;
+            newRow.extraBed = 0;
+            newRow.miniBar = 0;
+            newRow.earlyClean = 0;
+            newRow.xerox = 0;
+            newRow.laundry = 0;
+            newRow.fax = 0;
+            newRow.spbuc = 0;
+            newRow.travels = 0;
+            newRow.misc = 0;
+         }
+         newRow.dayTotal = (parseFloat(newRow.rooms)||0) + cats.reduce((sum, c) => sum + (parseFloat(newRow[c])||0), 0);
+         return newRow;
+      });
+
       const colTotals={};cats.forEach(c=>colTotals[c]=0);let totalRoomsCol=0;
-      (d.dayByDay||[]).forEach(row=>{totalRoomsCol+=row.rooms||0;cats.forEach(c=>colTotals[c]+=row[c]||0);});
+      activeDayByDay.forEach(row=>{totalRoomsCol+=row.rooms||0;cats.forEach(c=>colTotals[c]+=row[c]||0);});
+
+      // Live totals
+      const liveSubtotal = activeDayByDay.reduce((sum, row) => sum + row.dayTotal, 0);
+      const liveDiscount = liveSubtotal * ((parseFloat(d.discountPercent)||0) / 100);
+      const afterDiscount = liveSubtotal - liveDiscount;
+      let liveSgst = 0, liveCgst = 0;
+      if (d.gstType === 'Excluding') {
+         liveSgst = afterDiscount * ((parseFloat(d.sgstPercent)||0) / 100);
+         liveCgst = afterDiscount * ((parseFloat(d.cgstPercent)||0) / 100);
+      }
+      const liveBillAmount = afterDiscount + liveSgst + liveCgst;
+      const liveAdvance = billView === 'Food Only' ? 0 : (parseFloat(d.advancePaid)||0);
+      const liveNetAmount = Math.max(0, liveBillAmount - liveAdvance);
+
 
       const planLabel=(fp)=>{if(!fp||fp==='None')return'EP';if(fp.indexOf('Dinner')!==-1)return'MAP';return'CP';};
 
@@ -1989,21 +2027,21 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
       const doPrint=()=>{window.print();};
 
       const doPdf=()=>{
-        const dayRows=(d.dayByDay||[]).map(row=>[fmtDShort(row.date),n2(row.rooms),n2(row.extraBed),n2(row.foodBev),n2(row.miniBar),n2(row.earlyClean),n2(row.xerox),n2(row.laundry),n2(row.fax),n2(row.spbuc),n2(row.travels),n2(row.misc),n2(row.dayTotal),n2(row.grandTotal)]);
-        const totRow=['Totals',n2(totalRoomsCol),...cats.map(c=>n2(colTotals[c])),n2(d.subtotal||0),''];
+        const dayRows=(activeDayByDay||[]).map(row=>[fmtDShort(row.date),n2(row.rooms),n2(row.extraBed),n2(row.foodBev),n2(row.miniBar),n2(row.earlyClean),n2(row.xerox),n2(row.laundry),n2(row.fax),n2(row.spbuc),n2(row.travels),n2(row.misc),n2(row.dayTotal),'']);
+        const totRow=['Totals',n2(totalRoomsCol),...cats.map(c=>n2(colTotals[c])),n2(liveSubtotal),''];
         const doc={pageSize:'A4',pageOrientation:'landscape',pageMargins:[20,20,20,20],content:[
           {text:d.hotelName||'Hill View Eco Retreat',style:'hdr',alignment:'center'},{text:(d.hotelAddress||'')+' | '+(d.hotelPhone||'')+' | '+(d.hotelEmail||''),alignment:'center',fontSize:9,margin:[0,0,0,5]},
           d.hotelTIN?{text:'GSTIN: '+d.hotelTIN,alignment:'center',fontSize:9,margin:[0,0,0,8]}:{text:'',margin:[0,0,0,8]},
           {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',d.address?{text:'Address: '+d.address+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
-          {text:'\n'},{table:{headerRows:1,widths:['auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto'],body:[[{text:'Date',style:'th'},{text:'Rooms',style:'th'},{text:'E.Bed',style:'th'},{text:'Fds&Bvg',style:'th'},{text:'MiniBar',style:'th'},{text:'ErlyCln',style:'th'},{text:'Xerox',style:'th'},{text:'Laundry',style:'th'},{text:'Fax',style:'th'},{text:'SP/BUC',style:'th'},{text:'Travels',style:'th'},{text:'Misc',style:'th'},{text:'Day Total',style:'th'},{text:'Gr.Total',style:'th'}],...dayRows,totRow.map((v,i)=>i===0?{text:v,bold:true}:{text:v,bold:true})]},fontSize:8},
-          {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(d.subtotal||0),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(d.discountAmount||0),alignment:'right'}],['SGST '+n2(d.sgstPercent||0)+'%',{text:n2(d.sgstAmount||0),alignment:'right'}],['CGST '+n2(d.cgstPercent||0)+'%',{text:n2(d.cgstAmount||0),alignment:'right'}],['Bill Amount',{text:n2(d.billAmount||0),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(d.advancePaid||0),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(d.netAmount||0),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
-          {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(d.billAmount||0),italics:true,fontSize:10,margin:[0,5,0,20]},
+          {text:'\n'},{table:{headerRows:1,widths:['auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto','auto'],body:[[{text:'Date',style:'th'},{text:'Rooms',style:'th'},{text:'E.Bed',style:'th'},{text:'Fds&Bvg',style:'th'},{text:'MiniBar',style:'th'},{text:'ErlyCln',style:'th'},{text:'Xerox',style:'th'},{text:'Laundry',style:'th'},{text:'Fax',style:'th'},{text:'SP/BUC',style:'th'},{text:'Travels',style:'th'},{text:'Misc',style:'th'},{text:'Day Total',style:'th'},{text:'',style:'th'}],...dayRows,totRow.map((v,i)=>i===0?{text:v,bold:true}:{text:v,bold:true})]},fontSize:8},
+          {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(liveSubtotal),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(liveDiscount),alignment:'right'}],['SGST '+n2(d.sgstPercent||0)+'%',{text:n2(liveSgst),alignment:'right'}],['CGST '+n2(d.cgstPercent||0)+'%',{text:n2(liveCgst),alignment:'right'}],['Bill Amount',{text:n2(liveBillAmount),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(liveAdvance),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(liveNetAmount),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
+          {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(liveBillAmount),italics:true,fontSize:10,margin:[0,5,0,20]},
           {columns:[{text:'Guest\'s Signature\n_______________',alignment:'center',fontSize:9},{text:'PLEASE DEPOSIT YOUR KEY',alignment:'center',fontSize:9,bold:true},{text:'Admin / Front Office\n_______________',alignment:'center',fontSize:9}]}
         ],styles:{hdr:{fontSize:18,bold:true,color:'#001f3f'},th:{bold:true,fontSize:8,color:'white',fillColor:'#001f3f',alignment:'center'}},defaultStyle:{fontSize:10}};
-        pdfMake.createPdf(doc).download('Invoice-'+(d.billNumber||d.checkInId)+'.pdf');
+        pdfMake.createPdf(doc).download('Invoice-'+(d.billNumber||d.checkInId)+'-'+billView.replace(/\s+/g,'')+'.pdf');
       };
 
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal" style={{maxWidth:'1050px',width:'95%'}} onClick={e=>e.stopPropagation()}><div className="modal-header no-print"><h3><i className="fas fa-file-invoice"></i> Hotel Invoice</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body" style={{padding:'15px'}}>
+      return(<div className="modal-overlay" onClick={onClose}><div className="modal" style={{maxWidth:'1050px',width:'95%'}} onClick={e=>e.stopPropagation()}><div className="modal-header no-print"><div style={{display:'flex',alignItems:'center',gap:'15px'}}><h3><i className="fas fa-file-invoice"></i> Hotel Invoice</h3><select value={billView} onChange={e=>setBillView(e.target.value)} style={{padding:'5px',borderRadius:'4px',border:'1px solid #ccc',fontSize:'14px'}}><option>Combined</option><option>Room Only</option><option>Food Only</option></select></div><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body" style={{padding:'15px'}}>
         <div className="hotel-invoice">
           <div className="hotel-invoice-header">
             {d.hotelLogo&&<img src={d.hotelLogo} className="hotel-logo" alt="Logo"/>}
@@ -2031,21 +2069,21 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
             </tbody></table></div>
           </div>
           <table className="invoice-day-table"><thead><tr><th>Date</th><th>Rooms</th>{allCatHeaders.map(h=><th key={h}>{h}</th>)}<th>Days Total</th><th>Gr.Total</th></tr></thead>
-            <tbody>{(d.dayByDay||[]).map((row,i)=><tr key={i}><td style={{textAlign:'center'}}>{fmtDShort(row.date)}</td><td>{n2(row.rooms)}</td><td>{n2(row.extraBed)}</td><td>{n2(row.foodBev)}</td><td>{n2(row.miniBar)}</td><td>{n2(row.earlyClean)}</td><td>{n2(row.xerox)}</td><td>{n2(row.laundry)}</td><td>{n2(row.fax)}</td><td>{n2(row.spbuc)}</td><td>{n2(row.travels)}</td><td>{n2(row.misc)}</td><td><strong>{n2(row.dayTotal)}</strong></td><td><strong>{n2(row.grandTotal)}</strong></td></tr>)}</tbody>
-            <tfoot><tr><td style={{textAlign:'center'}}><strong>Totals</strong></td><td><strong>{n2(totalRoomsCol)}</strong></td>{cats.map(c=><td key={c}><strong>{n2(colTotals[c])}</strong></td>)}<td><strong>{n2(d.subtotal||0)}</strong></td><td></td></tr></tfoot>
+            <tbody>{activeDayByDay.map((row,i)=><tr key={i}><td style={{textAlign:'center'}}>{fmtDShort(row.date)}</td><td>{n2(row.rooms)}</td><td>{n2(row.extraBed)}</td><td>{n2(row.foodBev)}</td><td>{n2(row.miniBar)}</td><td>{n2(row.earlyClean)}</td><td>{n2(row.xerox)}</td><td>{n2(row.laundry)}</td><td>{n2(row.fax)}</td><td>{n2(row.spbuc)}</td><td>{n2(row.travels)}</td><td>{n2(row.misc)}</td><td><strong>{n2(row.dayTotal)}</strong></td><td><strong></strong></td></tr>)}</tbody>
+            <tfoot><tr><td style={{textAlign:'center'}}><strong>Totals</strong></td><td><strong>{n2(totalRoomsCol)}</strong></td>{cats.map(c=><td key={c}><strong>{n2(colTotals[c])}</strong></td>)}<td><strong>{n2(liveSubtotal)}</strong></td><td></td></tr></tfoot>
           </table>
           <table className="invoice-totals-table"><tbody>
-            <tr><td>Total Amount</td><td>{n2(d.subtotal||0)}</td></tr>
-            {(d.discountAmount||0)>0&&<tr><td>Discount ({n2(d.discountPercent||0)}%)</td><td>- {n2(d.discountAmount||0)}</td></tr>}
-            <tr><td>SGST {n2(d.sgstPercent||0)}%</td><td>{n2(d.sgstAmount||0)}</td></tr>
-            <tr><td>CGST {n2(d.cgstPercent||0)}%</td><td>{n2(d.cgstAmount||0)}</td></tr>
-            <tr><td>Bill Amount</td><td>{n2(d.billAmount||0)}</td></tr>
-            {(d.advancePaid||0)>0&&<tr><td>Less Advance</td><td>- {n2(d.advancePaid||0)}</td></tr>}
-            <tr><td>Net Amount</td><td>{n2(d.netAmount||0)}</td></tr>
+            <tr><td>Total Amount</td><td>{n2(liveSubtotal)}</td></tr>
+            {liveDiscount>0&&<tr><td>Discount ({n2(d.discountPercent||0)}%)</td><td>- {n2(liveDiscount)}</td></tr>}
+            <tr><td>SGST {n2(d.sgstPercent||0)}%</td><td>{n2(liveSgst)}</td></tr>
+            <tr><td>CGST {n2(d.cgstPercent||0)}%</td><td>{n2(liveCgst)}</td></tr>
+            <tr><td>Bill Amount</td><td>{n2(liveBillAmount)}</td></tr>
+            {liveAdvance>0&&<tr><td>Less Advance</td><td>- {n2(liveAdvance)}</td></tr>}
+            <tr><td>Net Amount</td><td>{n2(liveNetAmount)}</td></tr>
           </tbody></table>
           <div className="invoice-footer">
             <p>Linked Rooms: {d.roomNumbers||'-'}</p>
-            <p className="amount-words">{numToWords(d.billAmount||0)}</p>
+            <p className="amount-words">{numToWords(liveBillAmount)}</p>
             <div className="invoice-signatures"><div>Guest's Signature</div><div>PLEASE DEPOSIT YOUR KEY</div><div>Admin / Front Office InCharge</div></div>
           </div>
         </div>
