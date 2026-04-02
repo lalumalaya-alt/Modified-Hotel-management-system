@@ -2167,110 +2167,112 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       });
     }
 
-    // 6. Database Updates: Physical Rooms
-    for (let j = 1; j < roomsData.length; j++) {
-      let rn = (roomsData[j][ROOM_NO_COL] || '').toString();
-      if (allRoomNosArr.includes(rn)) {
-        roomsSheet.getRange(j + 1, ROOM_STATUS_COL + 1).setValue("Available");
+    if (!checkoutData.isPreview) {
+      // 6. Database Updates: Physical Rooms
+      for (let j = 1; j < roomsData.length; j++) {
+        let rn = (roomsData[j][ROOM_NO_COL] || '').toString();
+        if (allRoomNosArr.includes(rn)) {
+          roomsSheet.getRange(j + 1, ROOM_STATUS_COL + 1).setValue("Available");
+        }
       }
-    }
 
-    // 7. Database Updates: POS Orders
-    foodOrders.forEach(o => {
-       restSheet.getRange(o.rowIndex + 1, REST_STATUS_COL + 1).setValue("Billed");
-       restSheet.getRange(o.rowIndex + 1, REST_BILLED_CHECKIN_ID_COL + 1).setValue(billNumber);
-    });
+      // 7. Database Updates: POS Orders
+      foodOrders.forEach(o => {
+         restSheet.getRange(o.rowIndex + 1, REST_STATUS_COL + 1).setValue("Billed");
+         restSheet.getRange(o.rowIndex + 1, REST_BILLED_CHECKIN_ID_COL + 1).setValue(billNumber);
+      });
 
-    // 8. Database Updates: Generate ONE master invoice in the Invoices sheet
-    const masterInvSheet = ss.getSheetByName(INVOICES_SHEET_NAME);
-    if (masterInvSheet) {
-      const invoiceItems = [
-        { description: `Combined Room Rent (${allRoomNosArr.length} rooms)`, amount: totalRoomRent },
-        { description: `Total POS Orders`, amount: totalFooding + totalExtraBed + totalOtherServices }
-      ];
+      // 8. Database Updates: Generate ONE master invoice in the Invoices sheet
+      const masterInvSheet = ss.getSheetByName(INVOICES_SHEET_NAME);
+      if (masterInvSheet) {
+        const invoiceItems = [
+          { description: `Combined Room Rent (${allRoomNosArr.length} rooms)`, amount: totalRoomRent },
+          { description: `Total POS Orders`, amount: totalFooding + totalExtraBed + totalOtherServices }
+        ];
 
-      const nowStr = new Date().toISOString();
-      const invoiceRow = new Array(25).fill('');
-      invoiceRow[0] = billNumber; 
-      invoiceRow[1] = primaryGuestData.guestName; 
-      invoiceRow[2] = primaryGuestData.mobile; 
-      invoiceRow[3] = primaryGuestData.email; 
-      invoiceRow[4] = primaryGuestData.gstNumber || ""; 
-      invoiceRow[5] = defaultCurrency; 
-      invoiceRow[6] = nowStr; 
-      invoiceRow[7] = nowStr; 
-      invoiceRow[8] = "Paid"; 
-      invoiceRow[9] = JSON.stringify(invoiceItems); 
-      invoiceRow[10] = subtotal; 
-      invoiceRow[11] = true; 
-      invoiceRow[12] = gstPercent; 
-      invoiceRow[13] = sgstAmount + cgstAmount; 
-      invoiceRow[14] = false; 
-      invoiceRow[15] = 0; 
-      invoiceRow[16] = 0; 
-      invoiceRow[17] = 0; 
-      invoiceRow[18] = 0; 
-      invoiceRow[19] = discountAmount; 
-      invoiceRow[20] = billAmount; 
-      invoiceRow[21] = `Merged: ${Object.keys(roomsByCi).join(', ')}`; 
-      invoiceRow[22] = ""; 
-      invoiceRow[23] = ""; 
-      invoiceRow[24] = "System"; 
-      invoiceRow[25] = nowStr; 
+        const nowStr = new Date().toISOString();
+        const invoiceRow = new Array(25).fill('');
+        invoiceRow[0] = billNumber;
+        invoiceRow[1] = primaryGuestData.guestName;
+        invoiceRow[2] = primaryGuestData.mobile;
+        invoiceRow[3] = primaryGuestData.email;
+        invoiceRow[4] = primaryGuestData.gstNumber || "";
+        invoiceRow[5] = defaultCurrency;
+        invoiceRow[6] = nowStr;
+        invoiceRow[7] = nowStr;
+        invoiceRow[8] = "Paid";
+        invoiceRow[9] = JSON.stringify(invoiceItems);
+        invoiceRow[10] = subtotal;
+        invoiceRow[11] = true;
+        invoiceRow[12] = gstPercent;
+        invoiceRow[13] = sgstAmount + cgstAmount;
+        invoiceRow[14] = false;
+        invoiceRow[15] = 0;
+        invoiceRow[16] = 0;
+        invoiceRow[17] = 0;
+        invoiceRow[18] = 0;
+        invoiceRow[19] = discountAmount;
+        invoiceRow[20] = billAmount;
+        invoiceRow[21] = `Merged: ${Object.keys(roomsByCi).join(', ')}`;
+        invoiceRow[22] = "";
+        invoiceRow[23] = "";
+        invoiceRow[24] = "System";
+        invoiceRow[25] = nowStr;
 
-      masterInvSheet.appendRow(invoiceRow);
-    }
+        masterInvSheet.appendRow(invoiceRow);
+      }
 
-    // 9. Database Updates: Check-In Records (Partial vs Full logic)
-    let advanceToDeduct = advanceToApply; // How much advance we still need to deduct from the active sheets
-    for (let ciRec of matchedCis) {
-      let allCiRoomNumbers = (ciRec.data[CI_ROOM_NUMBERS_COL] || '').toString().split(',').map(r => r.trim()).filter(Boolean);
-      let remainingCiRooms = allCiRoomNumbers.filter(r => !ciRec.selectedRoomNos.includes(r));
-      let currentCiAdvance = parseFloat(ciRec.data[CI_ADVANCE_PAID_COL]) || 0;
-      
-      if (remainingCiRooms.length === 0) {
-        // Full checkout for this CI
-        ciSheet.getRange(ciRec.rowIndex + 1, CI_STATUS_COL + 1).setValue("Checked Out");
-        ciSheet.getRange(ciRec.rowIndex + 1, CI_CHECKOUT_DATE_COL + 1).setValue(actualCheckOutDate.toISOString());
-        ciSheet.getRange(ciRec.rowIndex + 1, CI_CHECKOUT_TIME_COL + 1).setValue(checkOutTime);
+      // 9. Database Updates: Update CheckIn/Bookings Sheets
+      let advanceToDeduct = advanceToApply; // How much advance we still need to deduct from the active sheets
+      for (let ciRec of matchedCis) {
+        let allCiRoomNumbers = (ciRec.data[CI_ROOM_NUMBERS_COL] || '').toString().split(',').map(r => r.trim()).filter(Boolean);
+        let remainingCiRooms = allCiRoomNumbers.filter(r => !ciRec.selectedRoomNos.includes(r));
+        let currentCiAdvance = parseFloat(ciRec.data[CI_ADVANCE_PAID_COL]) || 0;
         
-        // Advance is considered fully consumed, deduct it from our pool so we know how much more to drain
-        advanceToDeduct = advanceToDeduct - currentCiAdvance;
-        if (advanceToDeduct < 0) advanceToDeduct = 0; // Guard
-        
-        // Mark linked booking as checked out
-        if (ciRec.data[CI_LINKED_TICKET_COL]) {
-          const bData = bookingsSheet.getDataRange().getValues();
-          for (let i = 1; i < bData.length; i++) {
-            if ((bData[i][TICKET_ID_COL] || '').toString() === ciRec.data[CI_LINKED_TICKET_COL].toString()) {
-              bookingsSheet.getRange(i + 1, BOOKING_STATUS_COL + 1).setValue("Checked Out");
-              break;
+        if (remainingCiRooms.length === 0) {
+          // Full checkout for this CI
+          ciSheet.getRange(ciRec.rowIndex + 1, CI_STATUS_COL + 1).setValue("Checked Out");
+          ciSheet.getRange(ciRec.rowIndex + 1, CI_CHECKOUT_DATE_COL + 1).setValue(actualCheckOutDate.toISOString());
+          ciSheet.getRange(ciRec.rowIndex + 1, CI_CHECKOUT_TIME_COL + 1).setValue(checkOutTime);
+
+          // Advance is considered fully consumed, deduct it from our pool so we know how much more to drain
+          advanceToDeduct = advanceToDeduct - currentCiAdvance;
+          if (advanceToDeduct < 0) advanceToDeduct = 0; // Guard
+
+          // Mark linked booking as checked out
+          if (ciRec.data[CI_LINKED_TICKET_COL]) {
+            const bData = bookingsSheet.getDataRange().getValues();
+            for (let i = 1; i < bData.length; i++) {
+              if ((bData[i][TICKET_ID_COL] || '').toString() === ciRec.data[CI_LINKED_TICKET_COL].toString()) {
+                bookingsSheet.getRange(i + 1, BOOKING_STATUS_COL + 1).setValue("Checked Out");
+                break;
+              }
             }
           }
-        }
-      } else {
-        // Partial checkout for this CI - keep active
-        ciSheet.getRange(ciRec.rowIndex + 1, CI_ROOM_NUMBERS_COL + 1).setValue(remainingCiRooms.join(', '));
-        ciSheet.getRange(ciRec.rowIndex + 1, CI_NUM_ROOMS_COL + 1).setValue(remainingCiRooms.length);
-        
-        // Proportionately or aggressively deduct used advance from the active sheet
-        if (advanceToDeduct > 0) {
-           if (currentCiAdvance >= advanceToDeduct) {
-              ciSheet.getRange(ciRec.rowIndex + 1, CI_ADVANCE_PAID_COL + 1).setValue(currentCiAdvance - advanceToDeduct);
-              advanceToDeduct = 0;
-           } else {
-              ciSheet.getRange(ciRec.rowIndex + 1, CI_ADVANCE_PAID_COL + 1).setValue(0);
-              advanceToDeduct -= currentCiAdvance;
-           }
+        } else {
+          // Partial checkout for this CI - keep active
+          ciSheet.getRange(ciRec.rowIndex + 1, CI_ROOM_NUMBERS_COL + 1).setValue(remainingCiRooms.join(', '));
+          ciSheet.getRange(ciRec.rowIndex + 1, CI_NUM_ROOMS_COL + 1).setValue(remainingCiRooms.length);
+
+          // Proportionately or aggressively deduct used advance from the active sheet
+          if (advanceToDeduct > 0) {
+             if (currentCiAdvance >= advanceToDeduct) {
+                ciSheet.getRange(ciRec.rowIndex + 1, CI_ADVANCE_PAID_COL + 1).setValue(currentCiAdvance - advanceToDeduct);
+                advanceToDeduct = 0;
+             } else {
+                ciSheet.getRange(ciRec.rowIndex + 1, CI_ADVANCE_PAID_COL + 1).setValue(0);
+                advanceToDeduct -= currentCiAdvance;
+             }
+          }
         }
       }
-    }
 
-    SpreadsheetApp.flush();
+      SpreadsheetApp.flush();
+    }
 
     return {
       success: true,
-      message: "Advanced Checkout completed successfully.",
+      message: checkoutData.isPreview ? 'Preview generated.' : 'Advanced Checkout completed successfully.',
       invoiceData: {
         billNumber, 
         checkInId: Object.keys(roomsByCi).join(', '),

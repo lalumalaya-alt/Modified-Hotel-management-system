@@ -2252,7 +2252,7 @@
         });
       };
 
-      const doAdvancedCheckout=()=>{
+      const doAdvancedCheckout = (isPreview = false) => {
         if(queuedCis.length === 0){Swal.fire({icon:'warning',text:'Add at least one check-in to the queue.'});return;}
         if(!primaryCiId){Swal.fire({icon:'warning',text:'Please select a primary billing guest from the queue.'});return;}
         
@@ -2277,11 +2277,11 @@
            Swal.fire({icon:'warning',text:'Please select at least one room or POS order to checkout.'});return;
         }
         
-        setSaving(true);Swal.fire({title:'Processing Advanced Checkout...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+        setSaving(true);Swal.fire({title: isPreview ? 'Generating Preview...' : 'Processing Advanced Checkout...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         
         const payload = {
           checkOutDate, checkOutTime, paymentMode:payMode, amountPaid:parseFloat(amtPaid)||0, 
-          discountPercent, advanceToApply: parseFloat(advanceToApply)||0
+          discountPercent, advanceToApply: parseFloat(advanceToApply)||0, isPreview
         };
         
         const primaryGuestData = { ...mg };
@@ -2289,10 +2289,14 @@
         google.script.run.withSuccessHandler(res=>{
           Swal.close();setSaving(false);
           if(res.success){
-            Swal.fire({icon:'success',title:'Checkout Complete!',text:res.message,timer:2500,showConfirmButton:false});
-            if(res.invoiceData){setInv(res.invoiceData);}
-            setQueuedCis([]); setFoodOrdersMap({}); setPrimaryCiId(null);
-            setSelectedRoomsMap({}); setSelectedOrdersMap({});
+            if (isPreview) {
+               if(res.invoiceData){setInv(res.invoiceData);}
+            } else {
+               Swal.fire({icon:'success',title:'Checkout Complete!',text:res.message,timer:2500,showConfirmButton:false});
+               if(res.invoiceData){setInv(res.invoiceData);}
+               setQueuedCis([]); setFoodOrdersMap({}); setPrimaryCiId(null);
+               setSelectedRoomsMap({}); setSelectedOrdersMap({});
+            }
           }else Swal.fire({icon:'error',text:res.message});
         }).withFailureHandler(e=>{Swal.close();setSaving(false);Swal.fire({icon:'error',text:e.message});}).processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOrdersFlat, payload);
       };
@@ -2448,7 +2452,8 @@
           </div>
 
           <div className="form-actions">
-            <button className="btn btn-primary" onClick={doAdvancedCheckout} disabled={saving || !primaryCiId}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-file-invoice-dollar"></i> Generate Invoice for Selected</>}</button>
+            <button type="button" className="btn btn-info" style={{background: '#17a2b8', color: 'white'}} onClick={() => doAdvancedCheckout(true)} disabled={saving || !primaryCiId}><i className="fas fa-eye"></i> Preview Bill</button>
+            <button className="btn btn-primary" onClick={() => doAdvancedCheckout(false)} disabled={saving || !primaryCiId}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-file-invoice-dollar"></i> Generate Invoice for Selected</>}</button>
             <button className="btn btn-secondary" onClick={()=>{setQueuedCis([]);setFoodOrdersMap({});setPrimaryCiId(null);setSelectedRoomsMap({});setSelectedOrdersMap({});setAdvanceToApply(0);}}><i className="fas fa-times"></i> Clear Cart</button>
           </div>
         </>}
