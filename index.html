@@ -795,27 +795,6 @@
       const f=st?.financeSummary||{};const b=st?.bookingRevenue||{};const inv=st?.invoiceStats||{};const bdg=st?.currentBudget||null;const rb=st?.recentBookings||[];
       const occRate=st?.totalRooms>0?Math.round((st?.bookedRooms/st?.totalRooms)*100):0;
       return(<div>
-        {/* Row 1: 4 Colorful KPI Cards */}
-        <div className="kpi-cards">
-          <div className="kpi-card c-navy"><i className="fas fa-money-bill-wave kpi-card-icon"></i><div className="kpi-card-title">Total Revenue</div><div className="kpi-card-value">{fmtCur(b.totalRevenue)}</div><div className="kpi-card-sub"><i className="fas fa-calendar-check"></i> {b.totalBookings||0} total bookings</div></div>
-          <div className="kpi-card c-teal"><i className="fas fa-bed kpi-card-icon"></i><div className="kpi-card-title">Active Bookings</div><div className="kpi-card-value">{b.activeBookingCount||0}</div><div className="kpi-card-sub"><i className="fas fa-sign-out-alt"></i> {b.checkedOutCount||0} checked out</div></div>
-          <div className="kpi-card c-green"><i className="fas fa-wallet kpi-card-icon"></i><div className="kpi-card-title">Net Balance</div><div className="kpi-card-value">{fmtCur(f.netBalance)}</div><div className="kpi-card-sub"><i className="fas fa-arrow-up"></i> {fmtCur(f.totalIncome)} income</div></div>
-          <div className="kpi-card c-orange"><i className="fas fa-chart-pie kpi-card-icon"></i><div className="kpi-card-title">Occupancy Rate</div><div className="kpi-card-value">{occRate}%</div><div className="kpi-card-sub"><i className="fas fa-door-open"></i> {st?.bookedRooms||0} of {st?.totalRooms||0} rooms</div></div>
-        </div>
-        
-        {/* Row 2: 8 White Stat Cards in single row */}
-        <div className="dashboard-grid-9">
-          <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-door-open"></i></div><div className="stat-card-value">{st?.totalRooms||0}</div><div className="stat-card-label">Total Rooms</div></div>
-          <div className="stat-card accent"><div className="stat-card-icon"><i className="fas fa-bed"></i></div><div className="stat-card-value">{st?.bookedRooms||0}</div><div className="stat-card-label">Booked</div></div>
-          <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-check-circle"></i></div><div className="stat-card-value">{st?.availableRooms||0}</div><div className="stat-card-label">Available</div></div>
-          <div className="stat-card warning"><div className="stat-card-icon"><i className="fas fa-tools"></i></div><div className="stat-card-value">{st?.maintenanceRooms||0}</div><div className="stat-card-label">Maintenance</div></div>
-          <div className="stat-card purple"><div className="stat-card-icon"><i className="fas fa-clock"></i></div><div className="stat-card-value">{st?.reservedRooms||0}</div><div className="stat-card-label">Reserved</div></div>
-          <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-file-invoice-dollar"></i></div><div className="stat-card-value">{inv.totalInvoices||0}</div><div className="stat-card-label">Invoices</div></div>
-          <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-check-double"></i></div><div className="stat-card-value">{inv.paidInvoices||0}</div><div className="stat-card-label">Paid</div></div>
-          <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-exclamation-triangle"></i></div><div className="stat-card-value">{inv.overdueInvoices||0}</div><div className="stat-card-label">Overdue</div></div>
-          
-        </div>
-
         {/* Room Block View & Recent Bookings */}
         <div className="dashboard-split" style={{gridTemplateColumns:'2fr 1fr'}}>
           <div className="chart-card">
