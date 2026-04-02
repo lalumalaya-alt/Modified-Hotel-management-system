@@ -650,7 +650,7 @@
       tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(inv.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
       const guestInfo = [{text:'Bill To:\n',bold:true,fontSize:13},(inv.guestName||'')+'\n',{text:'Phone: ',bold:true},(inv.phone||'-')+'\n',{text:'Email: ',bold:true},(inv.email||'-')+'\n'];
       if(inv.customerTIN)guestInfo.push({text:'TIN: ',bold:true},inv.customerTIN+'\n');
-      const doc = {content:[{text:'MRI HOTEL - INVOICE',style:'hdr',alignment:'center'},{text:'Invoice #'+(inv.invoiceId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
+      const doc = {content:[{text:inv.hotelName + ' - INVOICE',style:'hdr',alignment:'center'},{text:'Invoice #'+(inv.invoiceId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
         {columns:[{text:guestInfo},{text:[{text:'Invoice Date: ',bold:true},fmtDate(inv.createdDate)+'\n',{text:'Due Date: ',bold:true},fmtDate(inv.dueDate)+'\n',{text:'Status: ',bold:true},(inv.status||'Draft')+'\n']}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         inv.notes?{text:'\nNotes: '+inv.notes,margin:[0,10,0,0],italics:true}:{text:''},
@@ -688,7 +688,7 @@
       tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(record.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
       const id = record.invoiceId;
       const title = 'INVOICE';
-      const doc = {content:[{text:'MRI HOTEL - '+title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
+      const doc = {content:[{text:record.hotelName + ' - '+title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
         {columns:[{text:[{text:'Guest: ',bold:true},(record.guestName||'')+'\n',{text:'Phone: ',bold:true},(record.phone||'-')+'\n',{text:'Email: ',bold:true},(record.email||'-')]},{text:[{text:'Date: ',bold:true},fmtDate(record.createdDate)+'\n',{text:'Status: ',bold:true},(record.status||'Draft')]}]},
         {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
         record.notes?{text:'\nNotes: '+record.notes,margin:[0,10,0,0],italics:true}:{text:''}],
@@ -2490,7 +2490,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
 
     function AboutView(){
       return(<div className="about-section">
-        <div className="about-header"><div className="about-logo"><img src={LOGO} alt="Logo"/></div><div className="about-title"><h1>Hill View Eco Retreat</h1><p className="about-dev">Develped by <strong>Mohammad Rameez Imdad</strong> (Rameez Scripts)</p></div></div>
+        <div className="about-header"><div className="about-logo"><img src={LOGO} alt="Logo"/></div><div className="about-title"><h1>Hill View Eco Retreat</h1></div></div>
         <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices, and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
         <div className="about-card"><h2><i className="fas fa-clipboard-list"></i> What Can You Do With It?</h2><ul className="about-features">
           <li><i className="fas fa-check"></i> <strong>Room Management</strong> - Add, edit, and manage hotel rooms with diffrent types and rates</li>
@@ -2522,8 +2522,7 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
           <tr><td>Manage Users</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
           <tr><td>Change Own Password</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-check-circle text-success"></i></td></tr>
         </tbody></table></div></div>
-        <div className="about-card about-developer"><h2><i className="fas fa-code"></i> About the Developer</h2><div className="developer-info"><img src={LOGO} alt="Developer" className="developer-avatar"/><div className="developer-details"><h3>Mohammad Rameez Imdad</h3><p className="developer-brand">Rameez Scripts</p><p>I build custom web apps, dashboards, Google Apps Script solutions, and automation tools. If you need somthing built for your buisness or project, feel free to reach out!</p><div className="developer-links"><a href="https://wa.me/923224083545" target="_blank" className="dev-link whatsapp"><i className="fab fa-whatsapp"></i> WhatsApp Me</a><a href="https://www.youtube.com/@rameezimdad" target="_blank" className="dev-link youtube"><i className="fab fa-youtube"></i> Subscribe on YouTube</a></div></div></div></div>
-        <div className="about-footer"><p>Made with <i className="fas fa-heart" style={{color:'#ea4335'}}></i> by Rameez Scripts</p><p className="about-version">Version 2.0.0</p></div>
+        <div className="about-footer"><p>Hotel Management System</p><p className="about-version">Version 2.0.0</p></div>
       </div>);
     }
 
@@ -2905,13 +2904,13 @@ const allCatHeaders=['E.Bed','Fds&Bvg','MiniBar','ErlyCln','Xerox','Laundry','Fa
     const SESSION_TIMEOUT = 60 * 60 * 1000; // 1 hour in ms
 
     function App(){
-      const getSession=()=>{try{const s=localStorage.getItem('mri_session');if(!s)return null;const d=JSON.parse(s);if(Date.now()-d.loginTime>=SESSION_TIMEOUT){localStorage.removeItem('mri_session');return null;}return d;}catch(e){localStorage.removeItem('mri_session');return null;}};
+      const getSession=()=>{try{const s=localStorage.getItem('hotel_session');if(!s)return null;const d=JSON.parse(s);if(Date.now()-d.loginTime>=SESSION_TIMEOUT){localStorage.removeItem('hotel_session');return null;}return d;}catch(e){localStorage.removeItem('hotel_session');return null;}};
       const saved=getSession();
       const [li,setLi]=useState(!!saved);const [cu,setCu]=useState(saved?saved.user:null);const [ur,setUr]=useState(saved?saved.role:null);
 
-      const doLogout=()=>{localStorage.removeItem('mri_session');setLi(false);setCu(null);setUr(null);};
+      const doLogout=()=>{localStorage.removeItem('hotel_session');setLi(false);setCu(null);setUr(null);};
 
-      const handleLogin=(u,r)=>{const session={user:u,role:r,loginTime:Date.now()};localStorage.setItem('mri_session',JSON.stringify(session));setLi(true);setCu(u);setUr(r);};
+      const handleLogin=(u,r)=>{const session={user:u,role:r,loginTime:Date.now()};localStorage.setItem('hotel_session',JSON.stringify(session));setLi(true);setCu(u);setUr(r);};
 
       // Check session expiry every 30 seconds
       useEffect(()=>{

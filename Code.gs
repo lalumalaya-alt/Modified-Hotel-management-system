@@ -4071,7 +4071,7 @@ function setupDemoData() {
   const menuSheet = ss.getSheetByName(MENU_SHEET_NAME);
 
   // SETTINGS (1 data row after headers)
-  settingsSheet.appendRow(["MRI Demo Hotel", "Demo Location, Maldives", "+960-0000000", "info@demo.com", "", "", "", "MVR", 5, 6, 5, "", "", 4, 1]);
+  settingsSheet.appendRow(["Demo Hotel", "Demo Location, Maldives", "+960-0000000", "info@demo.com", "", "", "", "MVR", 5, 6, 5, "", "", 4, 1]);
 
   // Delete temp sheet
   ss.deleteSheet(tempSheet);
