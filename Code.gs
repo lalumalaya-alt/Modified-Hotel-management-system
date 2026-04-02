@@ -2127,6 +2127,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
     // 5. Build Synthetic DayByDay for PDF
     let dayByDay = [];
     let grandRunning = 0;
+    if (!earliestCheckInDate) { earliestCheckInDate = actualCheckOutDate; }
     let combinedNights = daysBetween(earliestCheckInDate, actualCheckOutDate);
     if (combinedNights < 1) combinedNights = 1;
     let syntheticDailyRoomRate = totalRoomRent / combinedNights;

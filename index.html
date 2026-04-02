@@ -2166,6 +2166,35 @@
         if (primaryCiId === ciId) setPrimaryCiId(null);
       };
 
+      const selectAllItems = () => {
+        const newRoomsMap = {};
+        const newOrdersMap = {};
+        queuedCis.forEach(ci => {
+          newRoomsMap[ci.checkInId] = (ci.roomNumbers || '').split(',').map(r=>r.trim()).filter(Boolean);
+          newOrdersMap[ci.checkInId] = (foodOrdersMap[ci.checkInId] || []).map(o => o.orderId);
+        });
+        setSelectedRoomsMap(newRoomsMap);
+        setSelectedOrdersMap(newOrdersMap);
+      };
+
+      const selectRoomsOnly = () => {
+        const newRoomsMap = {};
+        queuedCis.forEach(ci => {
+          newRoomsMap[ci.checkInId] = (ci.roomNumbers || '').split(',').map(r=>r.trim()).filter(Boolean);
+        });
+        setSelectedRoomsMap(newRoomsMap);
+        setSelectedOrdersMap({});
+      };
+
+      const selectFoodOnly = () => {
+        const newOrdersMap = {};
+        queuedCis.forEach(ci => {
+          newOrdersMap[ci.checkInId] = (foodOrdersMap[ci.checkInId] || []).map(o => o.orderId);
+        });
+        setSelectedRoomsMap({});
+        setSelectedOrdersMap(newOrdersMap);
+      };
+
       const toggleRoom = (ciId, rn) => {
         setSelectedRoomsMap(prev => {
           const arr = prev[ciId] || [];
@@ -2291,6 +2320,11 @@
         {queuedCis.length > 0 && <>
           <div style={{background:'#fff',padding:'20px',borderRadius:'4px',border:'1px solid #ddd',marginBottom:'20px'}}>
             <h4 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-shopping-cart"></i> Checkout Cart (Select items to pay)</h4>
+            <div style={{display:'flex', gap:'10px', marginBottom:'15px'}}>
+              <button className="btn btn-sm btn-secondary" onClick={selectAllItems}>Combined Bill (Select All)</button>
+              <button className="btn btn-sm btn-secondary" onClick={selectRoomsOnly}>Room Bill Only</button>
+              <button className="btn btn-sm btn-secondary" onClick={selectFoodOnly}>Food & Services Only</button>
+            </div>
             
             <div style={{display:'flex', gap:'20px', overflowX:'auto', paddingBottom:'10px'}}>
               {queuedCis.map(ci => {
