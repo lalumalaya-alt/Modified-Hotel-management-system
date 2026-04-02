@@ -2111,6 +2111,7 @@
       const [checkOutTime,setCheckOutTime]=useState('12:00');
       const [discountPercent,setDiscountPercent]=useState(0);
       const [advanceToApply,setAdvanceToApply]=useState(0);
+      const [mg, setMg] = useState({ guestName:'', companyName:'', gstNumber:'', mobile:'', email:'', address:'', gstType:'Excluding', billTo:'Individual' });
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
@@ -2130,6 +2131,16 @@
 
             if (queuedCis.length === 0) {
                setPrimaryCiId(res.checkInId);
+               setMg({
+                 guestName: res.guestName || '',
+                 companyName: res.companyName || '',
+                 gstNumber: res.gstNumber || '',
+                 mobile: res.mobile || '',
+                 email: res.email || '',
+                 address: res.address || '',
+                 gstType: res.gstType || 'Excluding',
+                 billTo: res.billTo || 'Individual'
+               });
                setDiscountPercent(res.discountPercent || 0); 
             }
 
@@ -2152,6 +2163,23 @@
             Swal.fire({icon:'info',title:'Not Found',text:'No active check-in found for room #'+selectedRoomNo});
           }
         }).withFailureHandler(e=>{setFetching(false);Swal.fire({icon:'error',text:e.message});}).getCheckInByRoomNo(selectedRoomNo);
+      };
+
+      const handleSetPrimary = (ciId) => {
+        setPrimaryCiId(ciId);
+        const pCi = queuedCis.find(ci => ci.checkInId === ciId);
+        if (pCi) {
+          setMg({
+            guestName: pCi.guestName || '',
+            companyName: pCi.companyName || '',
+            gstNumber: pCi.gstNumber || '',
+            mobile: pCi.mobile || '',
+            email: pCi.email || '',
+            address: pCi.address || '',
+            gstType: pCi.gstType || 'Excluding',
+            billTo: pCi.billTo || 'Individual'
+          });
+        }
       };
 
       const removeQueued = (ciId) => {
@@ -2256,17 +2284,7 @@
           discountPercent, advanceToApply: parseFloat(advanceToApply)||0
         };
         
-        const primaryCi = queuedCis.find(ci => ci.checkInId === primaryCiId);
-        const primaryGuestData = {
-          guestName: primaryCi.guestName,
-          companyName: primaryCi.companyName,
-          gstNumber: primaryCi.gstNumber,
-          mobile: primaryCi.mobile,
-          email: primaryCi.email,
-          address: primaryCi.address,
-          billTo: primaryCi.billTo,
-          gstType: primaryCi.gstType
-        };
+        const primaryGuestData = { ...mg };
 
         google.script.run.withSuccessHandler(res=>{
           Swal.close();setSaving(false);
@@ -2349,7 +2367,7 @@
                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'10px'}}>
                        <div>
                          <label style={{display:'flex',alignItems:'center',gap:'5px',fontWeight:'bold',color:'var(--navy-primary)',cursor:'pointer'}}>
-                           <input type="radio" name="primaryGuest" checked={primaryCiId === ci.checkInId} onChange={() => setPrimaryCiId(ci.checkInId)} style={{width:'16px',height:'16px',margin:0}}/>
+                           <input type="radio" name="primaryGuest" checked={primaryCiId === ci.checkInId} onChange={() => handleSetPrimary(ci.checkInId)} style={{width:'16px',height:'16px',margin:0}}/>
                            Master Bill Guest
                          </label>
                          <div style={{fontSize:'12px', color:'#555', marginTop:'4px'}}>[{ci.checkInId}] {ci.guestName}</div>
@@ -2406,6 +2424,15 @@
 
           <div className="checkout-bill-section">
             <h4><i className="fas fa-calculator"></i> Master Checkout Options</h4>
+            <div className="form-grid" style={{marginBottom:'20px', paddingBottom:'20px', borderBottom:'2px solid #eee'}}>
+              <div className="form-group"><label>Guest Name *</label><input value={mg.guestName} onChange={e=>setMg({...mg,guestName:e.target.value})} required/></div>
+              <div className="form-group"><label>Company Name</label><input value={mg.companyName} onChange={e=>setMg({...mg,companyName:e.target.value})}/></div>
+              <div className="form-group"><label>GST Number</label><input value={mg.gstNumber} onChange={e=>setMg({...mg,gstNumber:e.target.value})}/></div>
+              <div className="form-group"><label>Mobile</label><input value={mg.mobile} onChange={e=>setMg({...mg,mobile:e.target.value})}/></div>
+              <div className="form-group"><label>Email</label><input type="email" value={mg.email} onChange={e=>setMg({...mg,email:e.target.value})}/></div>
+              <div className="form-group"><label>Bill To</label><select value={mg.billTo} onChange={e=>setMg({...mg,billTo:e.target.value})}><option>Individual</option><option>Company</option><option>Agent</option></select></div>
+              <div className="form-group"><label>GST Type</label><select value={mg.gstType} onChange={e=>setMg({...mg,gstType:e.target.value})}><option>Excluding</option><option>Including</option><option>None</option></select></div>
+            </div>
             <div className="form-grid">
               <div className="form-group"><label>Check-Out Date</label><input type="date" value={checkOutDate} onChange={e=>setCheckOutDate(e.target.value)}/></div>
               <div className="form-group"><label>Check-Out Time</label><input type="time" value={checkOutTime} onChange={e=>setCheckOutTime(e.target.value)}/></div>
