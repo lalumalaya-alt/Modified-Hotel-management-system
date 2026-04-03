@@ -1155,12 +1155,34 @@
           {data:'pax',title:'Pax'},
           {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase().replace(/\s+/g,'-')+'">'+d+'</span>'},
           {data:null,title:'Live Billing',render:(d,tp,row)=>`<div style="font-size:13px;white-space:nowrap"><span style="color:#2c3e50">Rent: ${fmtCur(row.liveRoomRent||0)}</span> | <span style="color:#e67e22">Food: ${fmtCur(row.liveFoodBill||0)}</span></div><div style="font-size:13px;white-space:nowrap;margin-top:3px"><span style="color:#27ae60">Adv: ${fmtCur(row.advancePaid||0)}</span> | <strong style="color:${(row.liveBalance||0)>0?'#c0392b':'#27ae60'}">Bal: ${fmtCur(row.liveBalance||0)}</strong></div>`},
-          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{let html='';if(row.status==='Active'){html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';html+='<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button>';html+='<button class="action-icon checkout-icon" data-action="checkout"><i class="fas fa-sign-out-alt"></i></button>';}return html||'-';}}
+          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{let html='';if(row.status==='Active'){html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';html+='<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button>';html+='<button class="action-icon" data-action="add_advance" style="color:#27ae60" title="Add Mid-Stay Advance"><i class="fas fa-hand-holding-usd"></i></button>';html+='<button class="action-icon checkout-icon" data-action="checkout"><i class="fas fa-sign-out-alt"></i></button>';}return html||'-';}}
         ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
           {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
           {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
           {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
-        ],order:[[0,'desc']]});$('#ciT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='switch'){setUpdateRec(rd);}else if(a==='edit'){handleEdit(rd);}else if(a==='checkout'){handleCheckout(rd);}});tRef.current=t;}catch(e){console.error(e);}},150);};
+        ],order:[[0,'desc']]});$('#ciT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='switch'){setUpdateRec(rd);}else if(a==='edit'){handleEdit(rd);}else if (a === 'add_advance') {
+           Swal.fire({
+             title: 'Add Mid-Stay Advance',
+             html: '<input type="number" id="swal-adv-amt" class="swal2-input" placeholder="Amount"> <select id="swal-adv-mode" class="swal2-input"><option>Cash</option><option>Card</option><option>UPI</option><option>Bank Transfer</option></select>',
+             focusConfirm: false,
+             showCancelButton: true,
+             preConfirm: () => {
+               const amount = document.getElementById('swal-adv-amt').value;
+               const mode = document.getElementById('swal-adv-mode').value;
+               if (!amount || parseFloat(amount) <= 0) { Swal.showValidationMessage('Enter a valid amount'); return false; }
+               return { amount: parseFloat(amount), mode: mode };
+             }
+           }).then((result) => {
+             if (result.isConfirmed) {
+               Swal.fire({title:'Processing...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+               google.script.run.withSuccessHandler(res => {
+                 if (res.success) { Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false}); loadCheckIns(); }
+                 else { Swal.fire({icon:'error',text:res.message}); }
+               }).withFailureHandler(err => { Swal.fire({icon:'error',text:err.message}); })
+               .addMidStayAdvance(rd.checkInId, result.value.amount, result.value.mode, user);
+             }
+           });
+        }else if(a==='checkout'){handleCheckout(rd);}});tRef.current=t;}catch(e){console.error(e);}},150);};
 
       const toggleRoom=(rn)=>{
         setSelectedRooms(prev => {

@@ -4323,6 +4323,54 @@ function getAllMenuItems() {
   }
 }
 
+function addMidStayAdvance(checkInId, additionalAmount, paymentMode, user) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const ciSheet = ss.getSheetByName(CHECKIN_SHEET_NAME);
+    if (!ciSheet) return { success: false, message: "Check-In sheet not found." };
+
+    const amt = parseFloat(additionalAmount);
+    if (isNaN(amt) || amt <= 0) return { success: false, message: "Invalid amount." };
+
+    const data = ciSheet.getDataRange().getValues();
+    let rowIndex = -1;
+    let currentAdvance = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      if ((data[i][CI_ID_COL] || '').toString() === checkInId.toString()) {
+        rowIndex = i + 1;
+        currentAdvance = parseFloat(data[i][CI_ADVANCE_PAID_COL]) || 0;
+        break;
+      }
+    }
+
+    if (rowIndex === -1) return { success: false, message: "Check-in ID not found." };
+
+    const newTotal = currentAdvance + amt;
+    ciSheet.getRange(rowIndex, CI_ADVANCE_PAID_COL + 1).setValue(newTotal);
+    SpreadsheetApp.flush();
+
+    // Log to Finance
+    const financePayload = {
+      date: new Date().toISOString().slice(0, 10),
+      type: 'Income',
+      description: 'Mid-Stay Advance for ' + checkInId,
+      shopSource: 'Front Desk',
+      amount: amt,
+      category: 'Other Income',
+      currency: 'MVR', // Defaulting, you could pull from settings
+      enteredBy: user || 'System'
+    };
+
+    addFinanceRecord(financePayload);
+
+    return { success: true, message: "Advance added successfully.", newTotal: newTotal };
+  } catch (e) {
+    Logger.log("Error in addMidStayAdvance: " + e.toString());
+    return { success: false, message: e.message };
+  }
+}
+
 function updateStaySegment(checkInId, newRoomNos, newRate, newPax, switchDateTime) {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);
