@@ -1155,7 +1155,7 @@
           {data:'pax',title:'Pax'},
           {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase().replace(/\s+/g,'-')+'">'+d+'</span>'},
           {data:null,title:'Live Billing',render:(d,tp,row)=>`<div style="font-size:13px;white-space:nowrap"><span style="color:#2c3e50">Rent: ${fmtCur(row.liveRoomRent||0)}</span> | <span style="color:#e67e22">Food: ${fmtCur(row.liveFoodBill||0)}</span></div><div style="font-size:13px;white-space:nowrap;margin-top:3px"><span style="color:#27ae60">Adv: ${fmtCur(row.advancePaid||0)}</span> | <strong style="color:${(row.liveBalance||0)>0?'#c0392b':'#27ae60'}">Bal: ${fmtCur(row.liveBalance||0)}</strong></div>`},
-          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{let html='';if(row.status==='Active'){html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';html+='<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button>';html+='<button class="action-icon" data-action="add_advance" style="color:#27ae60" title="Add Mid-Stay Advance"><i class="fas fa-hand-holding-usd"></i></button>';html+='<button class="action-icon checkout-icon" data-action="checkout"><i class="fas fa-sign-out-alt"></i></button>';}return html||'-';}}
+          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{let html='';if(row.status==='Active'){html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';html+='<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button>';html+='<button class="action-icon" data-action="add_advance" style="color:#27ae60" title="Add Mid-Stay Advance"><i class="fas fa-hand-holding-usd"></i></button>';}return html||'-';}}
         ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
           {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
           {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
@@ -1182,7 +1182,7 @@
                .addMidStayAdvance(rd.checkInId, result.value.amount, result.value.mode, user);
              }
            });
-        }else if(a==='checkout'){handleCheckout(rd);}});tRef.current=t;}catch(e){console.error(e);}},150);};
+        }});tRef.current=t;}catch(e){console.error(e);}},150);};
 
       const toggleRoom=(rn)=>{
         setSelectedRooms(prev => {
@@ -1395,8 +1395,6 @@
       const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);};
 
       const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setShowModal(true);};
-      
-      const handleCheckout=(ci)=>{Swal.fire({title:'Checkout Guest?',text:`Initiate checkout for ${ci.guestName}?`,icon:'question',showCancelButton:true,confirmButtonText:'Yes, Checkout'}).then((res)=>{if(res.isConfirmed){Swal.fire({title:'Processing...',didOpen:()=>Swal.showLoading()});google.script.run.withSuccessHandler(r=>{if(r.success){Swal.fire({icon:'success',title:'Checked Out',timer:2000,showConfirmButton:false});loadCheckIns();google.script.run.withSuccessHandler(r2=>{setRooms(Array.isArray(r2)?r2:[]);}).getAllRooms();}else{Swal.fire('Error',r.message,'error');}}).withFailureHandler(e=>Swal.fire('Error',e.message,'error')).processFullCheckout(ci.checkInId);}});};
 
       const submit=(e)=>{e.preventDefault();
         if(!fd.guestName.trim()){Swal.fire({icon:'warning',text:'Guest Name is required.'});return;}
