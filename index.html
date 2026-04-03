@@ -1120,9 +1120,6 @@
       const [mode,setMode]=useState('walkin');
       const [rooms,setRooms]=useState([]);
       const [selectedRooms,setSelectedRooms]=useState([]);
-      const [searchQ,setSearchQ]=useState('');
-      const [searchResults,setSearchResults]=useState([]);
-      const [searching,setSearching]=useState(false);
       const [linkedBooking,setLinkedBooking]=useState(null);
       const [ld,setLd]=useState(true);
       const [saving,setSaving]=useState(false);
@@ -1156,7 +1153,7 @@
           {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase().replace(/\s+/g,'-')+'">'+d+'</span>'},
           {data:null,title:'Live Billing',render:(d,tp,row)=>`<div style="font-size:13px;white-space:nowrap"><span style="color:#2c3e50">Rent: ${fmtCur(row.liveRoomRent||0)}</span> | <span style="color:#e67e22">Food: ${fmtCur(row.liveFoodBill||0)}</span></div><div style="font-size:13px;white-space:nowrap;margin-top:3px"><span style="color:#27ae60">Adv: ${fmtCur(row.advancePaid||0)}</span> | <strong style="color:${(row.liveBalance||0)>0?'#c0392b':'#27ae60'}">Bal: ${fmtCur(row.liveBalance||0)}</strong></div>`},
           {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{let html='';if(row.status==='Active'){html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';html+='<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button>';html+='<button class="action-icon" data-action="add_advance" style="color:#27ae60" title="Add Mid-Stay Advance"><i class="fas fa-hand-holding-usd"></i></button>';}return html||'-';}}
-        ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
+        ],pageLength:10,responsive:true,dom:'Blrtip',buttons:[
           {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
           {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
           {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
@@ -1221,9 +1218,6 @@
           return [...prev, rn];
         });
       };
-
-      const doSearch=()=>{if(!searchQ.trim())return;setSearching(true);
-        google.script.run.withSuccessHandler(r=>{setSearching(false);setSearchResults(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setSearching(false);Swal.fire({icon:'error',text:e.message});}).searchBookingsByGuestName(searchQ);};
 
       // Dynamic validation of physical rooms vs type requirements
       const [advBks, setAdvBks] = useState([]);
