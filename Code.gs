@@ -1561,6 +1561,181 @@ function getActiveCheckInRooms() {
  * CHECKOUT FUNCTIONS (REVAMPED)
  ***************************************************/
 
+function processWalkinCheckout(guestName, orderIds, checkoutData) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const restSheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+    const invSheet = ss.getSheetByName(INVOICES_SHEET_NAME);
+
+    if (!restSheet || !invSheet) return { success: false, message: "Required sheets not found." };
+
+    const restData = restSheet.getDataRange().getValues();
+    let selectedOrders = [];
+    let totalFooding = 0;
+
+    // 1. Collect orders and calculate sum
+    for (let i = 1; i < restData.length; i++) {
+      let oId = (restData[i][REST_ORDER_ID_COL] || '').toString();
+      if (orderIds.includes(oId) && (restData[i][REST_STATUS_COL] || '').toString() === 'Active') {
+        let amt = parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0;
+        let desc = (restData[i][REST_ITEM_NAME_COL] || '').toString();
+        let qty = parseInt(restData[i][REST_QUANTITY_COL]) || 1;
+        selectedOrders.push({ rowIndex: i, orderId: oId, description: desc, amount: amt, quantity: qty });
+        totalFooding += amt;
+      }
+    }
+
+    if (selectedOrders.length === 0) return { success: false, message: "No active orders found." };
+
+    // 2. Billing Math
+    let discountPercent = parseFloat(checkoutData.discountPercent) || 0;
+    let discountAmount = totalFooding * (discountPercent / 100);
+    let afterDiscount = totalFooding - discountAmount;
+
+    let sgstPercent = parseFloat(checkoutData.sgstPercent) || 0;
+    let cgstPercent = parseFloat(checkoutData.cgstPercent) || 0;
+    let sgstAmount = 0, cgstAmount = 0;
+
+    if (checkoutData.gstType === 'Excluding') {
+      sgstAmount = afterDiscount * (sgstPercent / 100);
+      cgstAmount = afterDiscount * (cgstPercent / 100);
+    }
+
+    let billAmount = afterDiscount + sgstAmount + cgstAmount;
+    let paymentMode = checkoutData.paymentMode || 'Cash';
+
+    // Read Settings
+    let hotelName = 'Hill View Eco Retreat', hotelAddress = '', hotelPhone = '', hotelEmail = '', hotelTIN = '', defaultCurrency = 'MVR', hotelLogo = '';
+    try {
+      const setSheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
+      if (setSheet && setSheet.getLastRow() > 1) {
+        const setRow = setSheet.getRange(2, 1, 1, setSheet.getLastColumn()).getValues()[0];
+        hotelName = (setRow[SET_HOTEL_NAME_COL] || 'Hill View Eco Retreat').toString();
+        hotelAddress = (setRow[SET_HOTEL_ADDRESS_COL] || '').toString();
+        hotelPhone = (setRow[SET_HOTEL_PHONE_COL] || '').toString();
+        hotelEmail = (setRow[SET_HOTEL_EMAIL_COL] || '').toString();
+        hotelTIN = (setRow[SET_HOTEL_TIN_COL] || '').toString();
+        defaultCurrency = (setRow[SET_DEFAULT_CURRENCY_COL] || 'MVR').toString();
+        hotelLogo = (setRow[SET_LOGO_URL_COL] || '').toString();
+      }
+    } catch (e) {}
+
+    const billNumber = generateInvoiceId();
+    const nowStr = new Date().toISOString();
+
+    // 3. Database Updates
+    selectedOrders.forEach(o => {
+       restSheet.getRange(o.rowIndex + 1, REST_STATUS_COL + 1).setValue("Billed");
+       restSheet.getRange(o.rowIndex + 1, REST_BILLED_CHECKIN_ID_COL + 1).setValue(billNumber);
+    });
+
+    const invoiceItems = selectedOrders.map(o => ({ description: `${o.description} (x${o.quantity})`, amount: o.amount }));
+
+    const invoiceRow = new Array(25).fill('');
+    invoiceRow[0] = billNumber;
+    invoiceRow[1] = guestName;
+    invoiceRow[2] = "";
+    invoiceRow[3] = "";
+    invoiceRow[4] = "";
+    invoiceRow[5] = defaultCurrency;
+    invoiceRow[6] = nowStr;
+    invoiceRow[7] = nowStr;
+    invoiceRow[8] = "Paid";
+    invoiceRow[9] = JSON.stringify(invoiceItems);
+    invoiceRow[10] = totalFooding;
+    invoiceRow[11] = true;
+    invoiceRow[12] = sgstPercent + cgstPercent;
+    invoiceRow[13] = sgstAmount + cgstAmount;
+    invoiceRow[14] = false;
+    invoiceRow[15] = 0;
+    invoiceRow[16] = 0;
+    invoiceRow[17] = 0;
+    invoiceRow[18] = 0;
+    invoiceRow[19] = discountAmount;
+    invoiceRow[20] = billAmount;
+    invoiceRow[21] = "Walk-in POS Bill";
+    invoiceRow[22] = "";
+    invoiceRow[23] = "";
+    invoiceRow[24] = "System";
+    invoiceRow[25] = nowStr;
+
+    invSheet.appendRow(invoiceRow);
+
+    // 4. Log Income
+    addFinanceRecord({
+      date: nowStr.split('T')[0],
+      type: 'Income',
+      description: `Walk-in POS Payment (Bill #${billNumber})`,
+      shopSource: 'Restaurant',
+      amount: billAmount,
+      category: 'Restaurant Income',
+      currency: defaultCurrency,
+      enteredBy: 'System'
+    });
+
+    SpreadsheetApp.flush();
+    try { recalculateBalances(); } catch(e) {}
+
+    // 5. Construct invoiceData for frontend
+    let syntheticDayByDay = [{
+      date: nowStr.split('T')[0],
+      rooms: 0,
+      extraBed: 0,
+      foodBev: totalFooding,
+      miniBar: 0,
+      earlyClean: 0,
+      xerox: 0,
+      laundry: 0,
+      fax: 0,
+      spbuc: 0,
+      travels: 0,
+      misc: 0,
+      dayTotal: totalFooding,
+      grandTotal: totalFooding
+    }];
+
+    return {
+      success: true,
+      message: "Walk-in Checkout completed successfully.",
+      invoiceData: {
+        billNumber,
+        checkInId: "Walk-in",
+        guestName: guestName,
+        companyName: "",
+        gstNumber: "",
+        mobile: "",
+        email: "",
+        address: "",
+        billTo: "Individual",
+        checkInDate: nowStr,
+        checkInTime: "",
+        checkOutDate: nowStr,
+        checkOutTime: "",
+        foodPlan: "None",
+        pax: 1,
+        numberOfRooms: 0,
+        roomNumbers: "",
+        dayByDay: syntheticDayByDay,
+        subtotal: totalFooding,
+        discountPercent,
+        discountAmount,
+        sgstPercent,
+        sgstAmount,
+        cgstPercent,
+        cgstAmount,
+        gstType: checkoutData.gstType,
+        billAmount,
+        advancePaid: 0,
+        netAmount: billAmount,
+        hotelName, hotelAddress, hotelPhone, hotelEmail, hotelTIN, hotelLogo
+      }
+    };
+  } catch (e) {
+    Logger.log("Error in processWalkinCheckout: " + e.toString());
+    return { success: false, message: e.message };
+  }
+}
+
 function processFullCheckout(checkInId, checkoutData) {
   try {
     const ss = SpreadsheetApp.openById(SS_ID);

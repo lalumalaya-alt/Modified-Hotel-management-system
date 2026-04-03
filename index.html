@@ -1755,13 +1755,17 @@
       const [editOrder,setEditOrder]=useState(null);
       const tRef=useRef(null);
       const [orderType,setOrderType]=useState('checkin');
-      const [tableNo,setTableNo]=useState('');
+      const [walkinName,setWalkinName]=useState('');
       const CATEGORIES=['Breakfast','Lunch','Dinner','Snacks','FoodBeverage'];
       const CAT_LABELS={Breakfast:'Breakfast',Lunch:'Lunch',Dinner:'Dinner',Snacks:'Snacks',FoodBeverage:'Other Food & Beverage'};
       const [fd,setFd]=useState({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
       const [menuItems,setMenuItems]=useState([]);
       const [selFoodCat,setSelFoodCat]=useState('');
       const [orderItems,setOrderItems]=useState([]);
+
+      const [allOrders,setAllOrders]=useState([]);
+      const [showWalkinBill,setShowWalkinBill]=useState(false);
+      const [inv,setInv]=useState(null);
 
       const dynamicFoodCategories = [...new Set(menuItems.map(item => item.foodCategory).filter(Boolean))];
 
@@ -1778,7 +1782,7 @@
         return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};
       },[]);
 
-      const loadOrders=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);initT(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllFoodOrders();};
+      const loadOrders=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);const arr = Array.isArray(r)?r:[];setAllOrders(arr);initT(arr);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllFoodOrders();};
 
       const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#restT').empty();}catch(e){}}
         setTimeout(()=>{try{const t=$('#restT').DataTable({data,destroy:true,columns:[
@@ -1796,7 +1800,7 @@
           {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'},orientation:'landscape'},
           {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
         ],order:[[0,'desc']]});
-        $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRooms((rd.roomNo||'').split(',').map(r=>r.trim()).filter(Boolean));setSelCheckIn(rd.checkInId);if(rd.checkInId==='Walk-in'){setOrderType('table');setTableNo(rd.roomNo);}else{setOrderType('checkin');}setOrderItems([{itemName:rd.itemName,quantity:rd.quantity,defaultPrice:rd.rate,totalAmount:rd.totalAmount}]);setFd({category:rd.category,description:rd.itemName,amount:rd.totalAmount,orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});}else if(a==='delete')delOrder(rd);});
+        $('#restT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditOrder(rd);setSelRooms((rd.roomNo||'').split(',').map(r=>r.trim()).filter(Boolean));setSelCheckIn(rd.checkInId);if(rd.checkInId==='Walk-in'){setOrderType('table');setWalkinName(rd.roomNo);}else{setOrderType('checkin');}setOrderItems([{itemName:rd.itemName,quantity:rd.quantity,defaultPrice:rd.rate,totalAmount:rd.totalAmount}]);setFd({category:rd.category,description:rd.itemName,amount:rd.totalAmount,orderDate:rd.orderDate?rd.orderDate.split('T')[0]:''});}else if(a==='delete')delOrder(rd);});
         tRef.current=t;}catch(e){console.error(e);}},150);};
 
       const toggleRoom=(rn, ciId, guestName)=>{
@@ -1831,8 +1835,8 @@
           finalRoomNo = selRooms.join(', ');
           finalCheckInId = selCheckIn;
         } else {
-          if(!tableNo){Swal.fire({icon:'warning',text:'Enter a Table Number.'});return;}
-          finalRoomNo = tableNo;
+          if(!walkinName){Swal.fire({icon:'warning',text:'Enter a Customer Name.'});return;}
+          finalRoomNo = walkinName;
           finalCheckInId = 'Walk-in';
         }
         if(orderItems.length === 0){Swal.fire({icon:'warning',text:'Add at least one item to the order.'});return;}
@@ -1869,7 +1873,7 @@
 
       const delOrder=(ord)=>{Swal.fire({icon:'warning',title:'Delete Order?',text:'Delete order '+ord.orderId+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});loadOrders();}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteFoodOrder(ord.rowIndex);});};
 
-      const resetOrderForm=()=>{setEditOrder(null);setOrderType('checkin');setTableNo('');setOrderItems([]);setSelRooms([]);setSelCheckIn('');setSelGuestName('');setFd({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
+      const resetOrderForm=()=>{setEditOrder(null);setOrderType('checkin');setWalkinName('');setOrderItems([]);setSelRooms([]);setSelCheckIn('');setSelGuestName('');setFd({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
 
       const addItemToOrder = (item) => {
           setOrderItems(prev => {
@@ -1882,7 +1886,15 @@
 
       const grandTotal = orderItems.reduce((acc, curr) => acc + curr.totalAmount, 0);
 
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-utensils"></i> Restaurant / Services</h2><button className="btn btn-primary" onClick={()=>{loadOrders();google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).getActiveCheckInRooms();}}><i className="fas fa-sync"></i> Refresh</button></div>
+      return(<div className="data-section">
+        <div className="section-header">
+          <h2><i className="fas fa-utensils"></i> Restaurant / Services</h2>
+          <div style={{display:'flex', gap:'10px'}}>
+            <button className="btn btn-warning" onClick={() => setShowWalkinBill(true)}><i className="fas fa-file-invoice"></i> Walk-in Billing</button>
+            <button className="btn btn-primary" onClick={()=>{loadOrders();google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).getActiveCheckInRooms();}}><i className="fas fa-sync"></i> Refresh</button>
+          </div>
+        </div>
+
         <div style={{background:'#f8f9fa',padding:'20px',borderRadius:'4px',border:'1px solid #dee2e6',marginBottom:'20px'}}>
           <h4 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-plus-circle"></i> {editOrder?'Edit':'Add New'} Order</h4>
           <form onSubmit={submit}>
@@ -1900,7 +1912,7 @@
             </div>
 
             {orderType === 'table' ? (
-              <div className="form-group"><label>Table Number *</label><input value={tableNo} onChange={e=>setTableNo(e.target.value)} required placeholder="e.g. T-01"/></div>
+              <div className="form-group"><label>Customer Name (Walk-in) *</label><input value={walkinName} onChange={e=>setWalkinName(e.target.value)} required placeholder="e.g. John Doe"/></div>
             ) : (
             <div className="form-group">
               <label>Select Rooms *</label>
@@ -1982,7 +1994,148 @@
         </div>
         <h3 style={{marginBottom:'15px',color:'var(--navy-primary)'}}><i className="fas fa-list"></i> All Orders</h3>
         {ld&&<TableSkeleton rows={5} columns={5}/>}<div style={{display:ld?'none':'block'}}><table id="restT" className="display" style={{width:'100%'}}></table></div>
+
+        {showWalkinBill && <WalkinBillingModal allOrders={allOrders} onClose={()=>setShowWalkinBill(false)} onCheckout={(invData)=>{setShowWalkinBill(false);loadOrders();setInv(invData);}} />}
+        {inv && <HotelInvoiceModal data={inv} onClose={()=>setInv(null)} />}
       </div>);
+    }
+
+    function WalkinBillingModal({allOrders, onClose, onCheckout}){
+      const [selName, setSelName] = useState(null);
+      const [disc, setDisc] = useState(0);
+      const [gstType, setGstType] = useState('Excluding');
+      const [payMode, setPayMode] = useState('Cash');
+      const [processing, setProcessing] = useState(false);
+
+      const walkinOrders = allOrders.filter(o => o.checkInId === 'Walk-in' && o.status === 'Active');
+
+      const grouped = walkinOrders.reduce((acc, curr) => {
+        const name = curr.roomNo || 'Unknown';
+        if (!acc[name]) acc[name] = [];
+        acc[name].push(curr);
+        return acc;
+      }, {});
+
+      const doCheckout = () => {
+        if (!selName) return;
+        const orders = grouped[selName];
+        if (!orders || orders.length === 0) return;
+        const orderIds = orders.map(o => o.orderId);
+
+        setProcessing(true);
+        Swal.fire({title:'Processing Walk-in Checkout...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+
+        const payload = {
+          discountPercent: parseFloat(disc) || 0,
+          gstType: gstType,
+          sgstPercent: 8,
+          cgstPercent: 8,
+          paymentMode: payMode
+        };
+
+        google.script.run.withSuccessHandler(res => {
+          Swal.close(); setProcessing(false);
+          if (res.success) {
+            onCheckout(res.invoiceData);
+          } else {
+            Swal.fire({icon:'error', text: res.message});
+          }
+        }).withFailureHandler(e => {
+          Swal.close(); setProcessing(false);
+          Swal.fire({icon:'error', text: e.message});
+        }).processWalkinCheckout(selName, orderIds, payload);
+      };
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth: '800px', width: '90%'}}>
+            <div className="modal-header">
+              <h3><i className="fas fa-file-invoice"></i> Walk-in Billing</h3>
+              <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
+            </div>
+            <div className="modal-body" style={{display: 'flex', gap: '20px', minHeight: '400px'}}>
+              {/* Left sidebar: Customer Names */}
+              <div style={{flex: '1', borderRight: '1px solid #ddd', paddingRight: '15px'}}>
+                <h4 style={{marginBottom: '10px', fontSize: '15px'}}>Customers</h4>
+                {Object.keys(grouped).length === 0 ? <p style={{color:'#888', fontSize:'13px'}}>No active walk-in orders.</p> : (
+                  <div style={{display:'flex', flexDirection:'column', gap:'5px'}}>
+                    {Object.keys(grouped).map(name => (
+                      <button key={name} type="button"
+                        onClick={() => setSelName(name)}
+                        className={`btn ${selName === name ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{textAlign: 'left', padding: '8px 12px'}}>
+                        <i className="fas fa-user" style={{marginRight: '8px'}}></i> {name}
+                        <span style={{float: 'right', background: 'rgba(255,255,255,0.2)', padding: '2px 6px', borderRadius: '10px', fontSize: '11px'}}>{grouped[name].length} items</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Right side: Items and Checkout options */}
+              <div style={{flex: '2', display: 'flex', flexDirection: 'column'}}>
+                {!selName ? (
+                  <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#888'}}>
+                    <p>Select a customer from the left to view and bill their order.</p>
+                  </div>
+                ) : (
+                  <>
+                    <h4 style={{marginBottom: '10px', fontSize: '15px', color: 'var(--navy-primary)'}}>Order Items for {selName}</h4>
+                    <div style={{flex: 1, overflowY: 'auto', marginBottom: '20px'}}>
+                      <table className="dash-table">
+                        <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead>
+                        <tbody>
+                          {grouped[selName].map((o, idx) => (
+                            <tr key={idx}>
+                              <td>{o.itemName}</td>
+                              <td>{o.quantity}</td>
+                              <td>{fmtCur(o.rate)}</td>
+                              <td><strong>{fmtCur(o.totalAmount)}</strong></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td colSpan="3" style={{textAlign:'right'}}><strong>Subtotal:</strong></td>
+                            <td><strong>{fmtCur(grouped[selName].reduce((sum, o) => sum + (parseFloat(o.totalAmount)||0), 0))}</strong></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <div style={{background: '#f8f9fa', padding: '15px', borderRadius: '4px', border: '1px solid #ddd'}}>
+                      <h4 style={{marginBottom: '10px', fontSize: '14px'}}><i className="fas fa-calculator"></i> Billing Options</h4>
+                      <div className="form-grid" style={{gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px'}}>
+                        <div className="form-group" style={{marginBottom:0}}>
+                          <label>Discount (%)</label>
+                          <input type="number" min="0" max="100" value={disc} onChange={e=>setDisc(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{marginBottom:0}}>
+                          <label>GST Type</label>
+                          <select value={gstType} onChange={e=>setGstType(e.target.value)}>
+                            <option>Excluding</option><option>Including</option><option>None</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{marginBottom:0}}>
+                          <label>Payment Mode</label>
+                          <select value={payMode} onChange={e=>setPayMode(e.target.value)}>
+                            <option>Cash</option><option>Card</option><option>Bank Transfer</option><option>UPI</option><option>Online</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-actions" style={{marginTop: '15px'}}>
+                        <button type="button" className="btn btn-success" onClick={doCheckout} disabled={processing} style={{width: '100%'}}>
+                          {processing ? <><i className="fas fa-spinner fa-spin"></i> Processing...</> : <><i className="fas fa-print"></i> Checkout & Print Bill</>}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     }
 
     function HotelInvoiceModal({data,onClose}){
