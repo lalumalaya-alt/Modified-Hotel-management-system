@@ -2559,7 +2559,7 @@ function getDashboardData() {
       }
     } catch(e) { Logger.log("Error attaching guest details: " + e); }
 
-    roomsData.forEach(row => {
+    roomsData.forEach((row, index) => {
       let roomNo = (row[ROOM_NO_COL] || "").toString();
       let type   = (row[ROOM_TYPE_COL] || "").toString();
       let status = (row[ROOM_STATUS_COL] || "").toString();
@@ -2570,6 +2570,8 @@ function getDashboardData() {
         roomNo, 
         type, 
         status,
+        roomRate: parseFloat(row[ROOM_RATE_COL]) || 0,
+        rowIndex: index + 2,
         guestName: guestData.guestName || '',
         checkIn: guestData.checkIn || '',
         checkOut: guestData.checkOut || ''
