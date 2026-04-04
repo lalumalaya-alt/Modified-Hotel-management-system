@@ -2637,75 +2637,6 @@
       </div>);
     }
 
-    function FinanceEntryModal({record,onClose,onSave,user}){
-      const [fd,setFd]=useState({date:record?.date?record.date.slice(0,10):'',type:record?.type||'Income',description:record?.description||'',shopSource:record?.shopSource||'',amount:record?.amount||'',category:record?.category||'',currency:record?.currency||APP_CURRENCY});
-      const [sv,setSv]=useState(false);const [cats,setCats]=useState([]);
-      useEffect(()=>{google.script.run.withSuccessHandler(r=>{if(Array.isArray(r))setCats(r);}).getAllCategories();},[]);
-      const filteredCats=cats.filter(c=>c.type===fd.type);
-      const submit=(e)=>{e.preventDefault();setSv(true);
-        const rd={...fd,enteredBy:user};
-        if(record){google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateFinanceRecord(record.rowIndex,rd);}
-        else{google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).addFinanceRecord(rd);}};
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-coins"></i> {record?'Edit':'Add'} Entry</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}><div className="form-grid">
-        <div className="form-group"><label>Date *</label><input type="date" value={fd.date} onChange={e=>setFd({...fd,date:e.target.value})} required/></div>
-        <div className="form-group"><label>Type *</label><select value={fd.type} onChange={e=>setFd({...fd,type:e.target.value,category:''})}><option>Income</option><option>Expense</option></select></div>
-        <div className="form-group"><label>Category</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}><option value="">Select Category</option>{filteredCats.map(c=><option key={c.categoryId} value={c.name}>{c.name}</option>)}</select></div>
-        <div className="form-group"><label>Currency</label><select value={fd.currency} onChange={e=>setFd({...fd,currency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-        <div className="form-group"><label>Description *</label><input value={fd.description} onChange={e=>setFd({...fd,description:e.target.value})} required/></div>
-        <div className="form-group"><label>Shop / Source</label><input value={fd.shopSource} onChange={e=>setFd({...fd,shopSource:e.target.value})}/></div>
-        <div className="form-group"><label>Amount ({fd.currency}) *</label><input type="number" step="0.01" min="0.01" value={fd.amount} onChange={e=>setFd({...fd,amount:e.target.value})} required/></div>
-      </div><div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div></form></div></div></div>);
-    }
-
-    function FinanceView({user}){
-      const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [recs,setRecs]=useState([]);const [summary,setSummary]=useState({totalIncome:0,totalExpenses:0,netBalance:0});const tRef=useRef(null);
-      const [filters,setFilters]=useState({dateFrom:'',dateTo:'',type:'',category:''});const [showCats,setShowCats]=useState(false);
-      useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
-      const load=()=>{setLd(true);
-        google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);
-          google.script.run.withSuccessHandler(s=>{setSummary(s&&!s.error?s:{totalIncome:0,totalExpenses:0,netBalance:0});setLd(false);initT(d);}).withFailureHandler(()=>{setLd(false);initT(d);}).getFinanceSummary();
-        }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllFinanceRecords();};
-      const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#finT').empty();}catch(e){}}
-        setTimeout(()=>{try{$.fn.dataTable.ext.search=[];const t=$('#finT').DataTable({data,destroy:true,columns:[
-          {data:'date',title:'Date',render:d=>fmtDate(d)},{data:'type',title:'Type',render:d=>`<span class="status-badge ${statusCls(d)}">${d}</span>`},
-          {data:'description',title:'Description'},{data:'category',title:'Category',render:d=>d||'-'},{data:'shopSource',title:'Shop/Source'},
-          {data:'amount',title:'Amount',render:(d,t,row)=>fmtCur(d,row.currency)},{data:'balance',title:'Balance',render:d=>fmtCur(d)},
-          {data:'enteredBy',title:'Entered By'},
-          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
-        ],pageLength:10,lengthMenu:[[10,25,50,-1],[10,25,50,"All"]],responsive:true,dom:'Blfrtip',buttons:[
-          {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
-        ],order:[[0,'desc']],createdRow:function(row,d){if(d.type==='Income')$(row).css('background-color','#d4edda');else if(d.type==='Expense')$(row).css('background-color','#fff3cd');}});
-        $('#finT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEdit(rd);setShow(true);}else delRec(rd);});
-        tRef.current=t;}catch(e){console.error(e);}},150);};
-      const delRec=(rec)=>{Swal.fire({icon:'warning',title:'Delete?',text:'Delete this finance record?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteFinanceRecord(rec.rowIndex);});};
-      useEffect(()=>{if(!tRef.current||recs.length===0)return;
-        $.fn.dataTable.ext.search=[];
-        $.fn.dataTable.ext.search.push(function(s,d,idx){const row=recs[idx];if(!row)return true;
-          if(filters.dateFrom){const dt=new Date(row.date);if(dt<new Date(filters.dateFrom))return false;}
-          if(filters.dateTo){const dt=new Date(row.date);if(dt>new Date(filters.dateTo+'T23:59:59'))return false;}return true;});
-        if(filters.type)tRef.current.column(1).search(filters.type);else tRef.current.column(1).search('');
-        if(filters.category)tRef.current.column(3).search('^'+filters.category+'$',true,false);else tRef.current.column(3).search('');
-        tRef.current.draw();},[filters]);
-      const clearF=()=>{setFilters({dateFrom:'',dateTo:'',type:'',category:''});if(tRef.current){$.fn.dataTable.ext.search=[];tRef.current.columns().search('').draw();}};
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-coins"></i> Finance</h2><div style={{display:'flex',gap:'10px'}}><button className="btn btn-primary" onClick={()=>setShowCats(true)}><i className="fas fa-tags"></i> Categories</button><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> Add Entry</button></div></div>
-        {!ld&&<div className="finance-summary">
-          <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-arrow-up"></i></div><div className="stat-card-value">{fmtCur(summary.totalIncome)}</div><div className="stat-card-label">Total Income</div></div>
-          <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-arrow-down"></i></div><div className="stat-card-value">{fmtCur(summary.totalExpenses)}</div><div className="stat-card-label">Total Expenses</div></div>
-          <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-wallet"></i></div><div className="stat-card-value">{fmtCur(summary.netBalance)}</div><div className="stat-card-label">Net Balance</div></div>
-        </div>}
-        {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear</button></div><div className="filters-grid">
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> From</label><input type="date" className="filter-input" value={filters.dateFrom} onChange={e=>setFilters({...filters,dateFrom:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-calendar-alt"></i> To</label><input type="date" className="filter-input" value={filters.dateTo} onChange={e=>setFilters({...filters,dateTo:e.target.value})}/></div>
-          <div className="filter-group"><label><i className="fas fa-tag"></i> Type</label><select className="filter-input" value={filters.type} onChange={e=>setFilters({...filters,type:e.target.value})}><option value="">All</option><option>Income</option><option>Expense</option></select></div>
-          <div className="filter-group"><label><i className="fas fa-tags"></i> Category</label><select className="filter-input" value={filters.category} onChange={e=>setFilters({...filters,category:e.target.value})}><option value="">All</option>{[...new Set(recs.map(r=>r.category).filter(Boolean))].map((c,i)=><option key={i} value={c}>{c}</option>)}</select></div>
-        </div></div>}
-        {ld&&<TableSkeleton rows={6} columns={8}/>}<div style={{display:ld?'none':'block'}}><table id="finT" className="display" style={{width:'100%'}}></table></div>
-        {show&&<FinanceEntryModal record={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load} user={user}/>}
-        {showCats&&<CategoryManager onClose={()=>setShowCats(false)}/>}
-      </div>);
-    }
 
     function UserModal({editUser,onClose,onSave}){
       const [fd,setFd]=useState({username:editUser?.username||'',password:'',role:editUser?.role||'user'});
@@ -2821,7 +2752,7 @@
       const total=subTotal-disc+gstAmt+gtAmt;
       const submit=(e)=>{e.preventDefault();if(items.length===0)return Swal.fire({icon:'warning',text:'Add at least one item.'});setSv(true);
         const data={...fd,items:JSON.stringify(items),subTotal,gstAmount:gstAmt,greenTaxAmount:gtAmt,totalAmount:total,createdBy:user};
-        if(invoice){google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){let msg=r.message;if(r.paymentRecorded)msg+='\n\nPayment has been auto-recorded in Finance.';Swal.fire({icon:'success',text:msg,timer:r.paymentRecorded?4000:2000,showConfirmButton:!!r.paymentRecorded});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateInvoice(invoice.rowIndex,data);}
+        if(invoice){google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateInvoice(invoice.rowIndex,data);}
         else{google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});onClose();setTimeout(onSave,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).addInvoice(data);}};
       return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice-dollar"></i> {invoice?'Edit':'New'} Invoice</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
         {!invoice&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer (auto-fills guest info)</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
@@ -2961,61 +2892,6 @@
       </div></div>);
     }
 
-    function CategoryManager({onClose}){
-      const [ld,setLd]=useState(true);const [cats,setCats]=useState([]);const [name,setName]=useState('');const [type,setType]=useState('Expense');
-      const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);setCats(Array.isArray(r)?r:[]);}).withFailureHandler(()=>setLd(false)).getAllCategories();};
-      useEffect(()=>{load();},[]);
-      const add=()=>{if(!name.trim())return;google.script.run.withSuccessHandler(r=>{if(r.success){setName('');load();}else Swal.fire({icon:'error',text:r.message});}).addCategory(name.trim(),type,'');};
-      const del=(cat)=>{if(cat.isDefault)return Swal.fire({icon:'warning',text:'Cannot delete default categories.'});
-        google.script.run.withSuccessHandler(r=>{if(r.success)load();else Swal.fire({icon:'error',text:r.message});}).deleteCategory(cat.rowIndex);};
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-tags"></i> Manage Categories</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
-        <div style={{display:'flex',gap:'10px',marginBottom:'20px'}}>
-          <input placeholder="Category name" value={name} onChange={e=>setName(e.target.value)} style={{flex:1,padding:'10px',border:'1.5px solid #d0d0d0',borderRadius:'3px',fontSize:'16px'}}/>
-          <select value={type} onChange={e=>setType(e.target.value)} style={{padding:'10px',border:'1.5px solid #d0d0d0',borderRadius:'3px',fontSize:'16px'}}><option>Income</option><option>Expense</option></select>
-          <button className="btn btn-primary" onClick={add}><i className="fas fa-plus"></i></button>
-        </div>
-        {ld?<TableSkeleton rows={3} columns={3}/>:<div>
-          <h4 style={{color:'var(--navy-primary)',marginBottom:'10px'}}>Expense Categories</h4>
-          {cats.filter(c=>c.type==='Expense').map(c=>(<div key={c.categoryId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px',borderBottom:'1px solid #eee'}}><span>{c.name} {c.isDefault&&<small style={{color:'#888'}}>(default)</small>}</span>{!c.isDefault&&<button className="action-icon delete-icon" onClick={()=>del(c)}><i className="fas fa-trash"></i></button>}</div>))}
-          <h4 style={{color:'var(--navy-primary)',marginTop:'20px',marginBottom:'10px'}}>Income Categories</h4>
-          {cats.filter(c=>c.type==='Income').map(c=>(<div key={c.categoryId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px',borderBottom:'1px solid #eee'}}><span>{c.name} {c.isDefault&&<small style={{color:'#888'}}>(default)</small>}</span>{!c.isDefault&&<button className="action-icon delete-icon" onClick={()=>del(c)}><i className="fas fa-trash"></i></button>}</div>))}
-        </div>}
-      </div></div></div>);
-    }
-
-    function ReportsView({user}){
-      const [month,setMonth]=useState(new Date().getMonth()+1);const [year,setYear]=useState(new Date().getFullYear());const [type,setType]=useState('full');
-      const [ld,setLd]=useState(false);const [data,setData]=useState(null);
-      const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);if(r.success)setData(r.data);else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getMonthlyReport(month,year,type);};
-      useEffect(()=>{load();},[month,year,type]);
-      const monthNames=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-chart-bar"></i> Monthly Report</h2></div>
-        <div className="filters-section"><div className="filters-grid">
-          <div className="filter-group"><label><i className="fas fa-calendar"></i> Month</label><select className="filter-input" value={month} onChange={e=>setMonth(parseInt(e.target.value))}>{[1,2,3,4,5,6,7,8,9,10,11,12].map(m=><option key={m} value={m}>{monthNames[m]}</option>)}</select></div>
-          <div className="filter-group"><label><i className="fas fa-calendar"></i> Year</label><input type="number" className="filter-input" value={year} onChange={e=>setYear(parseInt(e.target.value))}/></div>
-          <div className="filter-group"><label><i className="fas fa-filter"></i> Type</label><select className="filter-input" value={type} onChange={e=>setType(e.target.value)}><option value="full">Full Report</option><option value="income">Income Only</option><option value="expense">Expense Only</option></select></div>
-        </div></div>
-        {ld&&<div><DashboardCardSkeleton/></div>}
-        {!ld&&data&&<>
-          <div className="report-summary">
-            <div className="stat-card green"><div className="stat-card-icon"><i className="fas fa-arrow-up"></i></div><div className="stat-card-value">{fmtCur(data.totalIncome)}</div><div className="stat-card-label">Total Income</div></div>
-            <div className="stat-card red"><div className="stat-card-icon"><i className="fas fa-arrow-down"></i></div><div className="stat-card-value">{fmtCur(data.totalExpenses)}</div><div className="stat-card-label">Total Expenses</div></div>
-            <div className="stat-card"><div className="stat-card-icon"><i className="fas fa-balance-scale"></i></div><div className="stat-card-value">{fmtCur(data.net)}</div><div className="stat-card-label">Net</div></div>
-            {data.budget&&<div className="stat-card"><div className="stat-card-icon"><i className="fas fa-piggy-bank"></i></div><div className="stat-card-value">{fmtCur(data.budget.remaining)}</div><div className="stat-card-label">Budget Remaining</div>
-              <div className="budget-bar-container"><div className="budget-bar" style={{width:Math.min(100,(data.budget.budgetAmount>0?data.budget.totalSpent/data.budget.budgetAmount*100:0))+'%',background:(data.budget.budgetAmount>0?data.budget.totalSpent/data.budget.budgetAmount:0)>0.9?'#ea4335':(data.budget.budgetAmount>0?data.budget.totalSpent/data.budget.budgetAmount:0)>0.7?'#fbbc04':'#34a853'}}></div></div>
-              <small style={{color:'#888'}}>{fmtCur(data.budget.totalSpent)} / {fmtCur(data.budget.budgetAmount)}</small>
-            </div>}
-          </div>
-          {data.categoryTotals&&data.categoryTotals.length>0&&<div style={{marginBottom:'25px'}}><h3 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-tags"></i> Category Breakdown</h3><table className="invoice-table"><thead><tr><th>Category</th><th>Type</th><th className="right">Total</th></tr></thead><tbody>
-            {data.categoryTotals.map((ct,i)=><tr key={i}><td>{ct.category}</td><td><span className={`status-badge ${statusCls(ct.type)}`}>{ct.type}</span></td><td className="right">{fmtCur(ct.total)}</td></tr>)}
-          </tbody></table></div>}
-          {data.records&&data.records.length>0&&<div><h3 style={{color:'var(--navy-primary)',marginBottom:'15px'}}><i className="fas fa-list"></i> Detailed Records ({data.records.length})</h3><table className="invoice-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category</th><th className="right">Amount</th></tr></thead><tbody>
-            {data.records.map((r,i)=><tr key={i}><td>{fmtDate(r.date)}</td><td><span className={`status-badge ${statusCls(r.type)}`}>{r.type}</span></td><td>{r.description}</td><td>{r.category||'-'}</td><td className="right">{fmtCur(r.amount,r.currency)}</td></tr>)}
-          </tbody></table></div>}
-          {data.records&&data.records.length===0&&<p style={{textAlign:'center',color:'#888',padding:'40px'}}>No records found for {monthNames[month]} {year}.</p>}
-        </>}
-      </div>);
-    }
 
     function BottomNav({activeMenu,setActiveMenu,role,onLogout}){
       const adm=role==='admin';
