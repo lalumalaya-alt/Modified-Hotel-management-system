@@ -3148,6 +3148,7 @@ function deleteRoom(rowIndex) {
   }
 }
 
+/***************************************************
  * SETTINGS MANAGEMENT
  ***************************************************/
 function getSettings() {
