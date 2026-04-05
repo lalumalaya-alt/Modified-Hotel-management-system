@@ -1071,6 +1071,22 @@ function addCheckIn(checkInData) {
     }
 
     SpreadsheetApp.flush();
+
+    // Attempt customer sync in background
+    try {
+      syncCustomerProfile({
+        name: checkInData.guestName,
+        phone: checkInData.mobile,
+        email: checkInData.email,
+        address: checkInData.address,
+        companyName: checkInData.companyName,
+        gstNumber: checkInData.gstNumber,
+        identityProof: checkInData.identityProof
+      });
+    } catch(syncErr) {
+      Logger.log("Silent customer sync fail: " + syncErr.message);
+    }
+
     return { success: true, message: `Check-in successful. ID: ${checkInId}`, checkInId };
   } catch (e) {
     Logger.log("Error in addCheckIn: " + e.toString());
@@ -3008,6 +3024,66 @@ function addCustomer(customerData) {
     return { success: true, message: "Customer added successfully!", customerId: custId };
   } catch (err) {
     return { success: false, message: err.message };
+  }
+}
+
+function syncCustomerProfile(guestData) {
+  try {
+    if (!guestData || !guestData.phone) return; // phone is our key identifier
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(CUSTOMERS_SHEET_NAME);
+    if (!sheet) return;
+
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    let existingRow = null;
+
+    // Find matching phone
+    const incomingPhone = String(guestData.phone).trim();
+    for (let i = 1; i < data.length; i++) {
+      let existingPhone = String(data[i][CUST_PHONE_COL] || '').trim();
+      if (existingPhone === incomingPhone) {
+        rowIndex = i + 1;
+        existingRow = data[i];
+        break;
+      }
+    }
+
+    if (rowIndex > -1) {
+      // Update existing blanks
+      if (!(existingRow[CUST_NAME_COL] || '').toString().trim() && guestData.name) {
+        sheet.getRange(rowIndex, CUST_NAME_COL + 1).setValue(guestData.name);
+      }
+      if (!(existingRow[CUST_EMAIL_COL] || '').toString().trim() && guestData.email) {
+        sheet.getRange(rowIndex, CUST_EMAIL_COL + 1).setValue(guestData.email);
+      }
+      // Note: city/maritalStatus/notes not provided in basic checkin but we preserve logic schema
+    } else {
+      // Append new
+      const newId = generateCustomerId();
+      const row = new Array(17).fill(''); // 17 headers per schema
+      row[0] = newId; // Customer ID
+      row[1] = guestData.name || ''; // Name
+      row[2] = guestData.phone || ''; // Phone
+      row[3] = guestData.email || ''; // Email
+      row[4] = guestData.address || ''; // Address
+      row[5] = ''; // City
+      row[6] = ''; // State
+      row[7] = ''; // Country
+      row[8] = ''; // Zip Code
+      row[9] = ''; // DOB
+      row[10] = ''; // Anniversary
+      row[11] = ''; // Gender
+      row[12] = ''; // Marital Status
+      row[13] = guestData.identityProof || ''; // Identity Proof
+      row[14] = ''; // Linked Username
+      row[15] = ''; // Notes
+      row[16] = new Date().toISOString(); // Created Date
+
+      sheet.appendRow(row);
+    }
+  } catch (e) {
+    Logger.log("Customer Sync Error: " + e.message);
   }
 }
 
