@@ -752,7 +752,7 @@
 
     function Sidebar({activeMenu,setActiveMenu,role,user,onLogout,isOpen,setIsOpen}){
       const adm=role==='admin';
-      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false}];
+      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:false}];
       const click=(k)=>{setActiveMenu(k);setIsOpen(false);};
       return(<><div className={`sidebar-overlay ${isOpen?'open':''}`} onClick={()=>setIsOpen(false)}></div><div className={`sidebar ${isOpen?'open':''}`}><div style={{padding:'24px',borderBottom:'1px solid rgba(255,255,255,0.1)',textAlign:'center'}}><div style={{color:'white',fontSize:'20px',fontWeight:'700'}}><i className="fas fa-hotel"></i> Hill View Eco Retreat</div></div><div className="sidebar-user-info"><div className="sidebar-user-name">{user}</div><div className="sidebar-user-role">{role}</div></div><div className="sidebar-menu-section"><div className="sidebar-menu-title">Navigation</div><ul className="sidebar-menu">{items.filter(m=>adm||!m.a).map(m=>(<li key={m.k}><button className={activeMenu===m.k?'active':''} onClick={()=>click(m.k)}><i className={`fas ${m.i}`}></i><span>{m.l}</span></button></li>))}</ul></div><div className="sidebar-logout"><button onClick={onLogout}><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div></div></>);
     }
@@ -2621,48 +2621,6 @@
       </form></div></div></div>);
     }
 
-    function UsersView({user}){
-      const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const tRef=useRef(null);
-      const [filters,setFilters]=useState({role:''});
-      useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
-      useEffect(()=>{if(!tRef.current)return;if(filters.role)tRef.current.column(1).search('^'+filters.role+'$',true,false);else tRef.current.column(1).search('');tRef.current.draw();},[filters]);
-      const clearF=()=>{setFilters({role:''});if(tRef.current){tRef.current.columns().search('').draw();}};
-      const load=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);if(r&&r.error){Swal.fire({icon:'error',text:r.error});return;}initT(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllUsers();};
-      const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#usrT').empty();}catch(e){}}
-        setTimeout(()=>{try{const t=$('#usrT').DataTable({data,destroy:true,columns:[
-          {data:'username',title:'Username'},{data:'role',title:'Role',render:d=>`<span class="role-badge ${d==='admin'?'role-admin':'role-user'}">${d}</span>`},
-          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
-        ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
-          {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
-        ],order:[[0,'asc']]});
-        $('#usrT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEdit(rd);setShow(true);}else delUser(rd);});
-        tRef.current=t;}catch(e){console.error(e);}},150);};
-      const delUser=(u)=>{Swal.fire({icon:'warning',title:'Delete User?',text:'Delete '+u.username+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(load,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteUser(u.rowIndex);});};
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-users"></i> Users</h2><button className="btn btn-success" onClick={()=>{setEdit(null);setShow(true);}}><i className="fas fa-plus"></i> Add User</button></div>
-        {!ld&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear All</button></div><div className="filters-grid">
-          <div className="filter-group"><label><i className="fas fa-user-shield"></i> Role</label><select className="filter-input" value={filters.role} onChange={e=>setFilters({...filters,role:e.target.value})}><option value="">All Roles</option><option value="admin">Admin</option><option value="user">User</option></select></div>
-        </div></div>}
-        {ld&&<TableSkeleton rows={5} columns={3}/>}<div style={{display:ld?'none':'block'}}><table id="usrT" className="display" style={{width:'100%'}}></table></div>
-        {show&&<UserModal editUser={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load}/>}
-      </div>);
-    }
-
-    function AccountView({user}){
-      const [oldP,setOldP]=useState('');const [newP,setNewP]=useState('');const [confP,setConfP]=useState('');const [sv,setSv]=useState(false);
-      const submit=(e)=>{e.preventDefault();if(newP!==confP){Swal.fire({icon:'error',text:'New passwords do not match'});return;}if(newP.length<4){Swal.fire({icon:'warning',text:'Password must be at least 4 characters'});return;}setSv(true);
-        google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setOldP('');setNewP('');setConfP('');}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).changePassword(user,oldP,newP);};
-      return(<div className="data-section" style={{maxWidth:'500px'}}><div className="section-header"><h2><i className="fas fa-user-circle"></i> My Account</h2></div>
-        <p style={{marginBottom:'20px',color:'#666'}}>Logged in as: <strong>{user}</strong></p>
-        <form onSubmit={submit}>
-          <div className="form-group"><label>Current Password *</label><input type="password" value={oldP} onChange={e=>setOldP(e.target.value)} required/></div>
-          <div className="form-group"><label>New Password *</label><input type="password" value={newP} onChange={e=>setNewP(e.target.value)} required/></div>
-          <div className="form-group"><label>Confirm New Password *</label><input type="password" value={confP} onChange={e=>setConfP(e.target.value)} required/></div>
-          <button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Changing...</>:<><i className="fas fa-key"></i> Change Password</>}</button>
-        </form>
-      </div>);
-    }
 
 
     function InvoiceModal({invoice,onClose,onSave,user}){
@@ -2795,7 +2753,9 @@
       </div>);
     }
 
-    function SettingsView({user}){
+    function SettingsView({user, role}){
+      const isAdmin = role === 'admin';
+      const [activeSettingsTab, setActiveSettingsTab] = useState('profile');
       const [ld,setLd]=useState(true);const [sv,setSv]=useState(false);
       const [fd,setFd]=useState({hotelName:'Hill View Eco Retreat',hotelAddress:'',hotelPhone:'',hotelEmail:'',hotelTIN:'',logoUrl:'',defaultCurrency:'MVR',gstDefaultPercent:16,greenTaxDefaultRate:6});
       useEffect(()=>{google.script.run.withSuccessHandler(r=>{setLd(false);if(r.success){setFd({...fd,...r.data});if(r.data.defaultCurrency)APP_CURRENCY=r.data.defaultCurrency;}}).withFailureHandler(()=>setLd(false)).getSettings();},[]);
@@ -2803,23 +2763,85 @@
       const uploadLogo=(e)=>{const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024)return Swal.fire({icon:'warning',text:'Max 2MB file size.'});
         const reader=new FileReader();reader.onload=()=>{const b64=reader.result.split(',')[1];Swal.fire({title:'Uploading...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
           google.script.run.withSuccessHandler(r=>{Swal.close();if(r.success){setFd({...fd,logoUrl:r.logoUrl,logoFileId:r.fileId});Swal.fire({icon:'success',text:'Logo uploaded!',timer:2000,showConfirmButton:false});}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{Swal.close();Swal.fire({icon:'error',text:e.message});}).uploadLogo(b64,file.name,file.type);};reader.readAsDataURL(file);};
+
+      // Profile Tab States
+      const [oldP,setOldP]=useState('');const [newP,setNewP]=useState('');const [confP,setConfP]=useState('');const [profileSv,setProfileSv]=useState(false);
+      const submitProfile=(e)=>{e.preventDefault();if(newP!==confP){Swal.fire({icon:'error',text:'New passwords do not match'});return;}if(newP.length<4){Swal.fire({icon:'warning',text:'Password must be at least 4 characters'});return;}setProfileSv(true);
+        google.script.run.withSuccessHandler(r=>{setProfileSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});setOldP('');setNewP('');setConfP('');}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setProfileSv(false);Swal.fire({icon:'error',text:e.message});}).changePassword(user,oldP,newP);};
+
+      // Users Tab States
+      const [usersLd,setUsersLd]=useState(true);const [showUserModal,setShowUserModal]=useState(false);const [editUser,setEditUser]=useState(null);const tRef=useRef(null);
+      const [filters,setFilters]=useState({role:''});
+      useEffect(()=>{if(activeSettingsTab==='users'&&isAdmin)loadUsers();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[activeSettingsTab,isAdmin]);
+      useEffect(()=>{if(!tRef.current)return;if(filters.role)tRef.current.column(1).search('^'+filters.role+'$',true,false);else tRef.current.column(1).search('');tRef.current.draw();},[filters]);
+      const clearF=()=>{setFilters({role:''});if(tRef.current){tRef.current.columns().search('').draw();}};
+      const loadUsers=()=>{setUsersLd(true);google.script.run.withSuccessHandler(r=>{setUsersLd(false);if(r&&r.error){Swal.fire({icon:'error',text:r.error});return;}initT(Array.isArray(r)?r:[]);}).withFailureHandler(e=>{setUsersLd(false);Swal.fire({icon:'error',text:e.message});}).getAllUsers();};
+      const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#usrT').empty();}catch(e){}}
+        setTimeout(()=>{try{const t=$('#usrT').DataTable({data,destroy:true,columns:[
+          {data:'username',title:'Username'},{data:'role',title:'Role',render:d=>`<span class="role-badge ${d==='admin'?'role-admin':'role-user'}">${d}</span>`},
+          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:()=>'<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
+        ],pageLength:10,responsive:true,dom:'Blfrtip',buttons:[
+          {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
+          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+          {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
+        ],order:[[0,'asc']]});
+        $('#usrT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='edit'){setEditUser(rd);setShowUserModal(true);}else delUser(rd);});
+        tRef.current=t;}catch(e){console.error(e);}},150);};
+      const delUser=(u)=>{Swal.fire({icon:'warning',title:'Delete User?',text:'Delete '+u.username+'?',showCancelButton:true,confirmButtonColor:'#ea4335',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)google.script.run.withSuccessHandler(res=>{if(res.success){Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false});setTimeout(loadUsers,100);}else Swal.fire({icon:'error',text:res.message});}).withFailureHandler(e=>Swal.fire({icon:'error',text:e.message})).deleteUser(u.rowIndex);});};
+
       if(ld)return <div><DashboardCardSkeleton/></div>;
-      return(<div className="data-section"><div className="section-header"><h2><i className="fas fa-cog"></i> Settings</h2></div><div className="settings-form">
-        <div className="form-grid">
-          <div className="form-group"><label>Hotel Name</label><input value={fd.hotelName} onChange={e=>setFd({...fd,hotelName:e.target.value})}/></div>
-          <div className="form-group"><label>Hotel Phone</label><input value={fd.hotelPhone} onChange={e=>setFd({...fd,hotelPhone:e.target.value})}/></div>
-          <div className="form-group"><label>Hotel Email</label><input type="email" value={fd.hotelEmail} onChange={e=>setFd({...fd,hotelEmail:e.target.value})}/></div>
-          <div className="form-group"><label>Hotel TIN</label><input value={fd.hotelTIN} onChange={e=>setFd({...fd,hotelTIN:e.target.value})}/></div>
+      return(<div className="data-section">
+        <div className="section-header"><h2><i className="fas fa-cog"></i> Settings</h2></div>
+
+        <div className="tabs-header" style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
+          <button className={`btn ${activeSettingsTab==='profile'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveSettingsTab('profile')}><i className="fas fa-user-circle"></i> My Profile</button>
+          {isAdmin&&<button className={`btn ${activeSettingsTab==='hotel'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveSettingsTab('hotel')}><i className="fas fa-hotel"></i> Hotel Config</button>}
+          {isAdmin&&<button className={`btn ${activeSettingsTab==='users'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveSettingsTab('users')}><i className="fas fa-users"></i> User Management</button>}
         </div>
-        <div className="form-group"><label>Hotel Address</label><textarea rows="2" value={fd.hotelAddress} onChange={e=>setFd({...fd,hotelAddress:e.target.value})}/></div>
-        <div className="form-group"><label>Logo</label><input type="file" accept="image/*" onChange={uploadLogo}/>{fd.logoUrl&&<img src={fd.logoUrl} alt="Logo" className="logo-preview"/>}</div>
-        <div className="form-grid">
-          <div className="form-group"><label>Default Currency</label><select value={fd.defaultCurrency} onChange={e=>setFd({...fd,defaultCurrency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-          <div className="form-group"><label>Default GST %</label><input type="number" step="0.01" value={fd.gstDefaultPercent} onChange={e=>setFd({...fd,gstDefaultPercent:e.target.value})}/></div>
-          <div className="form-group"><label>Green Tax Rate (per night)</label><input type="number" step="0.01" value={fd.greenTaxDefaultRate} onChange={e=>setFd({...fd,greenTaxDefaultRate:e.target.value})}/></div>
-        </div>
-        <button className="btn btn-primary" onClick={save} disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save Settings</>}</button>
-      </div></div>);
+
+        {activeSettingsTab === 'profile' && (
+          <div className="settings-form" style={{maxWidth:'500px'}}>
+            <p style={{marginBottom:'20px',color:'#666'}}>Logged in as: <strong>{user}</strong></p>
+            <form onSubmit={submitProfile}>
+              <div className="form-group"><label>Current Password *</label><input type="password" value={oldP} onChange={e=>setOldP(e.target.value)} required/></div>
+              <div className="form-group"><label>New Password *</label><input type="password" value={newP} onChange={e=>setNewP(e.target.value)} required/></div>
+              <div className="form-group"><label>Confirm New Password *</label><input type="password" value={confP} onChange={e=>setConfP(e.target.value)} required/></div>
+              <button type="submit" className="btn btn-primary" disabled={profileSv}>{profileSv?<><i className="fas fa-spinner fa-spin"></i> Changing...</>:<><i className="fas fa-key"></i> Change Password</>}</button>
+            </form>
+          </div>
+        )}
+
+        {activeSettingsTab === 'hotel' && isAdmin && (
+          <div className="settings-form">
+            <div className="form-grid">
+              <div className="form-group"><label>Hotel Name</label><input value={fd.hotelName} onChange={e=>setFd({...fd,hotelName:e.target.value})}/></div>
+              <div className="form-group"><label>Hotel Phone</label><input value={fd.hotelPhone} onChange={e=>setFd({...fd,hotelPhone:e.target.value})}/></div>
+              <div className="form-group"><label>Hotel Email</label><input type="email" value={fd.hotelEmail} onChange={e=>setFd({...fd,hotelEmail:e.target.value})}/></div>
+              <div className="form-group"><label>Hotel TIN</label><input value={fd.hotelTIN} onChange={e=>setFd({...fd,hotelTIN:e.target.value})}/></div>
+            </div>
+            <div className="form-group"><label>Hotel Address</label><textarea rows="2" value={fd.hotelAddress} onChange={e=>setFd({...fd,hotelAddress:e.target.value})}/></div>
+            <div className="form-group"><label>Logo</label><input type="file" accept="image/*" onChange={uploadLogo}/>{fd.logoUrl&&<img src={fd.logoUrl} alt="Logo" className="logo-preview"/>}</div>
+            <div className="form-grid">
+              <div className="form-group"><label>Default Currency</label><select value={fd.defaultCurrency} onChange={e=>setFd({...fd,defaultCurrency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+              <div className="form-group"><label>Default GST %</label><input type="number" step="0.01" value={fd.gstDefaultPercent} onChange={e=>setFd({...fd,gstDefaultPercent:e.target.value})}/></div>
+              <div className="form-group"><label>Green Tax Rate (per night)</label><input type="number" step="0.01" value={fd.greenTaxDefaultRate} onChange={e=>setFd({...fd,greenTaxDefaultRate:e.target.value})}/></div>
+            </div>
+            <button className="btn btn-primary" onClick={save} disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save Settings</>}</button>
+          </div>
+        )}
+
+        {activeSettingsTab === 'users' && isAdmin && (
+          <div className="settings-form">
+            <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'15px'}}><button className="btn btn-success" onClick={()=>{setEditUser(null);setShowUserModal(true);}}><i className="fas fa-plus"></i> Add User</button></div>
+            {!usersLd&&<div className="filters-section"><div className="filters-header"><h3><i className="fas fa-filter"></i> Filters</h3><button className="btn btn-secondary btn-sm" onClick={clearF}><i className="fas fa-times-circle"></i> Clear All</button></div><div className="filters-grid">
+              <div className="filter-group"><label><i className="fas fa-user-shield"></i> Role</label><select className="filter-input" value={filters.role} onChange={e=>setFilters({...filters,role:e.target.value})}><option value="">All Roles</option><option value="admin">Admin</option><option value="user">User</option></select></div>
+            </div></div>}
+            {usersLd&&<TableSkeleton rows={5} columns={3}/>}<div style={{display:usersLd?'none':'block'}}><table id="usrT" className="display" style={{width:'100%'}}></table></div>
+            {showUserModal&&<UserModal editUser={editUser} onClose={()=>{setShowUserModal(false);setEditUser(null);}} onSave={loadUsers}/>}
+          </div>
+        )}
+
+      </div>);
     }
 
 
@@ -2833,7 +2855,7 @@
       ]:[
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
         {k:'calendar',i:'fa-calendar-alt',l:'Calendar'},
-                {k:'account',i:'fa-user-circle',l:'Account'}
+                {k:'settings',i:'fa-cog',l:'Settings'}
       ];
       const [showMore,setShowMore]=useState(false);
       const moreItems=adm?[
@@ -2841,10 +2863,8 @@
         {k:'checkin',i:'fa-door-open',l:'Check-In'},
         {k:'restaurant',i:'fa-utensils',l:'Restaurant'},
                 {k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices'},
-        {k:'users',i:'fa-users',l:'Users'},
         {k:'customers',i:'fa-address-book',l:'Customers'},
         {k:'settings',i:'fa-cog',l:'Settings'},
-        {k:'account',i:'fa-user-circle',l:'Account'},
         {k:'_logout',i:'fa-power-off',l:'Logout'}
       ]:[];
       const handleClick=(k)=>{if(k==='more'){setShowMore(!showMore);return;}if(k==='_logout'){onLogout();return;}setActiveMenu(k);setShowMore(false);};
@@ -2951,7 +2971,7 @@
       </div>);
     }
 
-    function MainContent({activeMenu,user,role}){
+    function MainContent({activeMenu,user,role,onLogout}){
       switch(activeMenu){
         case 'dashboard': return <DashboardView user={user}/>;
         case 'bookings': return <BookingsView user={user} role={role}/>;
@@ -2961,9 +2981,7 @@
         case 'restaurant': return <RestaurantView user={user}/>;
         case 'customers': return <CustomersView user={user}/>;
                 case 'invoices': return <InvoicesView user={user}/>;
-        case 'settings': return <SettingsView user={user}/>;
-        case 'users': return <UsersView user={user}/>;
-        case 'account': return <AccountView user={user}/>;
+        case 'settings': return <SettingsView user={user} role={role} onLogout={onLogout}/>;
                 default: return null;
       }
     }
@@ -2971,7 +2989,7 @@
     function Dashboard({user,role,onLogout}){
       const [am,setAm]=useState(role==='admin'?'dashboard':'bookings');
       const [so,setSo]=useState(false);
-      return(<div className="app-container"><Sidebar activeMenu={am} setActiveMenu={setAm} role={role} user={user} onLogout={onLogout} isOpen={so} setIsOpen={setSo}/><div className="main-content"><div className="header"><div style={{display:'flex',alignItems:'center',gap:'10px'}}><button className="hamburger" onClick={()=>setSo(!so)}><i className="fas fa-bars"></i></button><h1><i className="fas fa-hotel"></i> Hill View Eco Retreat</h1></div><div style={{fontSize:'14px',color:'#666'}}>Welcome, {user}</div></div><MainContent activeMenu={am} user={user} role={role}/></div><BottomNav activeMenu={am} setActiveMenu={setAm} role={role} onLogout={onLogout}/></div>);
+      return(<div className="app-container"><Sidebar activeMenu={am} setActiveMenu={setAm} role={role} user={user} onLogout={onLogout} isOpen={so} setIsOpen={setSo}/><div className="main-content"><div className="header"><div style={{display:'flex',alignItems:'center',gap:'10px'}}><button className="hamburger" onClick={()=>setSo(!so)}><i className="fas fa-bars"></i></button><h1><i className="fas fa-hotel"></i> Hill View Eco Retreat</h1></div><div style={{fontSize:'14px',color:'#666'}}>Welcome, {user}</div></div><MainContent activeMenu={am} user={user} role={role} onLogout={onLogout}/></div><BottomNav activeMenu={am} setActiveMenu={setAm} role={role} onLogout={onLogout}/></div>);
     }
 
     function App(){
