@@ -2583,33 +2583,6 @@ function getDashboardData() {
       roomTypeMap[t] = (roomTypeMap[t] || 0) + 1;
     });
 
-    // Finance Summary
-    let financeSummary = { totalIncome: 0, totalExpenses: 0, netBalance: 0 };
-    let expenseCategories = {};
-    let incomeCategories = {};
-    try {
-      const finSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
-      if (finSheet) {
-        const finData = finSheet.getDataRange().getValues();
-        for (let i = 1; i < finData.length; i++) {
-          let type = (finData[i][FIN_TYPE_COL] || "").toString();
-          let amount = parseFloat(finData[i][FIN_AMOUNT_COL]) || 0;
-          let category = (finData[i][FIN_CATEGORY_COL] || "Uncategorized").toString();
-          if (type === "Income") {
-            financeSummary.totalIncome += amount;
-            incomeCategories[category] = (incomeCategories[category] || 0) + amount;
-          } else if (type === "Expense") {
-            financeSummary.totalExpenses += amount;
-            expenseCategories[category] = (expenseCategories[category] || 0) + amount;
-          }
-        }
-        financeSummary.netBalance = financeSummary.totalIncome - financeSummary.totalExpenses;
-      }
-    } catch (finErr) {
-      Logger.log("Could not load finance data: " + finErr);
-    }
-
-
     // Monthly data (last 6 months) - declared outside try so return can access them
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     let monthlyBookings = {};
@@ -2772,15 +2745,11 @@ function getDashboardData() {
       bookedRoomNumbers: bookedRoomsList,
       allRoomsDetails,
       roomTypeBreakdown: roomTypeMap,
-      financeSummary,
-      expenseCategories,
-      incomeCategories,
       bookingRevenue,
       recentBookings,
       todaysCheckIns,
       todaysCheckOuts,
       invoiceStats,
-      currentBudget,
       defaultCurrency: settingsDefaultCurrency,
       monthlyBookings: monthlyBookings || {},
       monthlyRevenue: monthlyRevenue || {},
