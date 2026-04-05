@@ -334,30 +334,11 @@
     .totals-section { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; }
     .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; }
     .totals-row.grand-total { font-weight: 700; font-size: 18px; color: var(--navy-primary); border-top: 2px solid var(--navy-primary); padding-top: 12px; margin-top: 5px; }
-    .about-section { max-width: 900px; margin: 0 auto; padding: 20px; }
-    .about-header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; padding: 25px; background: linear-gradient(135deg, var(--navy-primary), var(--navy-light)); border-radius: 4px; color: white; }
-    .about-logo img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.3); object-fit: cover; }
-    .about-title h1 { font-size: 24px; margin-bottom: 8px; font-weight: 700; }
-    .about-dev { font-size: 14px; opacity: 0.9; }
-    .about-card { background: white; border-radius: 4px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid var(--navy-primary); }
-    .about-card h2 { color: var(--navy-primary); font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-    .about-card p { color: #555; line-height: 1.7; font-size: 15px; }
-    .about-features { list-style: none; padding: 0; }
-    .about-features li { padding: 12px 0; border-bottom: 1px solid #eee; color: #555; font-size: 15px; display: flex; align-items: flex-start; gap: 12px; }
-    .about-features li:last-child { border-bottom: none; }
-    .about-features li i { color: var(--success); margin-top: 3px; flex-shrink: 0; }
-    .about-table-wrapper { overflow-x: auto; margin: 15px 0; }
-    .about-roles-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .about-roles-table th, .about-roles-table td { padding: 12px 15px; text-align: center; border: 1px solid #e0e0e0; }
-    .about-roles-table th { background: var(--navy-primary); color: white; }
-    .about-roles-table th:first-child, .about-roles-table td:first-child { text-align: left; }
-    .about-roles-table td:first-child { font-weight: 500; background: #f8f9fa; }
     .role-badge { display: inline-block; padding: 4px 10px; border-radius: 3px; font-size: 12px; font-weight: 600; }
     .role-admin { background: #d4edda; color: #155724; }
     .role-user { background: #cce5ff; color: #004085; }
     .text-success { color: var(--success); }
     .text-danger { color: var(--danger); }
-    .about-developer { border-left-color: var(--navy-accent); }
     .developer-info { display: flex; gap: 20px; align-items: flex-start; }
     .developer-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--navy-primary); flex-shrink: 0; }
     .developer-details h3 { color: var(--navy-primary); font-size: 20px; margin-bottom: 5px; }
@@ -369,8 +350,6 @@
     .dev-link.whatsapp:hover { background: #128C7E; transform: translateY(-2px); }
     .dev-link.youtube { background: #FF0000; color: white; }
     .dev-link.youtube:hover { background: #CC0000; transform: translateY(-2px); }
-    .about-footer { text-align: center; padding: 25px; color: #666; font-size: 14px; }
-    .about-version { font-size: 12px; color: #999; margin-top: 5px; }
     .sidebar-overlay { display: none; }
     /* Bottom Nav Bar */
     .bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--navy-primary); z-index: 997; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); padding: 0; }
@@ -411,7 +390,6 @@
       .line-item-row.activity-item > div:first-child { grid-column: 1 / -1; }
       .line-item-row.activity-item > button { grid-column: 1 / -1; justify-self: end; }
       .report-summary { grid-template-columns: repeat(2, 1fr); }
-      .about-header { flex-direction: column; text-align: center; }
       .developer-info { flex-direction: column; align-items: center; text-align: center; }
       .developer-links { justify-content: center; }
       .invoice-detail-grid { grid-template-columns: 1fr; }
@@ -774,7 +752,7 @@
 
     function Sidebar({activeMenu,setActiveMenu,role,user,onLogout,isOpen,setIsOpen}){
       const adm=role==='admin';
-      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false},{k:'about',i:'fa-info-circle',l:'About App',a:false}];
+      const items=[{k:'dashboard',i:'fa-chart-line',l:'Dashboard',a:true},{k:'bookings',i:'fa-calendar-check',l:'Bookings',a:false},{k:'calendar',i:'fa-calendar-alt',l:'Calendar',a:false},{k:'checkin',i:'fa-door-open',l:'Check-In',a:true},{k:'checkout',i:'fa-sign-out-alt',l:'Checkout',a:true},{k:'restaurant',i:'fa-utensils',l:'Restaurant',a:true},{k:'invoices',i:'fa-file-invoice-dollar',l:'Invoices',a:true},{k:'users',i:'fa-users',l:'Users',a:true},{k:'customers',i:'fa-address-book',l:'Customers',a:true},{k:'settings',i:'fa-cog',l:'Settings',a:true},{k:'account',i:'fa-user-circle',l:'My Account',a:false}];
       const click=(k)=>{setActiveMenu(k);setIsOpen(false);};
       return(<><div className={`sidebar-overlay ${isOpen?'open':''}`} onClick={()=>setIsOpen(false)}></div><div className={`sidebar ${isOpen?'open':''}`}><div style={{padding:'24px',borderBottom:'1px solid rgba(255,255,255,0.1)',textAlign:'center'}}><div style={{color:'white',fontSize:'20px',fontWeight:'700'}}><i className="fas fa-hotel"></i> Hill View Eco Retreat</div></div><div className="sidebar-user-info"><div className="sidebar-user-name">{user}</div><div className="sidebar-user-role">{role}</div></div><div className="sidebar-menu-section"><div className="sidebar-menu-title">Navigation</div><ul className="sidebar-menu">{items.filter(m=>adm||!m.a).map(m=>(<li key={m.k}><button className={activeMenu===m.k?'active':''} onClick={()=>click(m.k)}><i className={`fas ${m.i}`}></i><span>{m.l}</span></button></li>))}</ul></div><div className="sidebar-logout"><button onClick={onLogout}><i className="fas fa-sign-out-alt"></i><span>Logout</span></button></div></div></>);
     }
@@ -2686,43 +2664,6 @@
       </div>);
     }
 
-    function AboutView(){
-      return(<div className="about-section">
-        <div className="about-header"><div className="about-logo"><img src={LOGO} alt="Logo"/></div><div className="about-title"><h1>Hill View Eco Retreat</h1></div></div>
-        <div className="about-card"><h2><i className="fas fa-question-circle"></i> What is this App?</h2><p>So basicaly this is the Hill View Eco Retreat management system built with Google Apps Script. Its used to manage room bookings, guest check-ins and checkouts, generate invoices, and track income and expenses. Think of it like a digital front desk where you can handle evrything from one place.</p></div>
-        <div className="about-card"><h2><i className="fas fa-clipboard-list"></i> What Can You Do With It?</h2><ul className="about-features">
-          <li><i className="fas fa-check"></i> <strong>Room Management</strong> - Add, edit, and manage hotel rooms with diffrent types and rates</li>
-          <li><i className="fas fa-check"></i> <strong>Bookings</strong> - Create new bookings, track guest details, and manage reservations</li>
-          <li><i className="fas fa-check"></i> <strong>Checkout & Invoicing</strong> - Process checkouts and generate professional PDF invoices</li>
-          <li><i className="fas fa-check"></i> <strong>Standalone Invoices</strong> - Create invoices with rooms, activities, and services with auto-numbering (INV-0001)</li>
-                    <li><i className="fas fa-check"></i> <strong>Multi-Currency</strong> - Support for MVR and USD currencies per document</li>
-          <li><i className="fas fa-check"></i> <strong>Tax System</strong> - Optional GST (percentage) and Green Tax (per person per night) on invoices</li>
-          <li><i className="fas fa-check"></i> <strong>Finance Tracking</strong> - Record income and expenses with categories, currency support, and running balance</li>
-          <li><i className="fas fa-check"></i> <strong>Budget Management</strong> - Set monthly budgets and track spending with visual progress bars</li>
-          <li><i className="fas fa-check"></i> <strong>Categories</strong> - Manage income and expense categories for better financial tracking</li>
-          <li><i className="fas fa-check"></i> <strong>Monthly Reports</strong> - Generate detailed financial reports with category breakdowns</li>
-          <li><i className="fas fa-check"></i> <strong>PDF to Drive</strong> - Save invoice PDFs directly to Google Drive</li>
-          <li><i className="fas fa-check"></i> <strong>Hotel Settings</strong> - Configure hotel details, logo, default currency, and tax rates</li>
-          <li><i className="fas fa-check"></i> <strong>Dashboard</strong> - Visual overview with charts showing room occupancy, revenue, invoices, and budget</li>
-          <li><i className="fas fa-check"></i> <strong>User Management</strong> - Manage staff accounts with Admin and User roles</li>
-          <li><i className="fas fa-check"></i> <strong>Export Data</strong> - Export any table to CSV, PDF, or print directly</li>
-        </ul></div>
-        <div className="about-card"><h2><i className="fas fa-users-cog"></i> User Roles & Permissions</h2><p style={{marginBottom:'15px'}}>The system has diffrent user roles. Each role can do diffrent things based on there access level.</p><div className="about-table-wrapper"><table className="about-roles-table"><thead><tr><th>Feature / Action</th><th><span className="role-badge role-admin">Admin</span></th><th><span className="role-badge role-user">User</span></th></tr></thead><tbody>
-          <tr><td>View Dashboard</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Create Bookings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-check-circle text-success"></i></td></tr>
-          <tr><td>View All Bookings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i> Own only</td></tr>
-          <tr><td>Checkout Guests</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Manage Rooms</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-                    <tr><td>Manage Invoices</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Finance Tracking</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Monthly Reports</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Hotel Settings</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Manage Users</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-times-circle text-danger"></i></td></tr>
-          <tr><td>Change Own Password</td><td><i className="fas fa-check-circle text-success"></i></td><td><i className="fas fa-check-circle text-success"></i></td></tr>
-        </tbody></table></div></div>
-        <div className="about-footer"><p>Hotel Management System</p><p className="about-version">Version 2.0.0</p></div>
-      </div>);
-    }
 
     function InvoiceModal({invoice,onClose,onSave,user}){
       const [fd,setFd]=useState({guestName:invoice?.guestName||'',phone:invoice?.phone||'',email:invoice?.email||'',customerTIN:invoice?.customerTIN||'',currency:invoice?.currency||APP_CURRENCY,dueDate:invoice?.dueDate?invoice.dueDate.slice(0,10):'',status:invoice?.status||'Draft',notes:invoice?.notes||'',discount:invoice?.discount||0,gstEnabled:invoice?.gstEnabled||false,gstPercent:invoice?.gstPercent||16,greenTaxEnabled:invoice?.greenTaxEnabled||false,greenTaxPerNight:invoice?.greenTaxPerNight||6,greenTaxPax:invoice?.greenTaxPax||0,greenTaxNights:invoice?.greenTaxNights||0});
@@ -2892,8 +2833,7 @@
       ]:[
         {k:'bookings',i:'fa-calendar-check',l:'Bookings'},
         {k:'calendar',i:'fa-calendar-alt',l:'Calendar'},
-                {k:'account',i:'fa-user-circle',l:'Account'},
-        {k:'about',i:'fa-info-circle',l:'About'}
+                {k:'account',i:'fa-user-circle',l:'Account'}
       ];
       const [showMore,setShowMore]=useState(false);
       const moreItems=adm?[
@@ -2905,7 +2845,6 @@
         {k:'customers',i:'fa-address-book',l:'Customers'},
         {k:'settings',i:'fa-cog',l:'Settings'},
         {k:'account',i:'fa-user-circle',l:'Account'},
-        {k:'about',i:'fa-info-circle',l:'About'},
         {k:'_logout',i:'fa-power-off',l:'Logout'}
       ]:[];
       const handleClick=(k)=>{if(k==='more'){setShowMore(!showMore);return;}if(k==='_logout'){onLogout();return;}setActiveMenu(k);setShowMore(false);};
@@ -3025,7 +2964,6 @@
         case 'settings': return <SettingsView user={user}/>;
         case 'users': return <UsersView user={user}/>;
         case 'account': return <AccountView user={user}/>;
-        case 'about': return <AboutView/>;
                 default: return null;
       }
     }
