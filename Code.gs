@@ -2622,7 +2622,6 @@ function getDashboardData() {
     let monthlyRevenue = {};
     let monthlyIncome = {};
     let monthlyExpense = {};
-    const now = new Date();
     for (let m = 5; m >= 0; m--) {
       const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
       const key = monthNames[d.getMonth()] + ' ' + d.getFullYear();
