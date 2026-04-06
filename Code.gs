@@ -2542,7 +2542,7 @@ function getDashboardData() {
 
             if (isCurrentlyOccupying) {
               rns.forEach(rn => {
-                guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout };
+                guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout, liveStatus: 'CheckedIn' };
               });
             }
           }
@@ -2553,7 +2553,7 @@ function getDashboardData() {
       if (bkSheet) {
         const bkData = bkSheet.getDataRange().getValues();
         for (let i = 1; i < bkData.length; i++) {
-          if ((bkData[i][BOOKING_STATUS_COL] || '').toString() === 'Booked') {
+          if ((bkData[i][BOOKING_STATUS_COL] || '').toString() === 'Confirmed' || (bkData[i][BOOKING_STATUS_COL] || '').toString() === 'Booked') {
             const rnStr = (bkData[i][BOOKING_ROOM_NO_COL] || '').toString();
             const rns = rnStr.split(',').map(r => r.trim()).filter(Boolean);
             const gName = (bkData[i][GUEST_NAME_COL] || '').toString();
@@ -2570,7 +2570,7 @@ function getDashboardData() {
               rns.forEach(rn => {
                 // Only apply if not already claimed by a check-in
                 if (!guestMap[rn]) {
-                  guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout };
+                  guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout, liveStatus: 'Booked' };
                 }
               });
             }
@@ -2582,14 +2582,15 @@ function getDashboardData() {
     roomsData.forEach((row, index) => {
       let roomNo = (row[ROOM_NO_COL] || "").toString();
       let type   = (row[ROOM_TYPE_COL] || "").toString();
-      let status = (row[ROOM_STATUS_COL] || "").toString();
+      let dbStatus = (row[ROOM_STATUS_COL] || "").toString();
       
       let guestData = guestMap[roomNo] || {};
+      let finalStatus = guestData.liveStatus ? guestData.liveStatus : dbStatus;
       
       allRoomsDetails.push({ 
         roomNo, 
         type, 
-        status,
+        status: finalStatus,
         roomRate: parseFloat(row[ROOM_RATE_COL]) || 0,
         rowIndex: index + 2,
         guestName: guestData.guestName || '',

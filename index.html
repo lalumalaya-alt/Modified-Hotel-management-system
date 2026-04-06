@@ -804,18 +804,24 @@
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(110px, 1fr))',gap:'10px'}}>
               {(st?.allRoomsDetails||[]).map(rm => {
                 let bg = '#34a853'; // Available
-                if(rm.status==='Booked') bg = '#0074D9';
-                if(rm.status==='Maintenance') bg = '#fbbc04';
-                if(rm.status==='Reserved') bg = '#6f42c1';
+                if(rm.status==='CheckedIn') bg = '#28a745'; // Specific Green for Checked In
+                else if(rm.status==='Booked') bg = '#0074D9'; // Blue for Booked
+                else if(rm.status==='Maintenance') bg = '#fbbc04';
+                else if(rm.status==='Reserved') bg = '#6f42c1';
+
+                let tooltipText = `Status: ${rm.status}`;
+                if (rm.guestName) {
+                  tooltipText += ` | Guest: ${rm.guestName}`;
+                }
                 
                 return (
-                  <div key={rm.roomNo} onClick={() => { setEditRoom({roomNo: rm.roomNo, roomType: rm.type, roomStatus: rm.status, roomRate: rm.roomRate, rowIndex: rm.rowIndex}); setShowRoomModal(true); }} style={{background:bg,color:'#fff',padding:'12px 8px',borderRadius:'8px',textAlign:'center',boxShadow:'0 2px 4px rgba(0,0,0,0.1)',display:'flex',flexDirection:'column',justifyContent:'center',minHeight:'90px', gap:'4px', cursor: 'pointer'}}>
+                  <div key={rm.roomNo} title={tooltipText} onClick={() => { setEditRoom({roomNo: rm.roomNo, roomType: rm.type, roomStatus: rm.status, roomRate: rm.roomRate, rowIndex: rm.rowIndex}); setShowRoomModal(true); }} style={{background:bg,color:'#fff',padding:'12px 8px',borderRadius:'8px',textAlign:'center',boxShadow:'0 2px 4px rgba(0,0,0,0.1)',display:'flex',flexDirection:'column',justifyContent:'center',minHeight:'90px', gap:'4px', cursor: 'pointer'}}>
                     <div style={{fontSize:'18px',fontWeight:'bold'}}>{rm.roomNo}</div>
                     {rm.guestName ? (
                       <>
-                        <div style={{fontSize:'12px',fontWeight:'bold',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis', maxWidth:'100%'}} title={rm.guestName}>{rm.guestName}</div>
+                        <div style={{fontSize:'12px',fontWeight:'bold',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis', maxWidth:'100%'}}>{rm.guestName}</div>
                         {rm.checkIn && rm.checkOut && (
-                           <div style={{fontSize:'10px',opacity:0.9,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}} title={`${fmtDShort(rm.checkIn)} - ${fmtDShort(rm.checkOut)}`}>
+                           <div style={{fontSize:'10px',opacity:0.9,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                              {fmtDShort(rm.checkIn)} - {fmtDShort(rm.checkOut)}
                            </div>
                         )}
@@ -829,7 +835,8 @@
             </div>
             <div style={{marginTop:'20px',display:'flex',gap:'15px',fontSize:'12px',color:'#666'}}>
               <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#34a853',borderRadius:'2px'}}></span> Available</span>
-              <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#0074D9',borderRadius:'2px'}}></span> Booked / Checked In</span>
+              <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#28a745',borderRadius:'2px'}}></span> Checked In</span>
+              <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#0074D9',borderRadius:'2px'}}></span> Booked</span>
               <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#6f42c1',borderRadius:'2px'}}></span> Reserved</span>
               <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#fbbc04',borderRadius:'2px'}}></span> Maintenance</span>
             </div>
