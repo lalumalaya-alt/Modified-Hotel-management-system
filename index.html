@@ -804,7 +804,7 @@
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(110px, 1fr))',gap:'10px'}}>
               {(st?.allRoomsDetails||[]).map(rm => {
                 let bg = '#34a853'; // Available
-                if(rm.status==='CheckedIn') bg = '#28a745'; // Specific Green for Checked In
+                if(rm.status==='CheckedIn') bg = '#dc3545'; // Red for Checked In
                 else if(rm.status==='Booked') bg = '#0074D9'; // Blue for Booked
                 else if(rm.status==='Maintenance') bg = '#fbbc04';
                 else if(rm.status==='Reserved') bg = '#6f42c1';
@@ -835,7 +835,7 @@
             </div>
             <div style={{marginTop:'20px',display:'flex',gap:'15px',fontSize:'12px',color:'#666'}}>
               <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#34a853',borderRadius:'2px'}}></span> Available</span>
-              <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#28a745',borderRadius:'2px'}}></span> Checked In</span>
+              <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#dc3545',borderRadius:'2px'}}></span> Checked In</span>
               <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#0074D9',borderRadius:'2px'}}></span> Booked</span>
               <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#6f42c1',borderRadius:'2px'}}></span> Reserved</span>
               <span style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'12px',background:'#fbbc04',borderRadius:'2px'}}></span> Maintenance</span>
