@@ -2598,7 +2598,7 @@ function getDashboardData() {
         checkOut: guestData.checkOut || ''
       });
       
-      if (status.toLowerCase() === "booked") {
+      if (finalStatus.toLowerCase() === "booked" || finalStatus.toLowerCase() === "checkedin") {
         bookedCount++;
         bookedRoomsList.push(roomNo);
       } else {
