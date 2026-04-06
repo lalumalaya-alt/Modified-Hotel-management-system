@@ -2521,6 +2521,7 @@ function getDashboardData() {
 
     // Pre-fetch active checkins and bookings to attach guest details to rooms
     let guestMap = {};
+    const now = new Date();
     try {
       const ciSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(CHECKIN_SHEET_NAME);
       if (ciSheet) {
@@ -2530,12 +2531,20 @@ function getDashboardData() {
             const rnStr = (ciData[i][CI_ROOM_NUMBERS_COL] || '').toString();
             const rns = rnStr.split(',').map(r => r.trim()).filter(Boolean);
             const gName = (ciData[i][CI_GUEST_NAME_COL] || '').toString();
-            const cin = ciData[i][CI_CHECKIN_DATE_COL] ? new Date(ciData[i][CI_CHECKIN_DATE_COL]).toISOString() : '';
-            const cout = ciData[i][CI_CHECKOUT_DATE_COL] ? new Date(ciData[i][CI_CHECKOUT_DATE_COL]).toISOString() : '';
+            const cinStr = ciData[i][CI_CHECKIN_DATE_COL];
+            const coutStr = ciData[i][CI_CHECKOUT_DATE_COL];
             
-            rns.forEach(rn => {
-              guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout };
-            });
+            const cin = cinStr ? new Date(cinStr).toISOString() : '';
+            const cout = coutStr ? new Date(coutStr).toISOString() : '';
+
+            // Exclude the actual check-out day block
+            const isCurrentlyOccupying = cinStr && coutStr && new Date(cinStr) <= now && now < new Date(new Date(coutStr).getFullYear(), new Date(coutStr).getMonth(), new Date(coutStr).getDate());
+
+            if (isCurrentlyOccupying) {
+              rns.forEach(rn => {
+                guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout };
+              });
+            }
           }
         }
       }
@@ -2548,15 +2557,23 @@ function getDashboardData() {
             const rnStr = (bkData[i][BOOKING_ROOM_NO_COL] || '').toString();
             const rns = rnStr.split(',').map(r => r.trim()).filter(Boolean);
             const gName = (bkData[i][GUEST_NAME_COL] || '').toString();
-            const cin = bkData[i][CHECK_IN_COL] ? new Date(bkData[i][CHECK_IN_COL]).toISOString() : '';
-            const cout = bkData[i][CHECK_OUT_COL] ? new Date(bkData[i][CHECK_OUT_COL]).toISOString() : '';
+            const cinStr = bkData[i][CHECK_IN_COL];
+            const coutStr = bkData[i][CHECK_OUT_COL];
             
-            rns.forEach(rn => {
-              // Only apply if not already claimed by a check-in
-              if (!guestMap[rn]) {
-                guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout };
-              }
-            });
+            const cin = cinStr ? new Date(cinStr).toISOString() : '';
+            const cout = coutStr ? new Date(coutStr).toISOString() : '';
+
+            // Exclude the actual check-out day block
+            const isCurrentlyOccupying = cinStr && coutStr && new Date(cinStr) <= now && now < new Date(new Date(coutStr).getFullYear(), new Date(coutStr).getMonth(), new Date(coutStr).getDate());
+
+            if (isCurrentlyOccupying) {
+              rns.forEach(rn => {
+                // Only apply if not already claimed by a check-in
+                if (!guestMap[rn]) {
+                  guestMap[rn] = { guestName: gName, checkIn: cin, checkOut: cout };
+                }
+              });
+            }
           }
         }
       }

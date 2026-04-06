@@ -1221,7 +1221,10 @@
             if (editRowIndex && ci.rowIndex === editRowIndex) return; // Skip the one we are editing
             const ciIn = new Date(ci.checkInDate);
             const ciOut = new Date(ci.checkOutDate);
-            if (cIn < ciOut && cOut > ciIn) {
+
+            // Exclude the actual check-out day block
+            const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.getDate());
+            if (cIn < actualCiOutStart && cOut > ciIn) {
               const ciRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
               ciRooms.forEach(rn => {
                 if (states[rn]) {
@@ -1240,7 +1243,8 @@
                 const bIn = new Date(bk.checkIn);
                 const bOut = new Date(bk.checkOut);
                 
-                if (cIn < bOut && cOut > bIn) {
+                const actualBOutStart = new Date(bOut.getFullYear(), bOut.getMonth(), bOut.getDate());
+                if (cIn < actualBOutStart && cOut > bIn) {
                   const roomNosArr = bk.roomNo.split(',').map(r => r.trim()).filter(Boolean);
                   roomNosArr.forEach(r => {
                     const match = r.match(/(.+?)(?:\s*\((\d+)\))?$/);
@@ -1532,9 +1536,12 @@
           if(activeCis && activeCis.length > 0){
              activeCis.forEach(ci => {
                 if(ci.checkInId !== rec.checkInId && ci.status === 'Active'){
-                   (ci.roomNumbers||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(r => {
-                      if(states[r]) states[r].status = 'occupied';
-                   });
+                   const actualCiOutStart = new Date(new Date(ci.checkOutDate).getFullYear(), new Date(ci.checkOutDate).getMonth(), new Date(ci.checkOutDate).getDate());
+                   if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
+                     (ci.roomNumbers||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(r => {
+                        if(states[r]) states[r].status = 'occupied';
+                     });
+                   }
                 }
              });
           }
@@ -1545,7 +1552,8 @@
               if (bk.status === 'Booked' && bk.roomNo) {
                 const bIn = new Date(bk.checkIn);
                 const bOut = new Date(bk.checkOut);
-                if (cIn < bOut && cOut > bIn) {
+                const actualBOutStart = new Date(bOut.getFullYear(), bOut.getMonth(), bOut.getDate());
+                if (cIn < actualBOutStart && cOut > bIn) {
                   const roomNosArr = bk.roomNo.split(',').map(r => r.trim()).filter(Boolean);
                   roomNosArr.forEach(r => {
                     const match = r.match(/(.+?)(?:\s*\((\d+)\))?$/);
@@ -2932,7 +2940,10 @@
       const getBookingsForDate=(date)=>{
         const dayStart=new Date(date.getFullYear(),date.getMonth(),date.getDate());
         const dayEnd=new Date(dayStart);dayEnd.setDate(dayEnd.getDate()+1);
-        return bookings.filter(b=>{if(!b.checkIn||!b.checkOut)return false;const ci=new Date(b.checkIn);const co=new Date(b.checkOut);return ci<dayEnd&&co>dayStart;});
+        return bookings.filter(b=>{if(!b.checkIn||!b.checkOut)return false;const ci=new Date(b.checkIn);const co=new Date(b.checkOut);
+        // Exclude the actual check-out day block from occupancy maps
+        const actualCheckoutStart = new Date(co.getFullYear(), co.getMonth(), co.getDate());
+        return ci < dayEnd && actualCheckoutStart > dayStart;});
       };
 
       const today=new Date();
