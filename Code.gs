@@ -1685,14 +1685,7 @@ function processWalkinCheckout(guestName, orderIds, checkoutData) {
       rooms: 0,
       extraBed: 0,
       foodBev: totalFooding,
-      miniBar: 0,
-      earlyClean: 0,
-      xerox: 0,
       laundry: 0,
-      fax: 0,
-      spbuc: 0,
-      travels: 0,
-      misc: 0,
       dayTotal: totalFooding,
       grandTotal: totalFooding
     }];
@@ -2005,7 +1998,7 @@ function processFullCheckout(checkInId, checkoutData) {
         }
       }
 
-      let dayCats = { ExtraBed: 0, FoodBeverage: 0, MiniBar: 0, EarlyClean: 0, Xerox: 0, Laundry: 0, Fax: 0, SPBUC: 0, Travels: 0, Misc: 0 };
+      let dayCats = { ExtraBed: 0, FoodBeverage: 0, Laundry: 0 };
 
       foodOrders.forEach(o => {
         let oDate = o.orderDate.split('T')[0];
@@ -2023,14 +2016,7 @@ function processFullCheckout(checkInId, checkoutData) {
         rooms: dayRoom,
         extraBed: dayCats.ExtraBed,
         foodBev: dayCats.FoodBeverage,
-        miniBar: dayCats.MiniBar,
-        earlyClean: dayCats.EarlyClean,
-        xerox: dayCats.Xerox,
         laundry: dayCats.Laundry,
-        fax: dayCats.Fax,
-        spbuc: dayCats.SPBUC,
-        travels: dayCats.Travels,
-        misc: dayCats.Misc,
         dayTotal: dayTotal,
         grandTotal: grandRunning
       });
@@ -2315,7 +2301,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       dayDate.setDate(dayDate.getDate() + d);
       let dateStr = dayDate.toISOString().split('T')[0];
       
-      let dayCats = { ExtraBed: 0, FoodBeverage: 0, MiniBar: 0, EarlyClean: 0, Xerox: 0, Laundry: 0, Fax: 0, SPBUC: 0, Travels: 0, Misc: 0 };
+      let dayCats = { ExtraBed: 0, FoodBeverage: 0, Laundry: 0 };
       foodOrders.forEach(o => {
         let oDate = o.orderDate.split('T')[0];
         if (oDate === dateStr && dayCats.hasOwnProperty(o.mappedCategory || o.category)) {
@@ -2332,14 +2318,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
         rooms: syntheticDailyRoomRate,
         extraBed: dayCats.ExtraBed,
         foodBev: dayCats.FoodBeverage,
-        miniBar: dayCats.MiniBar,
-        earlyClean: dayCats.EarlyClean,
-        xerox: dayCats.Xerox,
         laundry: dayCats.Laundry,
-        fax: dayCats.Fax,
-        spbuc: dayCats.SPBUC,
-        travels: dayCats.Travels,
-        misc: dayCats.Misc,
         dayTotal: dayTotal,
         grandTotal: grandRunning
       });
