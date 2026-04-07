@@ -101,11 +101,11 @@ const INV_SUBTOTAL_COL        = 10;
 const INV_GST_ENABLED_COL     = 11;
 const INV_GST_PERCENT_COL     = 12;
 const INV_GST_AMOUNT_COL      = 13;
-const INV_GREENTAX_ENABLED_COL= 14;
-const INV_GREENTAX_RATE_COL   = 15;
-const INV_GREENTAX_PAX_COL    = 16;
-const INV_GREENTAX_NIGHTS_COL = 17;
-const INV_GREENTAX_AMOUNT_COL = 18;
+const INV_DEPRECATED_UNUSED_1 = 14;
+const INV_DEPRECATED_UNUSED_2 = 15;
+const INV_DEPRECATED_UNUSED_3 = 16;
+const INV_DEPRECATED_UNUSED_4 = 17;
+const INV_DEPRECATED_UNUSED_5 = 18;
 const INV_DISCOUNT_COL        = 19;
 const INV_TOTAL_COL           = 20;
 const INV_NOTES_COL           = 21;
@@ -123,7 +123,7 @@ const SET_LOGO_FILE_ID_COL     = 5;
 const SET_LOGO_URL_COL         = 6;
 const SET_DEFAULT_CURRENCY_COL = 7;
 const SET_GST_DEFAULT_COL      = 8;
-const SET_GREENTAX_DEFAULT_COL = 9;
+const SET_DEPRECATED_UNUSED_1  = 9;
 const SET_NEXT_INVOICE_COL     = 10;
 const SET_PDF_FOLDER_ID_COL    = 11;
 const SET_LOGO_FOLDER_ID_COL   = 12;
@@ -3252,7 +3252,7 @@ function getSettings() {
       return { success: true, data: {
         hotelName: 'Hill View Eco Retreat', hotelAddress: '', hotelPhone: '', hotelEmail: '', hotelTIN: '',
         logoFileId: '', logoUrl: '', defaultCurrency: 'MVR', gstDefaultPercent: 16,
-        greenTaxDefaultRate: 6, nextInvoiceNum: 1, nextQuoteNum: 1, pdfFolderId: '', logoFolderId: ''
+        nextInvoiceNum: 1, nextQuoteNum: 1, pdfFolderId: '', logoFolderId: ''
       }};
     }
     const row = sheet.getRange(2, 1, 1, 13).getValues()[0];
@@ -3266,7 +3266,6 @@ function getSettings() {
       logoUrl: (row[SET_LOGO_URL_COL] || '').toString(),
       defaultCurrency: (row[SET_DEFAULT_CURRENCY_COL] || 'MVR').toString(),
       gstDefaultPercent: parseFloat(row[SET_GST_DEFAULT_COL]) || 16,
-      greenTaxDefaultRate: parseFloat(row[SET_GREENTAX_DEFAULT_COL]) || 6,
       nextInvoiceNum: parseInt(row[SET_NEXT_INVOICE_COL]) || 1,
       pdfFolderId: (row[SET_PDF_FOLDER_ID_COL] || '').toString(),
       logoFolderId: (row[SET_LOGO_FOLDER_ID_COL] || '').toString()
@@ -3303,7 +3302,7 @@ function updateSettings(settingsData) {
       settingsData.logoUrl || '',
       settingsData.defaultCurrency || 'MVR',
       parseFloat(settingsData.gstDefaultPercent) || 16,
-      parseFloat(settingsData.greenTaxDefaultRate) || 6,
+      0, // DEPRECATED_UNUSED_1
       currentInvoiceNum,
       currentPdfFolderId,
       currentLogoFolderId
@@ -3374,11 +3373,11 @@ function getAllInvoices() {
         gstEnabled: row[INV_GST_ENABLED_COL] === true || row[INV_GST_ENABLED_COL] === 'true',
         gstPercent: parseFloat(row[INV_GST_PERCENT_COL]) || 0,
         gstAmount: parseFloat(row[INV_GST_AMOUNT_COL]) || 0,
-        greenTaxEnabled: row[INV_GREENTAX_ENABLED_COL] === true || row[INV_GREENTAX_ENABLED_COL] === 'true',
-        greenTaxPerNight: parseFloat(row[INV_GREENTAX_RATE_COL]) || 0,
-        greenTaxPax: parseFloat(row[INV_GREENTAX_PAX_COL]) || 0,
-        greenTaxNights: parseFloat(row[INV_GREENTAX_NIGHTS_COL]) || 0,
-        greenTaxAmount: parseFloat(row[INV_GREENTAX_AMOUNT_COL]) || 0,
+        greenTaxEnabled: false, // DEPRECATED
+        greenTaxPerNight: 0, // DEPRECATED
+        greenTaxPax: 0, // DEPRECATED
+        greenTaxNights: 0, // DEPRECATED
+        greenTaxAmount: 0, // DEPRECATED
         discount: parseFloat(row[INV_DISCOUNT_COL]) || 0,
         totalAmount: parseFloat(row[INV_TOTAL_COL]) || 0,
         notes: (row[INV_NOTES_COL] || '').toString(),
@@ -3421,12 +3420,7 @@ function addInvoice(invoiceData) {
     const gstEnabled = invoiceData.gstEnabled === true;
     const gstPercent = parseFloat(invoiceData.gstPercent) || 0;
     const gstAmount = gstEnabled ? (subTotal - discount) * (gstPercent / 100) : 0;
-    const greenTaxEnabled = invoiceData.greenTaxEnabled === true;
-    const greenTaxRate = parseFloat(invoiceData.greenTaxPerNight) || 0;
-    const greenTaxPax = parseFloat(invoiceData.greenTaxPax) || 0;
-    const greenTaxNights = parseFloat(invoiceData.greenTaxNights) || 0;
-    const greenTaxAmount = greenTaxEnabled ? greenTaxRate * greenTaxPax * greenTaxNights : 0;
-    const totalAmount = subTotal - discount + gstAmount + greenTaxAmount;
+    const totalAmount = subTotal - discount + gstAmount;
 
     sheet.appendRow([
       id,
@@ -3443,11 +3437,11 @@ function addInvoice(invoiceData) {
       gstEnabled,
       gstPercent,
       Math.round(gstAmount * 100) / 100,
-      greenTaxEnabled,
-      greenTaxRate,
-      greenTaxPax,
-      greenTaxNights,
-      Math.round(greenTaxAmount * 100) / 100,
+      false, // DEPRECATED_UNUSED_1
+      0, // DEPRECATED_UNUSED_2
+      0, // DEPRECATED_UNUSED_3
+      0, // DEPRECATED_UNUSED_4
+      0, // DEPRECATED_UNUSED_5
       discount,
       Math.round(totalAmount * 100) / 100,
       (invoiceData.notes || '').trim(),
@@ -3474,12 +3468,7 @@ function updateInvoice(rowIndex, invoiceData) {
     const gstEnabled = invoiceData.gstEnabled === true;
     const gstPercent = parseFloat(invoiceData.gstPercent) || 0;
     const gstAmount = gstEnabled ? (subTotal - discount) * (gstPercent / 100) : 0;
-    const greenTaxEnabled = invoiceData.greenTaxEnabled === true;
-    const greenTaxRate = parseFloat(invoiceData.greenTaxPerNight) || 0;
-    const greenTaxPax = parseFloat(invoiceData.greenTaxPax) || 0;
-    const greenTaxNights = parseFloat(invoiceData.greenTaxNights) || 0;
-    const greenTaxAmount = greenTaxEnabled ? greenTaxRate * greenTaxPax * greenTaxNights : 0;
-    const totalAmount = subTotal - discount + gstAmount + greenTaxAmount;
+    const totalAmount = subTotal - discount + gstAmount;
 
     // Read old status before overwriting
     const oldStatus = (sheet.getRange(rowIndex, INV_STATUS_COL + 1).getValue() || '').toString();
@@ -3505,11 +3494,11 @@ function updateInvoice(rowIndex, invoiceData) {
       gstEnabled,
       gstPercent,
       Math.round(gstAmount * 100) / 100,
-      greenTaxEnabled,
-      greenTaxRate,
-      greenTaxPax,
-      greenTaxNights,
-      Math.round(greenTaxAmount * 100) / 100,
+      false, // DEPRECATED_UNUSED_1
+      0, // DEPRECATED_UNUSED_2
+      0, // DEPRECATED_UNUSED_3
+      0, // DEPRECATED_UNUSED_4
+      0, // DEPRECATED_UNUSED_5
       discount,
       Math.round(totalAmount * 100) / 100,
       (invoiceData.notes || '').trim(),
@@ -3622,13 +3611,11 @@ function generateDocumentEmailHtml(type, data, settings) {
   const subTotal = parseFloat(data.subTotal) || 0;
   const discount = parseFloat(data.discount) || 0;
   const gstAmount = parseFloat(data.gstAmount) || 0;
-  const greenTaxAmount = parseFloat(data.greenTaxAmount) || 0;
   const totalAmount = parseFloat(data.totalAmount) || 0;
 
   let totalsRows = '<tr><td colspan="2"><strong>Subtotal</strong></td><td class="right"><strong>' + cur + ' ' + subTotal.toFixed(2) + '</strong></td></tr>';
   if (discount > 0) totalsRows += '<tr><td colspan="2">Discount</td><td class="right">- ' + cur + ' ' + discount.toFixed(2) + '</td></tr>';
   if (data.gstEnabled) totalsRows += '<tr><td colspan="2">GST (' + (data.gstPercent || 0) + '%)</td><td class="right">' + cur + ' ' + gstAmount.toFixed(2) + '</td></tr>';
-  if (data.greenTaxEnabled) totalsRows += '<tr><td colspan="2">Green Tax</td><td class="right">' + cur + ' ' + greenTaxAmount.toFixed(2) + '</td></tr>';
   totalsRows += '<tr class="total"><td colspan="2"><strong>TOTAL</strong></td><td class="right"><strong>' + cur + ' ' + totalAmount.toFixed(2) + '</strong></td></tr>';
 
     let dateInfo = '<p><strong>Date:</strong> ' + (data.createdDate || '') + '</p><p><strong>Due Date:</strong> ' + (data.dueDate || '') + '</p><p><strong>Status:</strong> ' + (data.status || '') + '</p>';
@@ -3806,8 +3793,8 @@ function initDataStructure() {
     { sheetName: LOGIN_SHEET_NAME, headers: ["Username", "Password", "Role"] },
     { sheetName: ROOMS_SHEET_NAME, headers: ["Room No", "Room Type", "Room Rate", "Room Status"] },
     { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Extra Person", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
-    { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "GreenTaxEnabled", "GreenTaxPerNight", "GreenTaxPax", "GreenTaxNights", "GreenTaxAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
-    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "GreenTaxDefaultRate", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
+    { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
+    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "UNUSED_DEPRECATED", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
     { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
