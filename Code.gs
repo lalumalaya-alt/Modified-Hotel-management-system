@@ -121,7 +121,7 @@ const SET_HOTEL_EMAIL_COL      = 3;
 const SET_HOTEL_TIN_COL        = 4;
 const SET_LOGO_FILE_ID_COL     = 5;
 const SET_LOGO_URL_COL         = 6;
-const SET_DEFAULT_CURRENCY_COL = 7;
+const SET_DEPRECATED_CURRENCY_COL = 7;
 const SET_GST_DEFAULT_COL      = 8;
 const SET_DEPRECATED_UNUSED_1  = 9;
 const SET_NEXT_INVOICE_COL     = 10;
@@ -522,7 +522,7 @@ function checkoutRoom(ticketId, paymentOverride) {
     try {
       const setSheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
       if (setSheet && setSheet.getLastRow() > 1) {
-        defaultCurrency = (setSheet.getRange(2, SET_DEFAULT_CURRENCY_COL + 1).getValue() || 'MVR').toString();
+        defaultCurrency = (setSheet.getRange(2, SET_DEPRECATED_CURRENCY_COL + 1).getValue() || 'MVR').toString();
       }
     } catch (ce) { Logger.log("Could not load settings currency: " + ce); }
 
@@ -1631,7 +1631,7 @@ function processWalkinCheckout(guestName, orderIds, checkoutData) {
         hotelPhone = (setRow[SET_HOTEL_PHONE_COL] || '').toString();
         hotelEmail = (setRow[SET_HOTEL_EMAIL_COL] || '').toString();
         hotelTIN = (setRow[SET_HOTEL_TIN_COL] || '').toString();
-        defaultCurrency = (setRow[SET_DEFAULT_CURRENCY_COL] || 'MVR').toString();
+        defaultCurrency = (setRow[SET_DEPRECATED_CURRENCY_COL] || 'MVR').toString();
         hotelLogo = (setRow[SET_LOGO_URL_COL] || '').toString();
       }
     } catch (e) {}
@@ -1804,7 +1804,7 @@ function processFullCheckout(checkInId, checkoutData) {
         hotelEmail = (setRow[SET_HOTEL_EMAIL_COL] || '').toString();
         hotelTIN = (setRow[SET_HOTEL_TIN_COL] || '').toString();
         hotelLogo = (setRow[SET_LOGO_URL_COL] || '').toString();
-        defaultCurrency = (setRow[SET_DEFAULT_CURRENCY_COL] || 'MVR').toString();
+        defaultCurrency = (setRow[SET_DEPRECATED_CURRENCY_COL] || 'MVR').toString();
         gstPercent = parseFloat(setRow[SET_GST_DEFAULT_COL]) || 5;
       }
     } catch (se) { Logger.log("Settings read error: " + se); }
@@ -2100,7 +2100,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
         hotelEmail = (setRow[SET_HOTEL_EMAIL_COL] || '').toString();
         hotelTIN = (setRow[SET_HOTEL_TIN_COL] || '').toString();
         hotelLogo = (setRow[SET_LOGO_URL_COL] || '').toString();
-        defaultCurrency = (setRow[SET_DEFAULT_CURRENCY_COL] || 'MVR').toString();
+        defaultCurrency = (setRow[SET_DEPRECATED_CURRENCY_COL] || 'MVR').toString();
         gstPercent = parseFloat(setRow[SET_GST_DEFAULT_COL]) || 5;
       }
     } catch (se) { Logger.log("Settings read error: " + se); }
@@ -2743,7 +2743,7 @@ function getDashboardData() {
     try {
       const setSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(SETTINGS_SHEET_NAME);
       if (setSheet && setSheet.getLastRow() > 1) {
-        settingsDefaultCurrency = (setSheet.getRange(2, SET_DEFAULT_CURRENCY_COL + 1).getValue() || 'MVR').toString();
+        settingsDefaultCurrency = (setSheet.getRange(2, SET_DEPRECATED_CURRENCY_COL + 1).getValue() || 'MVR').toString();
       }
     } catch (setErr) { Logger.log("Could not load settings currency: " + setErr); }
 
@@ -3243,7 +3243,7 @@ function getSettings() {
       hotelTIN: (row[SET_HOTEL_TIN_COL] || '').toString(),
       logoFileId: (row[SET_LOGO_FILE_ID_COL] || '').toString(),
       logoUrl: (row[SET_LOGO_URL_COL] || '').toString(),
-      defaultCurrency: (row[SET_DEFAULT_CURRENCY_COL] || 'MVR').toString(),
+      defaultCurrency: (row[SET_DEPRECATED_CURRENCY_COL] || 'MVR').toString(),
       gstDefaultPercent: parseFloat(row[SET_GST_DEFAULT_COL]) || 16,
       nextInvoiceNum: parseInt(row[SET_NEXT_INVOICE_COL]) || 1,
       pdfFolderId: (row[SET_PDF_FOLDER_ID_COL] || '').toString(),
@@ -3773,7 +3773,7 @@ function initDataStructure() {
     { sheetName: ROOMS_SHEET_NAME, headers: ["Room No", "Room Type", "Room Rate", "Room Status"] },
     { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Extra Person", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "UNUSED_DEPRECATED", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
-    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "DefaultCurrency", "GSTDefaultPercent", "UNUSED_DEPRECATED", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
+    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "UNUSED_DEPRECATED_CURRENCY", "GSTDefaultPercent", "UNUSED_DEPRECATED", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
     { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
