@@ -977,10 +977,21 @@
         
         // 3. Count active check-ins (since they hold physical rooms)
         const overlappingCis = allCheckIns.filter(c => {
-          if (c.status !== 'Active') return false;
-          const cCi = new Date(c.checkInDate); const cCo = new Date(c.checkOutDate);
-          return (ci < cCo && co > cCi);
-        });
+if (c.status !== 'Active') return false;
+const cCi = new Date(c.checkInDate);
+let cCo = new Date(c.checkOutDate);
+
+// Fix overstaying guests: if expected checkout date is in the past, push it to tomorrow
+const todayMidnight = new Date();
+todayMidnight.setHours(0, 0, 0, 0);
+if (cCo < todayMidnight) {
+  const tomorrow = new Date(todayMidnight);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  cCo = tomorrow;
+}
+
+return (ci < cCo && co > cCi);
+});
 
         overlappingCis.forEach(c => {
           const rNos = (c.roomNumbers||'').split(',').map(r=>r.trim()).filter(r=>r);
@@ -1225,10 +1236,19 @@
           activeCis.forEach(ci => {
             if (editRowIndex && ci.rowIndex === editRowIndex) return; // Skip the one we are editing
             const ciIn = new Date(ci.checkInDate);
-            const ciOut = new Date(ci.checkOutDate);
+let ciOut = new Date(ci.checkOutDate);
 
-            // Exclude the actual check-out day block
-            const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.getDate());
+// Fix overstaying guests: if expected checkout date is in the past, push it to tomorrow
+const todayMidnight = new Date();
+todayMidnight.setHours(0, 0, 0, 0);
+if (ciOut < todayMidnight) {
+  const tomorrow = new Date(todayMidnight);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  ciOut = tomorrow;
+}
+
+// Exclude the actual check-out day block
+const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.getDate());
             if (cIn < actualCiOutStart && cOut > ciIn) {
               const ciRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
               ciRooms.forEach(rn => {
@@ -1538,11 +1558,22 @@
           allRooms.forEach(r => { states[r.roomNo] = { status: r.roomStatus, type: r.roomType }; });
 
           // Block occupied rooms (except our own)
-          if(activeCis && activeCis.length > 0){
-             activeCis.forEach(ci => {
-                if(ci.checkInId !== rec.checkInId && ci.status === 'Active'){
-                   const actualCiOutStart = new Date(new Date(ci.checkOutDate).getFullYear(), new Date(ci.checkOutDate).getMonth(), new Date(ci.checkOutDate).getDate());
-                   if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
+if(activeCis && activeCis.length > 0){
+activeCis.forEach(ci => {
+if(ci.checkInId !== rec.checkInId && ci.status === 'Active'){
+let ciOut = new Date(ci.checkOutDate);
+
+// Fix overstaying guests: if expected checkout date is in the past, push it to tomorrow
+const todayMidnight = new Date();
+todayMidnight.setHours(0, 0, 0, 0);
+if (ciOut < todayMidnight) {
+  const tomorrow = new Date(todayMidnight);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  ciOut = tomorrow;
+}
+
+const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.getDate());
+if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                      (ci.roomNumbers||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(r => {
                         if(states[r]) states[r].status = 'occupied';
                      });

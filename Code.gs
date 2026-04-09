@@ -2496,8 +2496,8 @@ function getDashboardData() {
             const cin = cinStr ? new Date(cinStr).toISOString() : '';
             const cout = coutStr ? new Date(coutStr).toISOString() : '';
 
-            // Exclude the actual check-out day block
-            const isCurrentlyOccupying = cinStr && coutStr && new Date(cinStr) <= now && now < new Date(new Date(coutStr).getFullYear(), new Date(coutStr).getMonth(), new Date(coutStr).getDate());
+            // An active check-in means the room is currently occupied regardless of the expected checkout date
+            const isCurrentlyOccupying = cinStr && new Date(cinStr) <= now;
 
             if (isCurrentlyOccupying) {
               rns.forEach(rn => {
