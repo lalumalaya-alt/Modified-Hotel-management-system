@@ -1904,8 +1904,14 @@ function processFullCheckout(checkInId, checkoutData) {
       const restData = restSheet.getDataRange().getValues();
       for (let i = 1; i < restData.length; i++) {
         if ((restData[i][REST_CHECKIN_ID_COL] || '').toString() === checkInId && (restData[i][REST_STATUS_COL] || '').toString() === 'Active') {
+          let oDateObj = new Date(restData[i][REST_ORDER_DATE_COL]);
+          let y = oDateObj.getFullYear();
+          let m = String(oDateObj.getMonth() + 1).padStart(2, '0');
+          let d = String(oDateObj.getDate()).padStart(2, '0');
+          let cleanOrderDate = y + '-' + m + '-' + d;
+
           foodOrders.push({
-            orderDate: (restData[i][REST_ORDER_DATE_COL] || '').toString(),
+            orderDate: cleanOrderDate,
             category: (restData[i][REST_MEAL_PERIOD_COL] || '').toString(),
             description: (restData[i][REST_ITEM_NAME_COL] || '').toString(),
             amount: parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0
@@ -1965,7 +1971,10 @@ function processFullCheckout(checkInId, checkoutData) {
     for (let d = 0; d < nights; d++) {
       let dayDate = new Date(checkInDate);
       dayDate.setDate(dayDate.getDate() + d);
-      let dateStr = dayDate.toISOString().split('T')[0];
+      let y = dayDate.getFullYear();
+      let m = String(dayDate.getMonth() + 1).padStart(2, '0');
+      let dt = String(dayDate.getDate()).padStart(2, '0');
+      let dateStr = y + '-' + m + '-' + dt;
 
       // Find applicable segment rate for this specific day
       let dayRoom = dailyRoomRate; // fallback
@@ -1987,8 +1996,9 @@ function processFullCheckout(checkInId, checkoutData) {
       let dayCats = { ExtraBed: 0, FoodBeverage: 0, Laundry: 0 };
 
       foodOrders.forEach(o => {
-        let oDate = o.orderDate.split('T')[0];
-        if (oDate === dateStr && dayCats.hasOwnProperty(o.mappedCategory || o.category)) {
+        let oDate = o.orderDate;
+        let isLastNight = (d === nights - 1);
+        if ((oDate === dateStr || (isLastNight && oDate > dateStr)) && dayCats.hasOwnProperty(o.mappedCategory || o.category)) {
           dayCats[o.mappedCategory || o.category] += o.amount;
         }
       });
@@ -2223,9 +2233,15 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       for (let i = 1; i < restData.length; i++) {
         let oId = (restData[i][REST_ORDER_ID_COL] || '').toString();
         if (selectedOrdersFlat.includes(oId) && (restData[i][REST_STATUS_COL] || '').toString() === 'Active') {
+          let oDateObj = new Date(restData[i][REST_ORDER_DATE_COL]);
+          let y = oDateObj.getFullYear();
+          let m = String(oDateObj.getMonth() + 1).padStart(2, '0');
+          let d = String(oDateObj.getDate()).padStart(2, '0');
+          let cleanOrderDate = y + '-' + m + '-' + d;
+
           foodOrders.push({
             rowIndex: i,
-            orderDate: (restData[i][REST_ORDER_DATE_COL] || '').toString(),
+            orderDate: cleanOrderDate,
             category: (restData[i][REST_MEAL_PERIOD_COL] || '').toString(),
             description: (restData[i][REST_ITEM_NAME_COL] || '').toString(),
             amount: parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0
@@ -2285,12 +2301,16 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
     for (let d = 0; d < combinedNights; d++) {
       let dayDate = new Date(earliestCheckInDate);
       dayDate.setDate(dayDate.getDate() + d);
-      let dateStr = dayDate.toISOString().split('T')[0];
+      let y = dayDate.getFullYear();
+      let m = String(dayDate.getMonth() + 1).padStart(2, '0');
+      let dt = String(dayDate.getDate()).padStart(2, '0');
+      let dateStr = y + '-' + m + '-' + dt;
       
       let dayCats = { ExtraBed: 0, FoodBeverage: 0, Laundry: 0 };
       foodOrders.forEach(o => {
-        let oDate = o.orderDate.split('T')[0];
-        if (oDate === dateStr && dayCats.hasOwnProperty(o.mappedCategory || o.category)) {
+        let oDate = o.orderDate;
+        let isLastNight = (d === combinedNights - 1);
+        if ((oDate === dateStr || (isLastNight && oDate > dateStr)) && dayCats.hasOwnProperty(o.mappedCategory || o.category)) {
           dayCats[o.mappedCategory || o.category] += o.amount;
         }
       });
