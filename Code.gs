@@ -208,6 +208,8 @@ const CUST_MARITAL_COL      = 5;
 const CUST_NOTES_COL        = 6;
 const CUST_CREATED_AT_COL   = 7;
 const CUST_LINKED_USER_COL  = 8;
+const CUST_COMPANY_COL      = 9;
+const CUST_GST_COL          = 10;
 
 /***************************************************
  * WEB APP ENTRY POINT
@@ -689,6 +691,17 @@ function processCheckoutPayment(ticketId, amountPaid, paymentMethod) {
     if (paymentMethod) {
       sheet.getRange(rowIndex + 1, PAYMENT_METHOD_COL + 1).setValue(paymentMethod);
     }
+
+    try {
+      syncCustomerProfile({
+        phone: mobile,
+        name: guestName,
+        email: email,
+        companyName: companyName,
+        gstNumber: gstNumber
+      });
+    } catch(e) { Logger.log("Customer Sync Checkout Error: " + e.message); }
+
     SpreadsheetApp.flush();
 
     return {
@@ -2427,6 +2440,16 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       SpreadsheetApp.flush();
     }
 
+    try {
+      syncCustomerProfile({
+        phone: primaryGuestData.mobile,
+        name: primaryGuestData.guestName,
+        email: primaryGuestData.email,
+        companyName: primaryGuestData.companyName,
+        gstNumber: primaryGuestData.gstNumber
+      });
+    } catch(e) { Logger.log("Customer Sync AdvCheckout Error: " + e.message); }
+
     return {
       success: true,
       message: checkoutData.isPreview ? 'Preview generated.' : 'Advanced Checkout completed successfully.',
@@ -3046,18 +3069,24 @@ function syncCustomerProfile(guestData) {
     }
 
     if (rowIndex > -1) {
-      // Update existing blanks
+      // Update existing blanks or newly provided values
       if (!(existingRow[CUST_NAME_COL] || '').toString().trim() && guestData.name) {
         sheet.getRange(rowIndex, CUST_NAME_COL + 1).setValue(guestData.name);
       }
       if (!(existingRow[CUST_EMAIL_COL] || '').toString().trim() && guestData.email) {
         sheet.getRange(rowIndex, CUST_EMAIL_COL + 1).setValue(guestData.email);
       }
+      if (guestData.companyName && !(existingRow[CUST_COMPANY_COL] || '').toString().trim()) {
+        sheet.getRange(rowIndex, CUST_COMPANY_COL + 1).setValue(guestData.companyName);
+      }
+      if (guestData.gstNumber && !(existingRow[CUST_GST_COL] || '').toString().trim()) {
+        sheet.getRange(rowIndex, CUST_GST_COL + 1).setValue(guestData.gstNumber);
+      }
       // Note: city/maritalStatus/notes not provided in basic checkin but we preserve logic schema
     } else {
       // Append new
       const newId = generateCustomerId();
-      const row = new Array(17).fill(''); // 17 headers per schema
+      const row = new Array(19).fill(''); // 19 headers per schema
       row[0] = newId; // Customer ID
       row[1] = guestData.name || ''; // Name
       row[2] = guestData.phone || ''; // Phone
@@ -3075,6 +3104,8 @@ function syncCustomerProfile(guestData) {
       row[14] = ''; // Linked Username
       row[15] = ''; // Notes
       row[16] = new Date().toISOString(); // Created Date
+      row[17] = guestData.companyName || ''; // Company Name
+      row[18] = guestData.gstNumber || ''; // GST Number
 
       sheet.appendRow(row);
     }
@@ -3749,7 +3780,7 @@ function initDataStructure() {
     { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Extra Person", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
     { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "GSTDefaultPercent", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
-    { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date"] },
+    { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date", "Company Name", "GST Number"] },
     { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
     { sheetName: STAY_SEGMENTS_SHEET_NAME, headers: ["Segment ID", "CheckIn ID", "Room Numbers", "Rate", "Pax", "Start Date", "End Date", "Created By", "Timestamp"] },
