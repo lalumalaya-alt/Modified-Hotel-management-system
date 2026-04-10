@@ -2137,6 +2137,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
     let earliestCheckInDate = null;
     let latestCheckInTime = "14:00";
     let matchedCis = [];
+    let allSegments = [];
 
     // 1. Process Rooms & Rent Math per CheckIn
     for (const [cId, selectedRoomNos] of Object.entries(roomsByCi)) {
@@ -2187,7 +2188,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
                   let segRate = parseFloat(segmentsData[s][SEG_RATE_COL]) || 0;
                   let proportionedRate = (segRate / segRoomsArr.length) * activeRoomsInSegment;
                   
-                  staySegments.push({ rate: proportionedRate, nights: segNights });
+                  staySegments.push({ rate: proportionedRate, nights: segNights, startDate: segStartDate, endDate: billingEndDate });
                   
                   // Split segment handling in database
                   if (!segEndDateStr) {
@@ -2213,6 +2214,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
           if (staySegments.length > 0) {
              for (let s of staySegments) {
                 totalRoomRent += s.rate * s.nights;
+                allSegments.push(s);
              }
           } else {
              // Fallback legacy calc if no segments
@@ -2232,6 +2234,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
                 }
              }
              totalRoomRent += dailyRoomRate * nights;
+             allSegments.push({ rate: dailyRoomRate, nights: nights, startDate: cidDate, endDate: actualCheckOutDate });
           }
           break;
         }
@@ -2309,7 +2312,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
     if (!earliestCheckInDate) { earliestCheckInDate = actualCheckOutDate; }
     let combinedNights = daysBetween(earliestCheckInDate, actualCheckOutDate);
     if (combinedNights < 1) combinedNights = 1;
-    let syntheticDailyRoomRate = totalRoomRent / combinedNights;
+
     
     for (let d = 0; d < combinedNights; d++) {
       let dayDate = new Date(earliestCheckInDate);
@@ -2319,6 +2322,25 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       let dt = String(dayDate.getDate()).padStart(2, '0');
       let dateStr = y + '-' + m + '-' + dt;
       
+      let dayRoom = 0;
+      allSegments.forEach(seg => {
+        let sy = seg.startDate.getFullYear();
+        let sm = String(seg.startDate.getMonth() + 1).padStart(2, '0');
+        let sdt = String(seg.startDate.getDate()).padStart(2, '0');
+        let segStartStr = sy + '-' + sm + '-' + sdt;
+
+        let ey = seg.endDate.getFullYear();
+        let em = String(seg.endDate.getMonth() + 1).padStart(2, '0');
+        let edt = String(seg.endDate.getDate()).padStart(2, '0');
+        let segEndStr = ey + '-' + em + '-' + edt;
+
+        if (dateStr >= segStartStr && dateStr < segEndStr) {
+          dayRoom += seg.rate;
+        } else if (dateStr === segStartStr && seg.nights === 0 && combinedNights === 1) {
+          dayRoom += seg.rate;
+        }
+      });
+
       let dayCats = { ExtraBed: 0, FoodBeverage: 0, Laundry: 0 };
       foodOrders.forEach(o => {
         let oDate = o.orderDate;
@@ -2328,13 +2350,13 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
         }
       });
       
-      let dayTotal = syntheticDailyRoomRate;
+      let dayTotal = dayRoom;
       Object.values(dayCats).forEach(v => dayTotal += v);
       grandRunning += dayTotal;
       
       dayByDay.push({
         date: dateStr,
-        rooms: syntheticDailyRoomRate,
+        rooms: dayRoom,
         extraBed: dayCats.ExtraBed,
         foodBev: dayCats.FoodBeverage,
         laundry: dayCats.Laundry,
@@ -2475,7 +2497,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
         foodPlan: "Multiple", 
         billTo: primaryGuestData.billTo,
         nights: combinedNights, 
-        dailyRoomRate: syntheticDailyRoomRate,
+        dailyRoomRate: totalRoomRent > 0 ? (totalRoomRent / combinedNights).toFixed(2) : 0,
         totalRoomRent,
         totalFooding, totalExtraBed, totalOtherServices, categoryTotals,
         subtotal, discountPercent, discountAmount,
