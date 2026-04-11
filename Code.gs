@@ -2180,28 +2180,26 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
                   let segStartDateStr = (segmentsData[s][SEG_START_DATE_COL] || '').toString();
                   let segEndDateStr = (segmentsData[s][SEG_END_DATE_COL] || '').toString();
                   let billingEndDate = segEndDateStr ? new Date(segEndDateStr) : actualCheckOutDate;
-
                   let segStartDate = new Date(segStartDateStr);
-                  let segNights = daysBetween(segStartDate, billingEndDate);
+
+                  // Timezone safety formatting
+                  let bY = billingEndDate.getFullYear();
+                  let bM = String(billingEndDate.getMonth() + 1).padStart(2, '0');
+                  let bD = String(billingEndDate.getDate()).padStart(2, '0');
+                  let safeBillingDate = new Date(bY + '-' + bM + '-' + bD + 'T00:00:00');
+
+                  let sY = segStartDate.getFullYear();
+                  let sM = String(segStartDate.getMonth() + 1).padStart(2, '0');
+                  let sD = String(segStartDate.getDate()).padStart(2, '0');
+                  let safeStartDate = new Date(sY + '-' + sM + '-' + sD + 'T00:00:00');
+
+                  let segNights = daysBetween(safeStartDate, safeBillingDate);
                   if (segNights < 0) segNights = 0;
 
                   let segRate = parseFloat(segmentsData[s][SEG_RATE_COL]) || 0;
                   let proportionedRate = (segRate / segRoomsArr.length) * activeRoomsInSegment;
                   
                   staySegments.push({ rate: proportionedRate, nights: segNights, startDate: segStartDate, endDate: billingEndDate });
-                  
-                  // Split segment handling in database
-                  if (!segEndDateStr) {
-                    const remainingRooms = segRoomsArr.filter(r => !selectedRoomNos.includes(r));
-                    if (remainingRooms.length === 0) {
-                       staySegmentsSheet.getRange(s + 1, SEG_END_DATE_COL + 1).setValue(actualCheckOutDate.toISOString());
-                    } else {
-                       staySegmentsSheet.getRange(s + 1, SEG_END_DATE_COL + 1).setValue(actualCheckOutDate.toISOString());
-                       let newRate = (segRate / segRoomsArr.length) * remainingRooms.length;
-                       const newSegmentId = "SEG-" + new Date().getTime().toString().slice(-6) + Math.floor(Math.random() * 900 + 100);
-                       staySegmentsSheet.appendRow([newSegmentId, cId, remainingRooms.join(','), newRate, parseInt(segmentsData[s][SEG_PAX_COL]) || 1, actualCheckOutDate.toISOString(), ""]);
-                    }
-                  }
                 }
               }
             }
@@ -2421,6 +2419,25 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
         let remainingCiRooms = allCiRoomNumbers.filter(r => !ciRec.selectedRoomNos.includes(r));
         let currentCiAdvance = parseFloat(ciRec.data[CI_ADVANCE_PAID_COL]) || 0;
         
+        // --- Safely close open Stay Segments for this checkout ---
+        if (staySegmentsSheet) {
+          const sData = staySegmentsSheet.getDataRange().getValues();
+          for (let s = 1; s < sData.length; s++) {
+            if ((sData[s][SEG_CHECKIN_ID_COL] || '').toString() === ciRec.id && !(sData[s][SEG_END_DATE_COL] || '').toString()) {
+              if (remainingCiRooms.length === 0) {
+                 staySegmentsSheet.getRange(s + 1, SEG_END_DATE_COL + 1).setValue(actualCheckOutDate.toISOString());
+              } else {
+                 staySegmentsSheet.getRange(s + 1, SEG_END_DATE_COL + 1).setValue(actualCheckOutDate.toISOString());
+                 let segRate = parseFloat(sData[s][SEG_RATE_COL]) || 0;
+                 let newRate = (segRate / allCiRoomNumbers.length) * remainingCiRooms.length;
+                 const newSegmentId = "SEG-" + new Date().getTime().toString().slice(-6) + Math.floor(Math.random() * 900 + 100);
+                 staySegmentsSheet.appendRow([newSegmentId, ciRec.id, remainingCiRooms.join(','), newRate, parseInt(sData[s][SEG_PAX_COL]) || 1, actualCheckOutDate.toISOString(), ""]);
+              }
+            }
+          }
+        }
+        // ---------------------------------------------------------
+
         if (remainingCiRooms.length === 0) {
           // Full checkout for this CI
           ciSheet.getRange(ciRec.rowIndex + 1, CI_STATUS_COL + 1).setValue("Checked Out");
