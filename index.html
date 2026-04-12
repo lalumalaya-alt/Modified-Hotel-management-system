@@ -1054,6 +1054,8 @@ return (ci < cCo && co > cCi);
         {!isEdit&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
         <div className="form-group"><label>Select Room Types *</label><div className="room-types-list">{(!fd.checkIn||!fd.checkOut)?<p style={{color:'#666'}}>Select dates first.</p>:availByType.length===0?<p style={{color:'#666'}}>No rooms available.</p>:availByType.map(t=>(<div key={t.type} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px',border:'1px solid #ddd',borderRadius:'4px',marginBottom:'8px'}}><div><strong>{t.type}</strong><br/><span style={{fontSize:'12px',color:'#666'}}>Standard Rate: {fmtCur(t.rate)}/night | Available: {t.available}</span></div><div style={{display:'flex',gap:'8px'}}>{selectedRoomsByType[t.type]>0&&<input type="number" step="0.01" min="0" placeholder={`Custom Rate (${t.rate})`} value={customRates[t.type]||''} onChange={e=>handleCustomRate(t.type, e.target.value)} style={{width:'110px',padding:'4px'}} title="Leave blank for standard rate" />}<input type="number" min="0" max={t.available} value={selectedRoomsByType[t.type]||''} onChange={e=>setRoomTypeQty(t.type, e.target.value)} style={{width:'60px',padding:'4px'}} placeholder="Qty"/></div></div>))}</div>{selectedCount>0&&<p style={{marginTop:'8px',color:'var(--navy-primary)',fontWeight:'600'}}>Total Rooms: {selectedCount} — Combined Rate: {fmtCur(combinedRate)}/night</p>}</div>
         <div className="form-grid">
+          {invoice && <div className="form-group"><label>Invoice #</label><input value={fd.invoiceId} onChange={e=>setFd({...fd,invoiceId:e.target.value})}/></div>}
+          {invoice && <div className="form-group"><label>Invoice Date</label><input type="date" value={fd.createdDate} onChange={e=>setFd({...fd,createdDate:e.target.value})}/></div>}
           <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
           <div className="form-group"><label>Mobile *</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})} required/></div>
           <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
@@ -1507,7 +1509,9 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
           </div>
 
           <div className="form-grid">
-            <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
+          {invoice && <div className="form-group"><label>Invoice #</label><input value={fd.invoiceId} onChange={e=>setFd({...fd,invoiceId:e.target.value})}/></div>}
+          {invoice && <div className="form-group"><label>Invoice Date</label><input type="date" value={fd.createdDate} onChange={e=>setFd({...fd,createdDate:e.target.value})}/></div>}
+          <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
             <div className="form-group"><label>Company Name</label><input value={fd.companyName} onChange={e=>setFd({...fd,companyName:e.target.value})}/></div>
             <div className="form-group"><label>GST Number</label><input value={fd.gstNumber} onChange={e=>setFd({...fd,gstNumber:e.target.value})}/></div>
             <div className="form-group"><label>Identity Proof</label><input value={fd.identityProof} onChange={e=>setFd({...fd,identityProof:e.target.value})} placeholder="Aadhar/Passport No."/></div>
@@ -2661,8 +2665,14 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
 
 
     function InvoiceModal({invoice,onClose,onSave,user}){
-      const [fd,setFd]=useState({guestName:invoice?.guestName||'',phone:invoice?.phone||'',email:invoice?.email||'',customerTIN:invoice?.customerTIN||'',currency:invoice?.currency||APP_CURRENCY,dueDate:invoice?.dueDate?invoice.dueDate.slice(0,10):'',status:invoice?.status||'Draft',notes:invoice?.notes||'',discount:invoice?.discount||0,gstEnabled:invoice?.gstEnabled||false,gstPercent:invoice?.gstPercent||16});
-      const [items,setItems]=useState(()=>{try{return JSON.parse(typeof invoice?.items==='string'?invoice.items:'[]');}catch(e){return[];}});
+      const [fd,setFd]=useState({invoiceId:invoice?.invoiceId||'',createdDate:invoice?.createdDate?invoice.createdDate.slice(0,10):'',guestName:invoice?.guestName||'',phone:invoice?.phone||'',email:invoice?.email||'',customerTIN:invoice?.customerTIN||'',currency:invoice?.currency||APP_CURRENCY,dueDate:invoice?.dueDate?invoice.dueDate.slice(0,10):'',status:invoice?.status||'Draft',notes:invoice?.notes||'',discount:invoice?.discount||0,gstEnabled:invoice?.gstEnabled||false,gstPercent:invoice?.gstPercent||16});
+      const [items,setItems]=useState(()=>{try{
+        let parsed = JSON.parse(typeof invoice?.items==='string'?invoice.items:'[]');
+        return parsed.map(it => {
+          if(!it.type && it.description && it.amount) return {...it, type: 'service'};
+          return it;
+        });
+      }catch(e){return[];}});
       const [sv,setSv]=useState(false);
       const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
       useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();},[]);
@@ -2683,6 +2693,8 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice-dollar"></i> {invoice?'Edit':'New'} Invoice</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
         {!invoice&&customers.length>0&&<div className="form-group"><label><i className="fas fa-user-tag"></i> Select Customer (auto-fills guest info)</label><SearchableSelect value={selCust} onChange={pickCustomer} options={[{value:'',label:'-- Manual Entry --'},...customers.map(c=>({value:c.customerId,label:c.name+(c.email?' ('+c.email+')':'')}))] } placeholder="Search customer..." /></div>}
         <div className="form-grid">
+          {invoice && <div className="form-group"><label>Invoice #</label><input value={fd.invoiceId} onChange={e=>setFd({...fd,invoiceId:e.target.value})}/></div>}
+          {invoice && <div className="form-group"><label>Invoice Date</label><input type="date" value={fd.createdDate} onChange={e=>setFd({...fd,createdDate:e.target.value})}/></div>}
           <div className="form-group"><label>Guest Name *</label><input value={fd.guestName} onChange={e=>setFd({...fd,guestName:e.target.value})} required/></div>
           <div className="form-group"><label>Phone</label><input value={fd.phone} onChange={e=>setFd({...fd,phone:e.target.value})}/></div>
           <div className="form-group"><label>Email</label><input type="email" value={fd.email} onChange={e=>setFd({...fd,email:e.target.value})}/></div>
@@ -2710,38 +2722,130 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       </form></div></div></div>);
     }
 
-    function InvoicePreviewModal({invoice,onClose}){
-      const cur=invoice.currency||APP_CURRENCY;const fc=(a)=>fmtCur(a,cur);
-      const items=(()=>{try{return JSON.parse(typeof invoice.items==='string'?invoice.items:'[]');}catch(e){return[];}})();
-      const roomItems=items.filter(i=>i.type==='room');const actItems=items.filter(i=>i.type==='activity');const svcItems=items.filter(i=>i.type==='service');
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice-dollar"></i> Invoice Preview</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
-        <div className="invoice-preview">
-          <h2>Hill View Eco Retreat</h2><p className="subtitle">INVOICE</p>
-          <div className="invoice-detail-grid">
-            <p><strong>Invoice #:</strong> {invoice.invoiceId}</p><p><strong>Date:</strong> {fmtDate(invoice.createdDate)}</p>
-            <p><strong>Guest:</strong> {invoice.guestName}</p><p><strong>Due Date:</strong> {fmtDate(invoice.dueDate)}</p>
-            <p><strong>Phone:</strong> {invoice.phone||'-'}</p><p><strong>Status:</strong> <span className={`status-badge ${statusCls(invoice.status)}`}>{invoice.status}</span></p>
-            <p><strong>Email:</strong> {invoice.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>
-            {invoice.customerTIN&&<p><strong>Customer TIN:</strong> {invoice.customerTIN}</p>}
-            
+    function InvoicePreviewModal({invoice, onClose, settings}) {
+      const cur = invoice.currency || APP_CURRENCY;
+      const fc = (a) => fmtCur(a, cur);
+      const items = (() => { try { return JSON.parse(typeof invoice.items === 'string' ? invoice.items : '[]'); } catch(e) { return []; }})();
+      const hotelName = settings?.hotelName || 'Hill View Eco Retreat';
+      const hotelAddress = settings?.hotelAddress || '';
+      const hotelPhone = settings?.hotelPhone || '';
+      const hotelEmail = settings?.hotelEmail || '';
+      const hotelTIN = settings?.hotelTIN || '';
+
+      const doPrint = () => {
+        const printContent = document.querySelector('.hotel-invoice').innerHTML;
+        const originalContent = document.body.innerHTML;
+        document.body.innerHTML = printContent;
+        window.print();
+        document.body.innerHTML = originalContent;
+        window.location.reload();
+      };
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" style={{maxWidth: '850px', width: '95%'}} onClick={e => e.stopPropagation()}>
+            <div className="modal-header no-print">
+              <h3><i className="fas fa-file-invoice"></i> Invoice Preview</h3>
+              <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
+            </div>
+            <div className="modal-body" style={{padding: '15px'}}>
+              <div className="hotel-invoice">
+                <div className="hotel-invoice-header">
+                  {settings?.logoUrl && <img src={settings.logoUrl} className="hotel-logo" alt="Logo" />}
+                  <div className="hotel-info">
+                    <h2>{hotelName}</h2>
+                    <p>{hotelAddress}</p>
+                    <p>{hotelPhone ? 'Ph: ' + hotelPhone : ''} {hotelEmail ? ' | ' + hotelEmail : ''}</p>
+                    {hotelTIN && <p>GSTIN: {hotelTIN}</p>}
+                  </div>
+                  <div style={{width: '60px'}}></div>
+                </div>
+
+                <div className="invoice-meta-section">
+                  <div className="invoice-guest-details">
+                    <p><strong>Guest:</strong> {invoice.guestName}</p>
+                    <p><strong>Phone:</strong> {invoice.phone || '-'}</p>
+                    <p><strong>Email:</strong> {invoice.email || '-'}</p>
+                    {invoice.customerTIN && <p><strong>Customer TIN:</strong> {invoice.customerTIN}</p>}
+                  </div>
+                  <div className="invoice-bill-info">
+                    <table>
+                      <tbody>
+                        <tr><td>Invoice #</td><td>{invoice.invoiceId}</td></tr>
+                        <tr><td>Date</td><td>{fmtDate(invoice.createdDate)}</td></tr>
+                        <tr><td>Due Date</td><td>{fmtDate(invoice.dueDate)}</td></tr>
+                        <tr><td>Status</td><td><span className={`status-badge ${statusCls(invoice.status)}`}>{invoice.status}</span></td></tr>
+                        <tr><td>Currency</td><td>{cur}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <table className="invoice-day-table" style={{marginTop: '20px'}}>
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th>Details</th>
+                      <th style={{textAlign: 'right'}}>Amount ({cur})</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((it, i) => {
+                      let details = '-';
+                      let desc = it.description;
+                      if (it.type === 'room') {
+                        desc = it.roomType || 'Room';
+                        details = `${it.quantity || 1} room(s) x ${it.nights} night(s) x ${fc(it.rate)}`;
+                      } else if (it.type === 'activity') {
+                        desc = it.description || 'Activity';
+                        details = `${it.pax} pax x ${fc(it.rate)}`;
+                      } else if (it.type === 'service') {
+                        desc = it.description || 'Service';
+                      } else {
+                        // Generic fallback for checkout auto-generated items
+                        desc = it.description || 'Item';
+                      }
+                      return (
+                        <tr key={i}>
+                          <td>{desc}</td>
+                          <td>{details}</td>
+                          <td style={{textAlign: 'right'}}>{fc(it.amount)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <table className="invoice-totals-table" style={{marginTop: '15px'}}>
+                  <tbody>
+                    <tr><td>Subtotal</td><td>{fc(invoice.subTotal)}</td></tr>
+                    {invoice.discount > 0 && <tr><td>Discount</td><td>- {fc(invoice.discount)}</td></tr>}
+                    {invoice.gstEnabled && <tr><td>GST ({invoice.gstPercent}%)</td><td>{fc(invoice.gstAmount)}</td></tr>}
+                    <tr><td><strong>TOTAL</strong></td><td><strong>{fc(invoice.totalAmount)}</strong></td></tr>
+                  </tbody>
+                </table>
+
+                {invoice.notes && <p style={{marginTop: '15px', fontStyle: 'italic', color: '#666'}}>Notes: {invoice.notes}</p>}
+
+                <div className="invoice-footer" style={{marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #eee'}}>
+                  <p className="amount-words">{numToWords(invoice.totalAmount || 0)}</p>
+                  <div className="invoice-signatures">
+                    <div>Guest's Signature</div>
+                    <div>PLEASE DEPOSIT YOUR KEY</div>
+                    <div>Admin / Front Office InCharge</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="preview-actions no-print" style={{marginTop: '20px'}}>
+                <button className="btn btn-primary" onClick={doPrint}><i className="fas fa-print"></i> Print</button>
+                <button className="btn btn-success" onClick={() => downloadInvoicePdf(invoice)}><i className="fas fa-download"></i> Download PDF</button>
+                <button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button>
+              </div>
+            </div>
           </div>
-          <table className="invoice-table"><thead><tr><th>Description</th><th>Details</th><th className="right">Amount ({cur})</th></tr></thead><tbody>
-            {roomItems.map((it,i)=><tr key={'r'+i}><td>{it.roomType||'Room'}</td><td>{it.quantity||1} room(s) x {it.nights} night(s) x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
-            {actItems.map((it,i)=><tr key={'a'+i}><td>{it.description||'Activity'}</td><td>{it.pax} pax x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
-            {svcItems.map((it,i)=><tr key={'s'+i}><td>{it.description||'Service'}</td><td>-</td><td className="right">{fc(it.amount)}</td></tr>)}
-            <tr><td colSpan="2"><strong>Subtotal</strong></td><td className="right"><strong>{fc(invoice.subTotal)}</strong></td></tr>
-            {invoice.discount>0&&<tr><td colSpan="2">Discount</td><td className="right">- {fc(invoice.discount)}</td></tr>}
-            {invoice.gstEnabled&&<tr><td colSpan="2">GST ({invoice.gstPercent}%)</td><td className="right">{fc(invoice.gstAmount)}</td></tr>}
-            <tr className="total-row"><td colSpan="2"><strong>TOTAL</strong></td><td className="right"><strong>{fc(invoice.totalAmount)}</strong></td></tr>
-          </tbody></table>
-          {invoice.notes&&<p style={{marginTop:'15px',fontStyle:'italic',color:'#666'}}>Notes: {invoice.notes}</p>}
         </div>
-        <div className="preview-actions">
-          <button className="btn btn-primary" onClick={()=>downloadInvoicePdf(invoice)}><i className="fas fa-download"></i> Download PDF</button>
-          <button className="btn btn-success" onClick={()=>savePdfToDriveHelper(invoice)}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button>
-          <button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button>
-        </div>
-      </div></div></div>);
+      );
     }
 
     function InvoicesView({user}){

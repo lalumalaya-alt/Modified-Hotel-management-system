@@ -3514,20 +3514,20 @@ function updateInvoice(rowIndex, invoiceData) {
     // Read old status before overwriting
     const oldStatus = (sheet.getRange(rowIndex, INV_STATUS_COL + 1).getValue() || '').toString();
 
-    // Keep existing ID and createdDate, update everything else
+    // Pull existing metadata, allowing overwrite from payload if provided
     const existingId = sheet.getRange(rowIndex, INV_ID_COL + 1).getValue();
     const existingCreated = sheet.getRange(rowIndex, INV_CREATED_DATE_COL + 1).getValue();
-        const existingPdf = sheet.getRange(rowIndex, INV_PDF_LINK_COL + 1).getValue();
+    const existingPdf = sheet.getRange(rowIndex, INV_PDF_LINK_COL + 1).getValue();
     const existingCreatedBy = sheet.getRange(rowIndex, INV_CREATED_BY_COL + 1).getValue();
 
     const row = [
-      existingId,
+      (invoiceData.invoiceId || existingId).toString().trim(),
       (invoiceData.guestName || '').trim(),
       (invoiceData.phone || '').trim(),
       (invoiceData.email || '').trim(),
       (invoiceData.customerTIN || '').trim(),
       invoiceData.currency || 'MVR',
-      existingCreated,
+      (invoiceData.createdDate || existingCreated),
       invoiceData.dueDate || '',
       invoiceData.status || 'Draft',
       typeof invoiceData.items === 'string' ? invoiceData.items : JSON.stringify(invoiceData.items || []),
@@ -3538,7 +3538,7 @@ function updateInvoice(rowIndex, invoiceData) {
       discount,
       Math.round(totalAmount * 100) / 100,
       (invoiceData.notes || '').trim(),
-            existingPdf,
+      existingPdf,
       existingCreatedBy,
       now
     ];
