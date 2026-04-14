@@ -1070,7 +1070,7 @@ function addCheckIn(checkInData) {
         roomNumbers,
         initialDailyRate,
         parseInt(checkInData.pax) || 1,
-        now,
+        checkInData.checkInDate,
         ""
       ]);
     }
