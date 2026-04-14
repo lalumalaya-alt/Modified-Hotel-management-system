@@ -984,7 +984,7 @@ let cCo = new Date(c.checkOutDate);
 // Fix overstaying guests: if expected checkout date is in the past, push it to tomorrow
 const todayMidnight = new Date();
 todayMidnight.setHours(0, 0, 0, 0);
-if (cCo < todayMidnight) {
+                      if (cCo <= todayMidnight) {
   const tomorrow = new Date(todayMidnight);
   tomorrow.setDate(tomorrow.getDate() + 1);
   cCo = tomorrow;
@@ -1241,7 +1241,7 @@ let ciOut = new Date(ci.checkOutDate);
 // Fix overstaying guests: if expected checkout date is in the past, push it to tomorrow
 const todayMidnight = new Date();
 todayMidnight.setHours(0, 0, 0, 0);
-if (ciOut < todayMidnight) {
+                  if (ciOut <= todayMidnight) {
   const tomorrow = new Date(todayMidnight);
   tomorrow.setDate(tomorrow.getDate() + 1);
   ciOut = tomorrow;
@@ -1566,7 +1566,7 @@ let ciOut = new Date(ci.checkOutDate);
 // Fix overstaying guests: if expected checkout date is in the past, push it to tomorrow
 const todayMidnight = new Date();
 todayMidnight.setHours(0, 0, 0, 0);
-if (ciOut < todayMidnight) {
+                if (ciOut <= todayMidnight) {
   const tomorrow = new Date(todayMidnight);
   tomorrow.setDate(tomorrow.getDate() + 1);
   ciOut = tomorrow;
