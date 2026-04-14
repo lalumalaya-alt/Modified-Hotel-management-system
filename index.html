@@ -2710,52 +2710,131 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       </form></div></div></div>);
     }
 
-    function InvoicePreviewModal({invoice,onClose}){
-      const cur=invoice.currency||APP_CURRENCY;const fc=(a)=>fmtCur(a,cur);
-      const items=(()=>{try{return JSON.parse(typeof invoice.items==='string'?invoice.items:'[]');}catch(e){return[];}})();
-      const roomItems=items.filter(i=>i.type==='room');const actItems=items.filter(i=>i.type==='activity');const svcItems=items.filter(i=>i.type==='service');
-      return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-file-invoice-dollar"></i> Invoice Preview</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
-        <div className="invoice-preview">
-          <h2>Hill View Eco Retreat</h2><p className="subtitle">INVOICE</p>
-          <div className="invoice-detail-grid">
-            <p><strong>Invoice #:</strong> {invoice.invoiceId}</p><p><strong>Date:</strong> {fmtDate(invoice.createdDate)}</p>
-            <p><strong>Guest:</strong> {invoice.guestName}</p><p><strong>Due Date:</strong> {fmtDate(invoice.dueDate)}</p>
-            <p><strong>Phone:</strong> {invoice.phone||'-'}</p><p><strong>Status:</strong> <span className={`status-badge ${statusCls(invoice.status)}`}>{invoice.status}</span></p>
-            <p><strong>Email:</strong> {invoice.email||'-'}</p><p><strong>Currency:</strong> {cur}</p>
-            {invoice.customerTIN&&<p><strong>Customer TIN:</strong> {invoice.customerTIN}</p>}
-            
-          </div>
-          <table className="invoice-table"><thead><tr><th>Description</th><th>Details</th><th className="right">Amount ({cur})</th></tr></thead><tbody>
-            {roomItems.map((it,i)=><tr key={'r'+i}><td>{it.roomType||'Room'}</td><td>{it.quantity||1} room(s) x {it.nights} night(s) x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
-            {actItems.map((it,i)=><tr key={'a'+i}><td>{it.description||'Activity'}</td><td>{it.pax} pax x {fc(it.rate)}</td><td className="right">{fc(it.amount)}</td></tr>)}
-            {svcItems.map((it,i)=><tr key={'s'+i}><td>{it.description||'Service'}</td><td>-</td><td className="right">{fc(it.amount)}</td></tr>)}
-            <tr><td colSpan="2"><strong>Subtotal</strong></td><td className="right"><strong>{fc(invoice.subTotal)}</strong></td></tr>
-            {invoice.discount>0&&<tr><td colSpan="2">Discount</td><td className="right">- {fc(invoice.discount)}</td></tr>}
-            {invoice.gstEnabled&&<tr><td colSpan="2">GST ({invoice.gstPercent}%)</td><td className="right">{fc(invoice.gstAmount)}</td></tr>}
-            <tr className="total-row"><td colSpan="2"><strong>TOTAL</strong></td><td className="right"><strong>{fc(invoice.totalAmount)}</strong></td></tr>
-          </tbody></table>
-          {invoice.notes&&<p style={{marginTop:'15px',fontStyle:'italic',color:'#666'}}>Notes: {invoice.notes}</p>}
-        </div>
-        <div className="preview-actions">
-          <button className="btn btn-primary" onClick={()=>downloadInvoicePdf(invoice)}><i className="fas fa-download"></i> Download PDF</button>
-          <button className="btn btn-success" onClick={()=>savePdfToDriveHelper(invoice)}><i className="fas fa-cloud-upload-alt"></i> Save to Drive</button>
-          <button className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Close</button>
-        </div>
-      </div></div></div>);
+    function InvoicePreviewModal({invoice, onClose, sysSettings}){
+      const convertInvoiceToHotelData = (inv, settings) => {
+        const items = (() => { try { return JSON.parse(typeof inv.items === 'string' ? inv.items : '[]'); } catch(e) { return []; } })();
+
+        let roomsAmt = 0;
+        let extraBedAmt = 0;
+        let foodBevAmt = 0;
+        let laundryAmt = 0;
+
+        items.forEach(it => {
+           let desc = (it.description || '').toLowerCase();
+           let type = (it.type || '').toLowerCase();
+
+           if (type === 'room') {
+             roomsAmt += parseFloat(it.amount) || 0;
+           } else if (desc.includes('extra bed') || type === 'extrabed') {
+             extraBedAmt += parseFloat(it.amount) || 0;
+           } else if (desc.includes('laundry')) {
+             laundryAmt += parseFloat(it.amount) || 0;
+           } else {
+             foodBevAmt += parseFloat(it.amount) || 0;
+           }
+        });
+
+        const dayTotal = roomsAmt + extraBedAmt + foodBevAmt + laundryAmt;
+        const subtotal = parseFloat(inv.subTotal) || 0;
+        const discountAmount = parseFloat(inv.discount) || 0;
+        const discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
+        const gstAmount = parseFloat(inv.gstAmount) || 0;
+        const gstPercent = parseFloat(inv.gstPercent) || 0;
+
+        // Infer GST Type: if GST amount > 0, it's 'Excluding', else 'Including' or 'None'
+        let gstType = 'None';
+        let sgstPercent = 0;
+        let cgstPercent = 0;
+        if (inv.gstEnabled && gstAmount > 0) {
+            gstType = 'Excluding';
+            sgstPercent = gstPercent / 2;
+            cgstPercent = gstPercent / 2;
+        } else if (inv.gstEnabled) {
+            gstType = 'Including';
+        }
+
+        const syntheticDayByDay = [{
+           date: (inv.createdDate || new Date().toISOString()).split('T')[0],
+           rooms: roomsAmt,
+           extraBed: extraBedAmt,
+           foodBev: foodBevAmt,
+           laundry: laundryAmt,
+           dayTotal: dayTotal,
+           grandTotal: dayTotal
+        }];
+
+        return {
+           billNumber: inv.invoiceId,
+           checkInId: '',
+           hotelName: settings?.hotelName || 'Hill View Eco Retreat',
+           hotelAddress: settings?.hotelAddress || '',
+           hotelPhone: settings?.hotelPhone || '',
+           hotelEmail: settings?.hotelEmail || '',
+           hotelTIN: settings?.hotelTIN || '',
+           hotelLogo: settings?.logoUrl || '',
+           currency: inv.currency || 'MVR',
+           guestName: inv.guestName || '',
+           companyName: '',
+           gstNumber: inv.customerTIN || '',
+           mobile: inv.phone || '',
+           email: inv.email || '',
+           address: '',
+           checkInDate: inv.createdDate || '',
+           checkInTime: '',
+           checkOutDate: inv.dueDate || '',
+           checkOutTime: '',
+           roomNumbers: items.filter(i => i.type === 'room').map(i => i.roomType || 'Room').join(', '),
+           roomTypes: '',
+           numberOfRooms: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.quantity) || 1), 0),
+           pax: 1,
+           extraPerson: 0,
+           foodPlan: 'None',
+           billTo: 'Individual',
+           nights: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.nights) || 0), 0) || 1,
+           dailyRoomRate: roomsAmt,
+           totalRoomRent: roomsAmt,
+           subtotal: subtotal,
+           discountPercent: discountPercent,
+           discountAmount: discountAmount,
+           gstType: gstType,
+           sgstPercent: sgstPercent,
+           cgstPercent: cgstPercent,
+           sgstAmount: gstAmount / 2,
+           cgstAmount: gstAmount / 2,
+           billAmount: parseFloat(inv.totalAmount) || 0,
+           advancePaid: 0,
+           netAmount: parseFloat(inv.totalAmount) || 0,
+           paymentMode: 'Cash',
+           amountPaid: 0,
+           balance: parseFloat(inv.totalAmount) || 0,
+           dayByDay: syntheticDayByDay,
+           notes: inv.notes || ''
+        };
+      };
+
+      return <HotelInvoiceModal data={convertInvoiceToHotelData(invoice, sysSettings)} onClose={onClose} />;
     }
 
     function InvoicesView({user}){
       const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [preview,setPreview]=useState(null);const tRef=useRef(null);const [recs,setRecs]=useState([]);
+      const [sysSettings,setSysSettings]=useState(null);
       const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:''});
       useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
       const load=()=>{setLd(true);
-        google.script.run.withSuccessHandler(odRes=>{
-          google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);setLd(false);initT(d);
-            if(odRes&&odRes.overdueCount>0)Swal.fire({icon:'warning',title:'Overdue Invoices',text:odRes.overdueCount+' invoice(s) are now overdue!',timer:4000,showConfirmButton:false});
-          }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllInvoices();
-        }).withFailureHandler(()=>{
-          google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);setLd(false);initT(d);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllInvoices();
-        }).checkOverdueInvoices();};
+        google.script.run.withSuccessHandler(sRes=>{
+          if(sRes&&sRes.success)setSysSettings(sRes.data);
+          google.script.run.withSuccessHandler(odRes=>{
+            google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);setLd(false);initT(d);
+              if(odRes&&odRes.overdueCount>0)Swal.fire({icon:'warning',title:'Overdue Invoices',text:odRes.overdueCount+' invoice(s) are now overdue!',timer:4000,showConfirmButton:false});
+            }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllInvoices();
+          }).withFailureHandler(()=>{
+            google.script.run.withSuccessHandler(r=>{const d=Array.isArray(r)?r:[];setRecs(d);setLd(false);initT(d);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllInvoices();
+          }).checkOverdueInvoices();
+        }).withFailureHandler(e=>{
+          setLd(false);
+          Swal.fire({icon:'error',text:'Failed to load settings: '+e.message});
+        }).getSettings();
+      };
       const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#invT').empty();}catch(e){}}
         setTimeout(()=>{try{$.fn.dataTable.ext.search=[];const t=$('#invT').DataTable({data,destroy:true,columns:[
           {data:'invoiceId',title:'Invoice #'},{data:'guestName',title:'Guest'},{data:'createdDate',title:'Date',render:d=>fmtDate(d)},{data:'dueDate',title:'Due',render:d=>fmtDate(d)},
@@ -2781,7 +2860,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
         </div></div>}
         {ld&&<TableSkeleton rows={5} columns={7}/>}<div style={{display:ld?'none':'block'}}><table id="invT" className="display" style={{width:'100%'}}></table></div>
         {show&&<InvoiceModal invoice={edit} onClose={()=>{setShow(false);setEdit(null);}} onSave={load} user={user}/>}
-        {preview&&<InvoicePreviewModal invoice={preview} onClose={()=>setPreview(null)}/>}
+        {preview&&<InvoicePreviewModal invoice={preview} onClose={()=>setPreview(null)} sysSettings={sysSettings} />}
       </div>);
     }
 
