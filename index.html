@@ -2818,6 +2818,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
     function InvoicesView({user}){
       const [ld,setLd]=useState(true);const [show,setShow]=useState(false);const [edit,setEdit]=useState(null);const [preview,setPreview]=useState(null);const tRef=useRef(null);const [recs,setRecs]=useState([]);
       const [sysSettings,setSysSettings]=useState(null);
+      const [settingsError,setSettingsError]=useState(null);
       const [filters,setFilters]=useState({dateFrom:'',dateTo:'',status:''});
       useEffect(()=>{load();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[]);
       const load=()=>{setLd(true);

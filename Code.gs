@@ -1101,6 +1101,7 @@ function addCheckIn(checkInData) {
 
 function getActiveCheckInsWithStats() {
   try {
+    autoExtendOverstayingCheckIns();
     const checkIns = getAllCheckIns();
     if (checkIns.error || !Array.isArray(checkIns)) return [];
 
@@ -2548,8 +2549,53 @@ function numberToWords(num) {
 /***************************************************
  * DASHBOARD
  ***************************************************/
+
+function autoExtendOverstayingCheckIns() {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(CHECKIN_SHEET_NAME);
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return;
+
+    let updated = false;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Midnight today
+
+    // YYYY-MM-DD local format
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[CI_STATUS_COL] === 'Active') {
+        const coStr = row[CI_CHECKOUT_DATE_COL];
+        if (coStr) {
+          let coDate = new Date(coStr);
+          // if it is a valid date
+          if (!isNaN(coDate.getTime())) {
+            let coDateMidnight = new Date(coDate.getFullYear(), coDate.getMonth(), coDate.getDate());
+            if (coDateMidnight < today) {
+              sheet.getRange(i + 1, CI_CHECKOUT_DATE_COL + 1).setValue(todayStr);
+              updated = true;
+            }
+          }
+        }
+      }
+    }
+
+    if (updated) {
+      SpreadsheetApp.flush();
+    }
+  } catch (e) {
+    console.error("Error auto-extending overstaying checkins:", e);
+  }
+}
+
 function getDashboardData() {
   try {
+    autoExtendOverstayingCheckIns();
     const roomsSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(ROOMS_SHEET_NAME);
     const roomsData = roomsSheet.getDataRange().getValues();
     roomsData.shift();
