@@ -12,7 +12,6 @@ const DEFAULT_EXTRA_PERSON_RATE = 500;
 const LOGIN_SHEET_NAME      = "Login";
 const ROOMS_SHEET_NAME      = "Rooms";
 const BOOKINGS_SHEET_NAME   = "Bookings";
-const FINANCE_SHEET_NAME    = "Finance";
 const INVOICES_SHEET_NAME   = "Invoices";
 const SETTINGS_SHEET_NAME   = "Settings";
 const BUDGETS_SHEET_NAME    = "Budgets";
@@ -72,20 +71,6 @@ const BOOKING_DISC_PCT_COL = 25; // Added back to prevent ReferenceError in Book
 const LOGIN_USERNAME_COL   = 0;
 const LOGIN_PASSWORD_COL   = 1;
 const LOGIN_ROLE_COL       = 2;
-
-// FINANCE sheet columns (0-based) — cols 0-8 original, 9-11 new
-const FIN_ID_COL           = 0;
-const FIN_DATE_COL         = 1;
-const FIN_TYPE_COL         = 2;
-const FIN_DESC_COL         = 3;
-const FIN_SHOP_COL         = 4;
-const FIN_AMOUNT_COL       = 5;
-const FIN_BALANCE_COL      = 6;
-const FIN_ENTERED_BY_COL   = 7;
-const FIN_CREATED_AT_COL   = 8;
-const FIN_CATEGORY_COL     = 9;
-const FIN_CURRENCY_COL     = 10;
-const FIN_LINKED_INV_COL   = 11;
 
 // INVOICES sheet columns (0-based)
 const INV_ID_COL              = 0;
@@ -2784,26 +2769,6 @@ function getDashboardData() {
       recentBookings.reverse();
       recentBookings = recentBookings.slice(0, 8);
 
-      // Monthly income/expense
-      try {
-        const finSheet2 = SpreadsheetApp.openById(SS_ID).getSheetByName(FINANCE_SHEET_NAME);
-        if (finSheet2) {
-          const finData2 = finSheet2.getDataRange().getValues();
-          for (let i = 1; i < finData2.length; i++) {
-            let fDate = finData2[i][FIN_DATE_COL] ? new Date(finData2[i][FIN_DATE_COL]) : null;
-            let fType = (finData2[i][FIN_TYPE_COL] || "").toString();
-            let fAmt = parseFloat(finData2[i][FIN_AMOUNT_COL]) || 0;
-            if (fDate) {
-              const mKey = monthNames[fDate.getMonth()] + ' ' + fDate.getFullYear();
-              if (monthlyIncome.hasOwnProperty(mKey)) {
-                if (fType === "Income") monthlyIncome[mKey] += fAmt;
-                else if (fType === "Expense") monthlyExpense[mKey] += fAmt;
-              }
-            }
-          }
-        }
-      } catch (e2) { Logger.log("Monthly finance error: " + e2); }
-
     } catch (bookErr) {
       Logger.log("Could not load booking revenue data: " + bookErr);
     }
@@ -2881,11 +2846,7 @@ function getDashboardData() {
       todaysCheckIns,
       todaysCheckOuts,
       invoiceStats,
-      defaultCurrency: settingsDefaultCurrency,
-      monthlyBookings: monthlyBookings || {},
-      monthlyRevenue: monthlyRevenue || {},
-      monthlyIncome: monthlyIncome || {},
-      monthlyExpense: monthlyExpense || {}
+      defaultCurrency: settingsDefaultCurrency
     };
   } catch (e) {
     Logger.log(`Error in getDashboardData: ${e.toString()}`);
