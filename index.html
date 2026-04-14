@@ -2291,7 +2291,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const [checkOutTime,setCheckOutTime]=useState('12:00');
       const [discountPercent,setDiscountPercent]=useState(0);
       const [advanceToApply,setAdvanceToApply]=useState(0);
-      const [mg, setMg] = useState({ guestName:'', companyName:'', gstNumber:'', mobile:'', email:'', address:'', gstType:'Excluding', billTo:'Individual' });
+      const [mg, setMg] = useState({ guestName:'', companyName:'', gstNumber:'', mobile:'', email:'', address:'', gstType:'Excluding', billTo:'Individual', extraPerson: 0 });
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
@@ -2319,7 +2319,8 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                  email: res.email || '',
                  address: res.address || '',
                  gstType: res.gstType || 'Excluding',
-                 billTo: res.billTo || 'Individual'
+                 billTo: res.billTo || 'Individual',
+                 extraPerson: res.extraPerson || 0
                });
                setDiscountPercent(res.discountPercent || 0); 
             }
@@ -2357,7 +2358,8 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
             email: pCi.email || '',
             address: pCi.address || '',
             gstType: pCi.gstType || 'Excluding',
-            billTo: pCi.billTo || 'Individual'
+            billTo: pCi.billTo || 'Individual',
+            extraPerson: pCi.extraPerson || 0
           });
         }
       };
@@ -2614,6 +2616,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
               <div className="form-group"><label>GST Number</label><input value={mg.gstNumber} onChange={e=>setMg({...mg,gstNumber:e.target.value})}/></div>
               <div className="form-group"><label>Mobile</label><input value={mg.mobile} onChange={e=>setMg({...mg,mobile:e.target.value})}/></div>
               <div className="form-group"><label>Email</label><input type="email" value={mg.email} onChange={e=>setMg({...mg,email:e.target.value})}/></div>
+              <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={mg.extraPerson} onChange={e=>setMg({...mg,extraPerson:e.target.value})}/></div>
               <div className="form-group"><label>Bill To</label><select value={mg.billTo} onChange={e=>setMg({...mg,billTo:e.target.value})}><option>Individual</option><option>Company</option><option>Agent</option></select></div>
               <div className="form-group"><label>GST Type</label><select value={mg.gstType} onChange={e=>setMg({...mg,gstType:e.target.value})}><option>Excluding</option><option>Including</option><option>None</option></select></div>
             </div>

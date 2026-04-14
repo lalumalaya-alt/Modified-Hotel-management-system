@@ -2383,6 +2383,10 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
           { description: `Total POS Orders`, amount: totalFooding + totalExtraBed + totalOtherServices }
         ];
 
+        if (totalExtraBedCalculated > 0) {
+          invoiceItems.push({ description: 'Extra Bed / Person Charge', amount: totalExtraBedCalculated });
+        }
+
         const nowStr = new Date().toISOString();
         const invoiceRow = new Array(20).fill('');
         invoiceRow[0] = billNumber;
