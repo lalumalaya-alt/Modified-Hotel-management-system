@@ -2288,7 +2288,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const [saving,setSaving]=useState(false);
       const [payMode,setPayMode]=useState('Cash');
       const [amtPaid,setAmtPaid]=useState('');
-      const [checkOutDate,setCheckOutDate]=useState(new Date().toISOString().split('T')[0]);
+      const [checkOutDate,setCheckOutDate]=useState(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
       const [checkOutTime,setCheckOutTime]=useState('12:00');
       const [discountPercent,setDiscountPercent]=useState(0);
       const [advanceToApply,setAdvanceToApply]=useState(0);

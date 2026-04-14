@@ -1139,8 +1139,7 @@ function getActiveCheckInsWithStats() {
           if (isNaN(sEnd.getTime())) sEnd = now;
 
           // Default minimum of 1 night for calculating
-          let sDiff = sEnd.getTime() - sStart.getTime();
-          let sDays = Math.ceil(sDiff / (1000 * 3600 * 24));
+          let sDays = daysBetween(sStart, sEnd);
           if (sDays < 1) sDays = 1;
 
           let rate = parseFloat(segmentsData[i][SEG_RATE_COL]) || 0;
@@ -1158,8 +1157,7 @@ function getActiveCheckInsWithStats() {
       // Calculate nightsStayed
       let ciDate = new Date(ci.checkInDate);
       if (isNaN(ciDate.getTime())) ciDate = now; // Fallback
-      let timeDiff = now.getTime() - ciDate.getTime();
-      let days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      let days = daysBetween(ciDate, now);
       if (days < 1) days = 1;
 
       const nightsStayed = days;
