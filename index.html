@@ -1143,7 +1143,6 @@ return (ci < cCo && co > cCi);
           {data:'checkOutDate',title:'Expected Out',render:d=>d?fmtDate(d):'-'},
           {data:'pax',title:'Pax'},
           {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase().replace(/\s+/g,'-')+'">'+d+'</span>'},
-          {data:null,title:'Live Billing',render:(d,tp,row)=>`<div style="font-size:13px;white-space:nowrap"><span style="color:#2c3e50">Rent: ${fmtCur(row.liveRoomRent||0)}</span> | <span style="color:#e67e22">Food: ${fmtCur(row.liveFoodBill||0)}</span></div><div style="font-size:13px;white-space:nowrap;margin-top:3px"><span style="color:#27ae60">Adv: ${fmtCur(row.advancePaid||0)}</span> | <strong style="color:${(row.liveBalance||0)>0?'#c0392b':'#27ae60'}">Bal: ${fmtCur(row.liveBalance||0)}</strong></div>`},
           {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{let html='';if(row.status==='Active'){html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';html+='<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button>';html+='<button class="action-icon" data-action="add_advance" style="color:#27ae60" title="Add Mid-Stay Advance"><i class="fas fa-hand-holding-usd"></i></button>';}return html||'-';}}
         ],pageLength:10,responsive:true,dom:'Blrtip',buttons:[
           {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
