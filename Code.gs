@@ -142,25 +142,29 @@ const CI_IDENTITY_COL       = 5;
 const CI_MOBILE_COL         = 6;
 const CI_EMAIL_COL          = 7;
 const CI_ADDRESS_COL        = 8;
-const CI_PURPOSE_COL        = 9;
-const CI_CHECKIN_DATE_COL   = 10;
-const CI_CHECKIN_TIME_COL   = 11;
-const CI_CHECKOUT_DATE_COL  = 12;
-const CI_CHECKOUT_TIME_COL  = 13;
-const CI_ROOM_NUMBERS_COL   = 14;
-const CI_ROOM_TYPES_COL     = 15;
-const CI_NUM_ROOMS_COL      = 16;
-const CI_PAX_COL            = 17;
-const CI_ADVANCE_PAID_COL   = 18;
-const CI_EXTRA_PERSON_COL   = 19;
-const CI_FOOD_PLAN_COL      = 20;
-const CI_GST_TYPE_COL       = 21;
-const CI_FIX_RENT_COL       = 22;
-const CI_FIX_RENT_AMT_COL   = 23;
-const CI_BILL_TO_COL        = 24;
-const CI_DISCOUNT_COL       = 25;
-const CI_STATUS_COL         = 26;
-const CI_CREATED_AT_COL     = 27;
+const CI_CITY_COL           = 9;
+const CI_STATE_COL          = 10;
+const CI_PINCODE_COL        = 11;
+const CI_COUNTRY_COL        = 12;
+const CI_PURPOSE_COL        = 13;
+const CI_CHECKIN_DATE_COL   = 14;
+const CI_CHECKIN_TIME_COL   = 15;
+const CI_CHECKOUT_DATE_COL  = 16;
+const CI_CHECKOUT_TIME_COL  = 17;
+const CI_ROOM_NUMBERS_COL   = 18;
+const CI_ROOM_TYPES_COL     = 19;
+const CI_NUM_ROOMS_COL      = 20;
+const CI_PAX_COL            = 21;
+const CI_ADVANCE_PAID_COL   = 22;
+const CI_EXTRA_PERSON_COL   = 23;
+const CI_FOOD_PLAN_COL      = 24;
+const CI_GST_TYPE_COL       = 25;
+const CI_FIX_RENT_COL       = 26;
+const CI_FIX_RENT_AMT_COL   = 27;
+const CI_BILL_TO_COL        = 28;
+const CI_DISCOUNT_COL       = 29;
+const CI_STATUS_COL         = 30;
+const CI_CREATED_AT_COL     = 31;
 
 // RESTAURANT sheet columns (0-based)
 const REST_ORDER_ID_COL          = 0;
@@ -189,13 +193,21 @@ const CUST_ID_COL           = 0;
 const CUST_NAME_COL         = 1;
 const CUST_PHONE_COL        = 2;
 const CUST_EMAIL_COL        = 3;
-const CUST_CITY_COL         = 4;
-const CUST_MARITAL_COL      = 5;
-const CUST_NOTES_COL        = 6;
-const CUST_CREATED_AT_COL   = 7;
-const CUST_LINKED_USER_COL  = 8;
-const CUST_COMPANY_COL      = 9;
-const CUST_GST_COL          = 10;
+const CUST_ADDRESS_COL      = 4;
+const CUST_CITY_COL         = 5;
+const CUST_STATE_COL        = 6;
+const CUST_COUNTRY_COL      = 7;
+const CUST_PINCODE_COL      = 8;
+const CUST_DOB_COL          = 9;
+const CUST_ANNIV_COL        = 10;
+const CUST_GENDER_COL       = 11;
+const CUST_MARITAL_COL      = 12;
+const CUST_IDENTITY_COL     = 13;
+const CUST_LINKED_USER_COL  = 14;
+const CUST_NOTES_COL        = 15;
+const CUST_CREATED_AT_COL   = 16;
+const CUST_COMPANY_COL      = 17;
+const CUST_GST_COL          = 18;
 
 /***************************************************
  * WEB APP ENTRY POINT
@@ -997,6 +1009,10 @@ function addCheckIn(checkInData) {
       checkInData.mobile || '',
       checkInData.email || '',
       checkInData.address || '',
+      checkInData.city || '',
+      checkInData.state || '',
+      checkInData.pinCode || '',
+      checkInData.country || '',
       checkInData.purposeOfVisit || '',
       checkInData.checkInDate || '',
       checkInData.checkInTime || '14:00',
@@ -1210,6 +1226,10 @@ function getAllCheckIns() {
         mobile: (row[CI_MOBILE_COL] || '').toString(),
         email: (row[CI_EMAIL_COL] || '').toString(),
         address: (row[CI_ADDRESS_COL] || '').toString(),
+        city: (row[CI_CITY_COL] || '').toString(),
+        state: (row[CI_STATE_COL] || '').toString(),
+        pinCode: (row[CI_PINCODE_COL] || '').toString(),
+        country: (row[CI_COUNTRY_COL] || '').toString(),
         purposeOfVisit: (row[CI_PURPOSE_COL] || '').toString(),
         checkInDate: (row[CI_CHECKIN_DATE_COL] || '').toString(),
         checkInTime: (row[CI_CHECKIN_TIME_COL] || '14:00').toString(),
@@ -1355,8 +1375,8 @@ function updateCheckIn(rowIndex, checkInData) {
       existingId, existingLinked,
       checkInData.guestName || '', checkInData.companyName || '', checkInData.gstNumber || '',
       checkInData.identityProof || '', checkInData.mobile || '', checkInData.email || '',
-      checkInData.address || '', checkInData.purposeOfVisit || '',
-      checkInData.checkInDate || '', checkInData.checkInTime || '14:00',
+      checkInData.address || '', checkInData.city || '', checkInData.state || '', checkInData.pinCode || '', checkInData.country || '',
+      checkInData.purposeOfVisit || '', checkInData.checkInDate || '', checkInData.checkInTime || '14:00',
       checkInData.checkOutDate || '', checkInData.checkOutTime || '12:00',
       roomNumbers, roomTypes.join(','), roomNosArr.length,
       parseInt(checkInData.pax) || 1, parseFloat(checkInData.advancePaid) || 0,
@@ -1366,7 +1386,7 @@ function updateCheckIn(rowIndex, checkInData) {
       parseFloat(checkInData.discountPercent) || 0, existingStatus, existingCreatedAt
     ];
 
-    sheet.getRange(rowIndex, 1, 1, 28).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 32).setValues([row]);
     SpreadsheetApp.flush();
     return { success: true, message: "Check-in updated successfully." };
   } catch (e) {
@@ -1745,13 +1765,17 @@ function processFullCheckout(checkInId, checkoutData) {
         if ((bData[i][TICKET_ID_COL] || '').toString() === checkInId) {
           let bStatus = (bData[i][BOOKING_STATUS_COL] || '').toString();
           if (bStatus === 'Checked Out') return { success: false, message: "This booking has already been checked out." };
-          ci = new Array(28).fill('');
+          ci = new Array(32).fill('');
           ci[CI_ID_COL]            = checkInId;
           ci[CI_LINKED_TICKET_COL] = checkInId;
           ci[CI_GUEST_NAME_COL]    = (bData[i][GUEST_NAME_COL] || '').toString();
           ci[CI_MOBILE_COL]        = (bData[i][PHONE_COL] || '').toString();
           ci[CI_EMAIL_COL]         = (bData[i][EMAIL_COL] || '').toString();
           ci[CI_ADDRESS_COL]       = '';
+          ci[CI_CITY_COL]          = '';
+          ci[CI_STATE_COL]         = '';
+          ci[CI_PINCODE_COL]       = '';
+          ci[CI_COUNTRY_COL]       = '';
           ci[CI_CHECKIN_DATE_COL]  = (bData[i][CHECK_IN_COL] || '').toString();
           ci[CI_CHECKIN_TIME_COL]  = (bData[i][CHECKIN_TIME_COL] || '14:00').toString();
           ci[CI_CHECKOUT_DATE_COL] = (bData[i][CHECK_OUT_COL] || '').toString();
@@ -1799,6 +1823,10 @@ function processFullCheckout(checkInId, checkoutData) {
     const mobile = (ci[CI_MOBILE_COL] || '').toString();
     const email = (ci[CI_EMAIL_COL] || '').toString();
     const address = (ci[CI_ADDRESS_COL] || '').toString();
+    const city = (ci[CI_CITY_COL] || '').toString();
+    const state = (ci[CI_STATE_COL] || '').toString();
+    const pinCode = (ci[CI_PINCODE_COL] || '').toString();
+    const country = (ci[CI_COUNTRY_COL] || '').toString();
     const roomNumbers = (ci[CI_ROOM_NUMBERS_COL] || '').toString();
     const roomTypes = (ci[CI_ROOM_TYPES_COL] || '').toString();
     const pax = parseInt(ci[CI_PAX_COL]) || 1;
@@ -2057,7 +2085,7 @@ function processFullCheckout(checkInId, checkoutData) {
       invoiceData: {
         billNumber, checkInId,
         hotelName, hotelAddress, hotelPhone, hotelEmail, hotelTIN, hotelLogo, currency: defaultCurrency,
-        guestName, companyName, gstNumber, mobile, email, address,
+        guestName, companyName, gstNumber, mobile, email, address, city, state, pinCode, country,
         checkInDate: checkInDate.toISOString(), checkInTime,
         checkOutDate: actualCheckOutDate.toISOString(), checkOutTime,
         roomNumbers, roomTypes, numberOfRooms: roomNosArr.length,
@@ -3049,11 +3077,21 @@ function getAllCustomers() {
         name: (row[CUST_NAME_COL] || '').toString(),
         phone: (row[CUST_PHONE_COL] || '').toString(),
         email: (row[CUST_EMAIL_COL] || '').toString(),
+        address: (row[CUST_ADDRESS_COL] || '').toString(),
         city: (row[CUST_CITY_COL] || '').toString(),
+        state: (row[CUST_STATE_COL] || '').toString(),
+        pinCode: (row[CUST_PINCODE_COL] || '').toString(),
+        country: (row[CUST_COUNTRY_COL] || '').toString(),
+        dob: (row[CUST_DOB_COL] || '').toString(),
+        anniversary: (row[CUST_ANNIV_COL] || '').toString(),
+        gender: (row[CUST_GENDER_COL] || '').toString(),
         maritalStatus: (row[CUST_MARITAL_COL] || '').toString(),
+        identityProof: (row[CUST_IDENTITY_COL] || '').toString(),
         notes: (row[CUST_NOTES_COL] || '').toString(),
         createdAt: (row[CUST_CREATED_AT_COL] || '').toString(),
-        linkedUsername: (row[CUST_LINKED_USER_COL] || '').toString()
+        linkedUsername: (row[CUST_LINKED_USER_COL] || '').toString(),
+        companyName: (row[CUST_COMPANY_COL] || '').toString(),
+        gstNumber: (row[CUST_GST_COL] || '').toString()
       });
     }
     return customers;
@@ -3070,8 +3108,8 @@ function addCustomer(customerData) {
     let sheet = ss.getSheetByName(CUSTOMERS_SHEET_NAME);
     if (!sheet) {
       sheet = ss.insertSheet(CUSTOMERS_SHEET_NAME);
-      sheet.appendRow(["CustomerID", "Name", "Phone", "Email", "City", "MaritalStatus", "Notes", "CreatedAt", "LinkedUsername"]);
-      const headerRange = sheet.getRange(1, 1, 1, 9);
+      sheet.appendRow(["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date", "Company Name", "GST Number"]);
+      const headerRange = sheet.getRange(1, 1, 1, 19);
       headerRange.setFontWeight("bold");
       headerRange.setBackground("#001f3f");
       headerRange.setFontColor("#ffffff");
@@ -3143,30 +3181,44 @@ function syncCustomerProfile(guestData) {
       if (guestData.gstNumber && !(existingRow[CUST_GST_COL] || '').toString().trim()) {
         sheet.getRange(rowIndex, CUST_GST_COL + 1).setValue(guestData.gstNumber);
       }
-      // Note: city/maritalStatus/notes not provided in basic checkin but we preserve logic schema
+      if (guestData.address && !(existingRow[CUST_ADDRESS_COL] || '').toString().trim()) {
+        sheet.getRange(rowIndex, CUST_ADDRESS_COL + 1).setValue(guestData.address);
+      }
+      if (guestData.city && !(existingRow[CUST_CITY_COL] || '').toString().trim()) {
+        sheet.getRange(rowIndex, CUST_CITY_COL + 1).setValue(guestData.city);
+      }
+      if (guestData.state && !(existingRow[CUST_STATE_COL] || '').toString().trim()) {
+        sheet.getRange(rowIndex, CUST_STATE_COL + 1).setValue(guestData.state);
+      }
+      if (guestData.pinCode && !(existingRow[CUST_PINCODE_COL] || '').toString().trim()) {
+        sheet.getRange(rowIndex, CUST_PINCODE_COL + 1).setValue(guestData.pinCode);
+      }
+      if (guestData.country && !(existingRow[CUST_COUNTRY_COL] || '').toString().trim()) {
+        sheet.getRange(rowIndex, CUST_COUNTRY_COL + 1).setValue(guestData.country);
+      }
     } else {
       // Append new
       const newId = generateCustomerId();
       const row = new Array(19).fill(''); // 19 headers per schema
-      row[0] = newId; // Customer ID
-      row[1] = guestData.name || ''; // Name
-      row[2] = guestData.phone || ''; // Phone
-      row[3] = guestData.email || ''; // Email
-      row[4] = guestData.address || ''; // Address
-      row[5] = ''; // City
-      row[6] = ''; // State
-      row[7] = ''; // Country
-      row[8] = ''; // Zip Code
-      row[9] = ''; // DOB
-      row[10] = ''; // Anniversary
-      row[11] = ''; // Gender
-      row[12] = ''; // Marital Status
-      row[13] = guestData.identityProof || ''; // Identity Proof
-      row[14] = ''; // Linked Username
-      row[15] = ''; // Notes
-      row[16] = new Date().toISOString(); // Created Date
-      row[17] = guestData.companyName || ''; // Company Name
-      row[18] = guestData.gstNumber || ''; // GST Number
+      row[CUST_ID_COL] = newId;
+      row[CUST_NAME_COL] = guestData.name || '';
+      row[CUST_PHONE_COL] = guestData.phone || '';
+      row[CUST_EMAIL_COL] = guestData.email || '';
+      row[CUST_ADDRESS_COL] = guestData.address || '';
+      row[CUST_CITY_COL] = guestData.city || '';
+      row[CUST_STATE_COL] = guestData.state || '';
+      row[CUST_COUNTRY_COL] = guestData.country || '';
+      row[CUST_PINCODE_COL] = guestData.pinCode || '';
+      row[CUST_DOB_COL] = '';
+      row[CUST_ANNIV_COL] = '';
+      row[CUST_GENDER_COL] = '';
+      row[CUST_MARITAL_COL] = '';
+      row[CUST_IDENTITY_COL] = guestData.identityProof || '';
+      row[CUST_LINKED_USER_COL] = '';
+      row[CUST_NOTES_COL] = '';
+      row[CUST_CREATED_AT_COL] = new Date().toISOString();
+      row[CUST_COMPANY_COL] = guestData.companyName || '';
+      row[CUST_GST_COL] = guestData.gstNumber || '';
       
       sheet.appendRow(row);
     }
@@ -3185,9 +3237,19 @@ function updateCustomer(rowIndex, customerData) {
     if (customerData.name !== undefined) sheet.getRange(rowIndex, CUST_NAME_COL + 1).setValue(customerData.name);
     if (customerData.phone !== undefined) sheet.getRange(rowIndex, CUST_PHONE_COL + 1).setValue(customerData.phone);
     if (customerData.email !== undefined) sheet.getRange(rowIndex, CUST_EMAIL_COL + 1).setValue(customerData.email);
+    if (customerData.address !== undefined) sheet.getRange(rowIndex, CUST_ADDRESS_COL + 1).setValue(customerData.address);
     if (customerData.city !== undefined) sheet.getRange(rowIndex, CUST_CITY_COL + 1).setValue(customerData.city);
+    if (customerData.state !== undefined) sheet.getRange(rowIndex, CUST_STATE_COL + 1).setValue(customerData.state);
+    if (customerData.pinCode !== undefined) sheet.getRange(rowIndex, CUST_PINCODE_COL + 1).setValue(customerData.pinCode);
+    if (customerData.country !== undefined) sheet.getRange(rowIndex, CUST_COUNTRY_COL + 1).setValue(customerData.country);
+    if (customerData.dob !== undefined) sheet.getRange(rowIndex, CUST_DOB_COL + 1).setValue(customerData.dob);
+    if (customerData.anniversary !== undefined) sheet.getRange(rowIndex, CUST_ANNIV_COL + 1).setValue(customerData.anniversary);
+    if (customerData.gender !== undefined) sheet.getRange(rowIndex, CUST_GENDER_COL + 1).setValue(customerData.gender);
     if (customerData.maritalStatus !== undefined) sheet.getRange(rowIndex, CUST_MARITAL_COL + 1).setValue(customerData.maritalStatus);
+    if (customerData.identityProof !== undefined) sheet.getRange(rowIndex, CUST_IDENTITY_COL + 1).setValue(customerData.identityProof);
     if (customerData.notes !== undefined) sheet.getRange(rowIndex, CUST_NOTES_COL + 1).setValue(customerData.notes);
+    if (customerData.companyName !== undefined) sheet.getRange(rowIndex, CUST_COMPANY_COL + 1).setValue(customerData.companyName);
+    if (customerData.gstNumber !== undefined) sheet.getRange(rowIndex, CUST_GST_COL + 1).setValue(customerData.gstNumber);
 
     return { success: true, message: "Customer updated successfully." };
   } catch (err) {
@@ -3842,7 +3904,7 @@ function initDataStructure() {
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
     { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "GSTDefaultPercent", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date", "Company Name", "GST Number"] },
-    { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Address", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
+    { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Village/Street", "City", "State", "Pin Code", "Country", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
     { sheetName: STAY_SEGMENTS_SHEET_NAME, headers: ["Segment ID", "CheckIn ID", "Room Numbers", "Rate", "Pax", "Start Date", "End Date", "Created By", "Timestamp"] },
     { sheetName: MENU_SHEET_NAME, headers: ["ItemName", "FoodCategory", "DefaultPrice"] }
