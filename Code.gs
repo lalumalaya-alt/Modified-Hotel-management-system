@@ -6,6 +6,7 @@
  * GLOBAL CONSTANTS
  ***************************************************/
 const SS_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+const DEFAULT_EXTRA_PERSON_RATE = 500;
 
 // SHEET NAMES
 const LOGIN_SHEET_NAME      = "Login";
@@ -1952,7 +1953,10 @@ function processFullCheckout(checkInId, checkoutData) {
       }
     });
 
-    let subtotal = totalRoomRent + totalFooding + totalExtraBed + totalOtherServices;
+    // Calculate global Extra Bed total before subtotal
+    let totalExtraBedCalculated = nights * extraPerson * DEFAULT_EXTRA_PERSON_RATE;
+
+    let subtotal = totalRoomRent + totalFooding + totalExtraBed + totalOtherServices + totalExtraBedCalculated;
     let discountAmount = subtotal * (discountPercent / 100);
     let afterDiscount = subtotal - discountAmount;
 
@@ -2006,6 +2010,9 @@ function processFullCheckout(checkInId, checkoutData) {
       }
 
       let dayCats = { ExtraBed: 0, FoodBeverage: 0, Laundry: 0 };
+
+      let dailyEpCharge = extraPerson * DEFAULT_EXTRA_PERSON_RATE;
+      dayCats.ExtraBed += dailyEpCharge;
 
       foodOrders.forEach(o => {
         let oDate = o.orderDate;
@@ -2279,8 +2286,14 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       }
     });
 
+    // Calculate global Extra Bed total before subtotal
+    if (!earliestCheckInDate) { earliestCheckInDate = actualCheckOutDate; }
+    let combinedNights = daysBetween(earliestCheckInDate, actualCheckOutDate);
+    if (combinedNights < 1) combinedNights = 1;
+    let totalExtraBedCalculated = combinedNights * (parseInt(primaryGuestData.extraPerson) || 0) * DEFAULT_EXTRA_PERSON_RATE;
+
     // 3. Billing Math
-    let subtotal = totalRoomRent + totalFooding + totalExtraBed + totalOtherServices;
+    let subtotal = totalRoomRent + totalFooding + totalExtraBed + totalOtherServices + totalExtraBedCalculated;
     let discountPercent = parseFloat(checkoutData.discountPercent) || 0;
     let discountAmount = subtotal * (discountPercent / 100);
     let afterDiscount = subtotal - discountAmount;
@@ -2306,10 +2319,6 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
     // 5. Build Synthetic DayByDay for PDF
     let dayByDay = [];
     let grandRunning = 0;
-    if (!earliestCheckInDate) { earliestCheckInDate = actualCheckOutDate; }
-    let combinedNights = daysBetween(earliestCheckInDate, actualCheckOutDate);
-    if (combinedNights < 1) combinedNights = 1;
-    
     
     for (let d = 0; d < combinedNights; d++) {
       let dayDate = new Date(earliestCheckInDate);
@@ -2339,6 +2348,10 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
       });
       
       let dayCats = { ExtraBed: 0, FoodBeverage: 0, Laundry: 0 };
+
+      let dailyEpCharge = (parseInt(primaryGuestData.extraPerson) || 0) * DEFAULT_EXTRA_PERSON_RATE;
+      dayCats.ExtraBed += dailyEpCharge;
+
       foodOrders.forEach(o => {
         let oDate = o.orderDate;
         let isLastNight = (d === combinedNights - 1);
