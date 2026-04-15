@@ -1425,6 +1425,7 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
 
       const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0,city:ci.city||'',state:ci.state||'',pinCode:ci.pinCode||'',country:ci.country||'',roomPaxBreakdown:ci.roomPaxBreakdown||''});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setShowModal(true);};
 
+
       const submit=(e)=>{e.preventDefault();
         if(!fd.guestName.trim()){Swal.fire({icon:'warning',text:'Guest Name is required.'});return;}
         if(selectedRooms.length===0){Swal.fire({icon:'warning',text:'Select at least one room.'});return;}
@@ -1882,20 +1883,13 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const CAT_LABELS={Breakfast:'Breakfast',Lunch:'Lunch',Dinner:'Dinner',Snacks:'Snacks',FoodBeverage:'Other Food & Beverage'};
       const [fd,setFd]=useState({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});
       const [menuItems,setMenuItems]=useState([]);
-      const [selFoodCat,setSelFoodCat]=useState('');
       const [orderItems,setOrderItems]=useState([]);
+      const [selMenuItem,setSelMenuItem]=useState('');
+      const [selMenuQty,setSelMenuQty]=useState(1);
 
       const [allOrders,setAllOrders]=useState([]);
       const [showWalkinBill,setShowWalkinBill]=useState(false);
       const [inv,setInv]=useState(null);
-
-      const dynamicFoodCategories = [...new Set(menuItems.map(item => item.foodCategory).filter(Boolean))];
-
-      useEffect(()=>{
-        if (dynamicFoodCategories.length > 0 && (!selFoodCat || !dynamicFoodCategories.includes(selFoodCat))) {
-          setSelFoodCat(dynamicFoodCategories[0]);
-        }
-      }, [menuItems, selFoodCat]);
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
@@ -1905,6 +1899,44 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       },[]);
 
       const loadOrders=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{setLd(false);const arr = Array.isArray(r)?r:[];setAllOrders(arr);initT(arr);}).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getAllFoodOrders();};
+
+      const handleManualAdd = () => {
+        if (!selMenuItem) { Swal.fire({icon:'warning',text:'Select a menu item first.'}); return; }
+        const qty = parseInt(selMenuQty) || 1;
+        if (qty < 1) { Swal.fire({icon:'warning',text:'Quantity must be at least 1.'}); return; }
+
+        const mItem = menuItems.find(m => m.itemName === selMenuItem);
+        if (!mItem) return;
+
+        setOrderItems(prev => {
+          const ex = prev.findIndex(p => p.itemName === mItem.itemName);
+          if (ex >= 0) {
+            const up = [...prev];
+            up[ex].quantity += qty;
+            up[ex].totalAmount = up[ex].quantity * up[ex].defaultPrice;
+            return up;
+          } else {
+            return [...prev, {
+              itemName: mItem.itemName,
+              quantity: qty,
+              defaultPrice: parseFloat(mItem.defaultPrice)||0,
+              totalAmount: (parseFloat(mItem.defaultPrice)||0) * qty
+            }];
+          }
+        });
+        setSelMenuItem('');
+        setSelMenuQty(1);
+      };
+
+      const updateItemQty = (index, newQtyStr) => {
+        const newQty = parseInt(newQtyStr) || 0;
+        setOrderItems(prev => {
+          const up = [...prev];
+          up[index].quantity = newQty;
+          up[index].totalAmount = newQty * up[index].defaultPrice;
+          return up;
+        });
+      };
 
       const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#restT').empty();}catch(e){}}
         setTimeout(()=>{try{const t=$('#restT').DataTable({data,destroy:true,columns:[
@@ -1997,13 +2029,6 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
 
       const resetOrderForm=()=>{setEditOrder(null);setOrderType('checkin');setWalkinName('');setOrderItems([]);setSelRooms([]);setSelCheckIn('');setSelGuestName('');setFd({category:'Lunch',description:'',amount:'',orderDate:new Date().toISOString().split('T')[0]});};
 
-      const addItemToOrder = (item) => {
-          setOrderItems(prev => {
-              const existing = prev.find(i => i.itemName === item.itemName);
-              if(existing) return prev.map(i => i.itemName === item.itemName ? {...i, quantity: i.quantity + 1, totalAmount: (i.quantity + 1) * i.defaultPrice} : i);
-              return [...prev, {...item, quantity: 1, totalAmount: item.defaultPrice}];
-          });
-      };
       const removeItem = (idx) => { setOrderItems(prev => prev.filter((_, i) => i !== idx)); };
 
       const grandTotal = orderItems.reduce((acc, curr) => acc + curr.totalAmount, 0);
@@ -2077,18 +2102,25 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
             </div>
 
             <div style={{marginBottom:'20px'}}>
-              <div style={{display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'10px', marginBottom:'15px'}}>
-                 {dynamicFoodCategories.map(c => (
-                    <button type="button" key={c} onClick={()=>setSelFoodCat(c)} className={`btn ${selFoodCat===c?'btn-primary':'btn-secondary'}`} style={{whiteSpace:'nowrap', borderRadius:'20px', padding:'6px 16px'}}>{c}</button>
-                 ))}
-              </div>
-              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'10px'}}>
-                 {menuItems.filter(m => m.foodCategory === selFoodCat).map(m => (
-                    <div key={m.itemName} onClick={()=>addItemToOrder(m)} style={{background:'white', border:'1px solid #ddd', borderRadius:'8px', padding:'12px', cursor:'pointer', textAlign:'center', boxShadow:'0 2px 4px rgba(0,0,0,0.05)', transition:'transform 0.1s'}} onMouseDown={e=>e.currentTarget.style.transform='scale(0.95)'} onMouseUp={e=>e.currentTarget.style.transform='scale(1)'}>
-                       <div style={{fontWeight:'bold', color:'var(--navy-primary)', fontSize:'14px', marginBottom:'5px'}}>{m.itemName}</div>
-                       <div style={{color:'#2ecc71', fontWeight:'600'}}>{fmtCur(m.defaultPrice)}</div>
-                    </div>
-                 ))}
+              <div className="form-grid" style={{alignItems:'flex-end'}}>
+                <div className="form-group" style={{gridColumn:'1 / span 2'}}>
+                  <label>Select Menu Item</label>
+                  <SearchableSelect
+                    value={selMenuItem}
+                    onChange={setSelMenuItem}
+                    options={menuItems.map(m => ({ value: m.itemName, label: `${m.itemName} - ${fmtCur(m.defaultPrice)}` }))}
+                    placeholder="Search for an item..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Quantity</label>
+                  <input type="number" min="1" value={selMenuQty} onChange={e=>setSelMenuQty(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <button type="button" className="btn btn-secondary" onClick={handleManualAdd} style={{width:'100%', height:'42px'}}>
+                    <i className="fas fa-plus"></i> Add to Order
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2097,10 +2129,13 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                   <h5 style={{margin:'0 0 10px 0', borderBottom:'1px solid #eee', paddingBottom:'10px'}}>Current Order</h5>
                   {orderItems.map((item, idx) => (
                      <div key={idx} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px dashed #eee'}}>
-                        <div><strong>{item.itemName}</strong> <span style={{color:'#666', fontSize:'13px'}}>x {item.quantity}</span></div>
+                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                          <strong style={{minWidth:'150px'}}>{item.itemName}</strong>
+                          <input type="number" min="1" style={{width:'60px', padding:'4px'}} value={item.quantity} onChange={e => updateItemQty(idx, e.target.value)} />
+                        </div>
                         <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
                            <span>{fmtCur(item.totalAmount)}</span>
-                           <button type="button" onClick={()=>removeItem(idx)} style={{background:'none', border:'none', color:'#e74c3c', cursor:'pointer'}}><i className="fas fa-times"></i></button>
+                           <button type="button" onClick={()=>removeItem(idx)} style={{background:'none', border:'none', color:'#e74c3c', cursor:'pointer'}}><i className="fas fa-trash"></i></button>
                         </div>
                      </div>
                   ))}
