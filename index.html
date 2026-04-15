@@ -2096,55 +2096,66 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
               )}
             </div>
             )}
-            <div className="form-grid" style={{marginBottom: '15px'}}>
-              <div className="form-group"><label>Date</label><input type="date" value={fd.orderDate} onChange={e=>setFd({...fd,orderDate:e.target.value})}/></div>
-              <div className="form-group"><label>Meal Period</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}</select></div>
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', alignItems: 'start', marginBottom: '20px' }}>
+              <div>
+                <div className="form-grid" style={{marginBottom: '15px'}}>
+                  <div className="form-group"><label>Date</label><input type="date" value={fd.orderDate} onChange={e=>setFd({...fd,orderDate:e.target.value})}/></div>
+                  <div className="form-group"><label>Meal Period</label><select value={fd.category} onChange={e=>setFd({...fd,category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}</select></div>
+                </div>
 
-            <div style={{marginBottom:'20px'}}>
-              <div className="form-grid" style={{alignItems:'flex-end'}}>
-                <div className="form-group" style={{gridColumn:'1 / span 2'}}>
-                  <label>Select Menu Item</label>
-                  <SearchableSelect
-                    value={selMenuItem}
-                    onChange={setSelMenuItem}
-                    options={menuItems.map(m => ({ value: m.itemName, label: `${m.itemName} - ${fmtCur(m.defaultPrice)}` }))}
-                    placeholder="Search for an item..."
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Quantity</label>
-                  <input type="number" min="1" value={selMenuQty} onChange={e=>setSelMenuQty(e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <button type="button" className="btn btn-secondary" onClick={handleManualAdd} style={{width:'100%', height:'42px'}}>
-                    <i className="fas fa-plus"></i> Add to Order
-                  </button>
+                <div style={{marginBottom:'20px'}}>
+                  <div className="form-grid" style={{alignItems:'flex-end'}}>
+                    <div className="form-group" style={{gridColumn:'1 / span 2'}}>
+                      <label>Select Menu Item</label>
+                      <SearchableSelect
+                        value={selMenuItem}
+                        onChange={setSelMenuItem}
+                        options={menuItems.map(m => ({ value: m.itemName, label: `${m.itemName} - ${fmtCur(m.defaultPrice)}` }))}
+                        placeholder="Search for an item..."
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantity</label>
+                      <input type="number" min="1" value={selMenuQty} onChange={e=>setSelMenuQty(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <button type="button" className="btn btn-secondary" onClick={handleManualAdd} style={{width:'100%', height:'42px'}}>
+                        <i className="fas fa-plus"></i> Add to Order
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {orderItems.length > 0 && (
-               <div style={{background:'white', border:'1px solid #ddd', borderRadius:'8px', padding:'15px', marginBottom:'20px'}}>
-                  <h5 style={{margin:'0 0 10px 0', borderBottom:'1px solid #eee', paddingBottom:'10px'}}>Current Order</h5>
-                  {orderItems.map((item, idx) => (
-                     <div key={idx} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px dashed #eee'}}>
-                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                          <strong style={{minWidth:'150px'}}>{item.itemName}</strong>
-                          <input type="number" min="1" style={{width:'60px', padding:'4px'}} value={item.quantity} onChange={e => updateItemQty(idx, e.target.value)} />
-                        </div>
-                        <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                           <span>{fmtCur(item.totalAmount)}</span>
-                           <button type="button" onClick={()=>removeItem(idx)} style={{background:'none', border:'none', color:'#e74c3c', cursor:'pointer'}}><i className="fas fa-trash"></i></button>
-                        </div>
-                     </div>
-                  ))}
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'10px', paddingTop:'10px', borderTop:'2px solid #ddd', fontSize:'18px', fontWeight:'bold'}}>
-                     <div>Grand Total:</div>
-                     <div style={{color:'var(--navy-primary)'}}>{fmtCur(grandTotal)}</div>
-                  </div>
-               </div>
-            )}
+              <div>
+                {orderItems.length > 0 ? (
+                   <div style={{background:'white', border:'1px solid #ddd', borderRadius:'8px', padding:'15px'}}>
+                      <h5 style={{margin:'0 0 10px 0', borderBottom:'1px solid #eee', paddingBottom:'10px'}}>Current Order</h5>
+                      {orderItems.map((item, idx) => (
+                         <div key={idx} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px dashed #eee'}}>
+                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                              <strong style={{minWidth:'150px'}}>{item.itemName}</strong>
+                              <input type="number" min="1" style={{width:'60px', padding:'4px'}} value={item.quantity} onChange={e => updateItemQty(idx, e.target.value)} />
+                            </div>
+                            <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                               <span>{fmtCur(item.totalAmount)}</span>
+                               <button type="button" onClick={()=>removeItem(idx)} style={{background:'none', border:'none', color:'#e74c3c', cursor:'pointer'}}><i className="fas fa-trash"></i></button>
+                            </div>
+                         </div>
+                      ))}
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'10px', paddingTop:'10px', borderTop:'2px solid #ddd', fontSize:'18px', fontWeight:'bold'}}>
+                         <div>Grand Total:</div>
+                         <div style={{color:'var(--navy-primary)'}}>{fmtCur(grandTotal)}</div>
+                      </div>
+                   </div>
+                ) : (
+                   <div style={{background:'white', border:'1px dashed #ddd', borderRadius:'8px', padding:'40px 20px', textAlign:'center', color:'#999', height:'100%', display:'flex', flexDirection:'column', justifyContent:'center'}}>
+                      <i className="fas fa-shopping-basket" style={{fontSize:'36px', marginBottom:'15px', opacity:'0.5'}}></i>
+                      <p>Your cart is empty.</p>
+                   </div>
+                )}
+              </div>
+            </div>
             {selGuestName&&<p style={{fontSize:'13px',color:'#666',marginBottom:'15px'}}><i className="fas fa-info-circle"></i> Selected Guest: <strong>{selGuestName}</strong> | Check-In ID: <strong>{selCheckIn}</strong></p>}
             <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> {editOrder?'Update':'Add'} Order</>}</button>{editOrder&&<button type="button" className="btn btn-secondary" onClick={resetOrderForm}><i className="fas fa-times"></i> Cancel Edit</button>}</div>
           </form>
