@@ -155,16 +155,17 @@ const CI_ROOM_NUMBERS_COL   = 18;
 const CI_ROOM_TYPES_COL     = 19;
 const CI_NUM_ROOMS_COL      = 20;
 const CI_PAX_COL            = 21;
-const CI_ADVANCE_PAID_COL   = 22;
-const CI_EXTRA_PERSON_COL   = 23;
-const CI_FOOD_PLAN_COL      = 24;
-const CI_GST_TYPE_COL       = 25;
-const CI_FIX_RENT_COL       = 26;
-const CI_FIX_RENT_AMT_COL   = 27;
-const CI_BILL_TO_COL        = 28;
-const CI_DISCOUNT_COL       = 29;
-const CI_STATUS_COL         = 30;
-const CI_CREATED_AT_COL     = 31;
+const CI_ROOM_PAX_BREAKDOWN_COL = 22;
+const CI_ADVANCE_PAID_COL   = 23;
+const CI_EXTRA_PERSON_COL   = 24;
+const CI_FOOD_PLAN_COL      = 25;
+const CI_GST_TYPE_COL       = 26;
+const CI_FIX_RENT_COL       = 27;
+const CI_FIX_RENT_AMT_COL   = 28;
+const CI_BILL_TO_COL        = 29;
+const CI_DISCOUNT_COL       = 30;
+const CI_STATUS_COL         = 31;
+const CI_CREATED_AT_COL     = 32;
 
 // RESTAURANT sheet columns (0-based)
 const REST_ORDER_ID_COL          = 0;
@@ -1022,6 +1023,7 @@ function addCheckIn(checkInData) {
       roomTypes.join(','),
       roomNosArr.length,
       parseInt(checkInData.pax) || 1,
+      checkInData.roomPaxBreakdown || '',
       parseFloat(checkInData.advancePaid) || 0,
       parseInt(checkInData.extraPerson) || 0,
       checkInData.foodPlan || 'None',
@@ -1071,7 +1073,7 @@ function addCheckIn(checkInData) {
         checkInId,
         roomNumbers,
         initialDailyRate,
-        parseInt(checkInData.pax) || 1,
+        parseInt(checkInData.pax) || 1, // StaySegments uses total pax for historical record keeping
         checkInData.checkInDate,
         ""
       ]);
@@ -1239,6 +1241,7 @@ function getAllCheckIns() {
         roomTypes: (row[CI_ROOM_TYPES_COL] || '').toString(),
         numberOfRooms: parseInt(row[CI_NUM_ROOMS_COL]) || 0,
         pax: parseInt(row[CI_PAX_COL]) || 1,
+        roomPaxBreakdown: (row[CI_ROOM_PAX_BREAKDOWN_COL] || '').toString(),
         advancePaid: parseFloat(row[CI_ADVANCE_PAID_COL]) || 0,
         extraPerson: parseInt(row[CI_EXTRA_PERSON_COL]) || 0,
         foodPlan: (row[CI_FOOD_PLAN_COL] || 'None').toString(),
@@ -1298,6 +1301,7 @@ function getCheckInByRoomNo(roomNo) {
             roomTypes: '',
             numberOfRooms: parseInt(bData[i][NUM_ROOMS_COL]) || 1,
             pax: 1,
+            roomPaxBreakdown: '',
             advancePaid: parseFloat(bData[i][ADVANCE_PAID_COL]) || 0,
             extraPerson: parseInt(bData[i][EXTRA_PERSON_COL]) || 0,
             foodPlan: (bData[i][FOOD_PLAN_COL] || 'None').toString(),
@@ -1379,14 +1383,15 @@ function updateCheckIn(rowIndex, checkInData) {
       checkInData.purposeOfVisit || '', checkInData.checkInDate || '', checkInData.checkInTime || '14:00',
       checkInData.checkOutDate || '', checkInData.checkOutTime || '12:00',
       roomNumbers, roomTypes.join(','), roomNosArr.length,
-      parseInt(checkInData.pax) || 1, parseFloat(checkInData.advancePaid) || 0,
+      parseInt(checkInData.pax) || 1, checkInData.roomPaxBreakdown || '',
+      parseFloat(checkInData.advancePaid) || 0,
       parseInt(checkInData.extraPerson) || 0, checkInData.foodPlan || 'None',
       checkInData.gstType || 'Excluding', checkInData.fixRoomRent || 'No',
       parseFloat(checkInData.fixRoomRentAmount) || 0, checkInData.billTo || 'Individual',
       parseFloat(checkInData.discountPercent) || 0, existingStatus, existingCreatedAt
     ];
 
-    sheet.getRange(rowIndex, 1, 1, 32).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 33).setValues([row]);
     SpreadsheetApp.flush();
     return { success: true, message: "Check-in updated successfully." };
   } catch (e) {
@@ -1765,7 +1770,7 @@ function processFullCheckout(checkInId, checkoutData) {
         if ((bData[i][TICKET_ID_COL] || '').toString() === checkInId) {
           let bStatus = (bData[i][BOOKING_STATUS_COL] || '').toString();
           if (bStatus === 'Checked Out') return { success: false, message: "This booking has already been checked out." };
-          ci = new Array(32).fill('');
+          ci = new Array(33).fill('');
           ci[CI_ID_COL]            = checkInId;
           ci[CI_LINKED_TICKET_COL] = checkInId;
           ci[CI_GUEST_NAME_COL]    = (bData[i][GUEST_NAME_COL] || '').toString();
@@ -1783,6 +1788,7 @@ function processFullCheckout(checkInId, checkoutData) {
           ci[CI_ROOM_NUMBERS_COL]  = (bData[i][BOOKING_ROOM_NO_COL] || '').toString();
           ci[CI_NUM_ROOMS_COL]     = parseInt(bData[i][NUM_ROOMS_COL]) || 1;
           ci[CI_PAX_COL]           = 1;
+          ci[CI_ROOM_PAX_BREAKDOWN_COL] = ''; // Not supported natively in advance bookings yet
           ci[CI_EXTRA_PERSON_COL]  = parseInt(bData[i][EXTRA_PERSON_COL]) || 0;
           ci[CI_ADVANCE_PAID_COL]  = parseFloat(bData[i][ADVANCE_PAID_COL]) || 0;
           ci[CI_FOOD_PLAN_COL]     = (bData[i][FOOD_PLAN_COL] || 'None').toString();
@@ -3904,7 +3910,7 @@ function initDataStructure() {
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
     { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "GSTDefaultPercent", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Name", "Phone", "Email", "Address", "City", "State", "Country", "Zip Code", "DOB", "Anniversary", "Gender", "Marital Status", "Identity Proof", "Linked Username", "Notes", "Created Date", "Company Name", "GST Number"] },
-    { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Village/Street", "City", "State", "Pin Code", "Country", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
+    { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Village/Street", "City", "State", "Pin Code", "Country", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Room Pax Breakdown", "Advance Paid", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
     { sheetName: STAY_SEGMENTS_SHEET_NAME, headers: ["Segment ID", "CheckIn ID", "Room Numbers", "Rate", "Pax", "Start Date", "End Date", "Created By", "Timestamp"] },
     { sheetName: MENU_SHEET_NAME, headers: ["ItemName", "FoodCategory", "DefaultPrice"] }
@@ -4014,7 +4020,7 @@ function updateStaySegment(checkInId, newRoomNos, newRate, newPax, switchDateTim
       checkInId,
       newRoomNos,
       parseFloat(newRate) || 0,
-      parseInt(newPax) || 1,
+      newPax.paxTotal || parseInt(newPax) || 1,
       now,
       ""
     ]);
@@ -4026,7 +4032,8 @@ function updateStaySegment(checkInId, newRoomNos, newRate, newPax, switchDateTim
       if ((checkInData[i][CI_ID_COL] || '').toString() === checkInId.toString()) {
         ciRowIndex = i + 1;
         checkInSheet.getRange(ciRowIndex, CI_ROOM_NUMBERS_COL + 1).setValue(newRoomNos);
-        checkInSheet.getRange(ciRowIndex, CI_PAX_COL + 1).setValue(newPax);
+        checkInSheet.getRange(ciRowIndex, CI_PAX_COL + 1).setValue(newPax.paxTotal || parseInt(newPax) || 1);
+        checkInSheet.getRange(ciRowIndex, CI_ROOM_PAX_BREAKDOWN_COL + 1).setValue(newPax.roomPaxBreakdown || '');
         // Also update number of rooms to reflect the new state
         const newRoomsArr = newRoomNos.split(',').map(r => r.trim()).filter(r => r);
         checkInSheet.getRange(ciRowIndex, CI_NUM_ROOMS_COL + 1).setValue(newRoomsArr.length);

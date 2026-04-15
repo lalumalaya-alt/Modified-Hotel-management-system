@@ -1121,7 +1121,7 @@ return (ci < cCo && co > cCi);
       const [saving,setSaving]=useState(false);
       const tRef=useRef(null);
       const [updateRec,setUpdateRec]=useState(null);
-      const [fd,setFd]=useState({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});
+      const [fd,setFd]=useState({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,roomPaxBreakdown:'',advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});
       const [activeCis, setActiveCis] = useState([]);
       const [showModal, setShowModal] = useState(false);
 
@@ -1178,7 +1178,18 @@ return (ci < cCo && co > cCi);
 
       const toggleRoom=(rn)=>{
         setSelectedRooms(prev => {
-          if (prev.includes(rn)) return prev.filter(r => r !== rn);
+          if (prev.includes(rn)) {
+            const nextRooms = prev.filter(r => r !== rn);
+            // Clean up the room breakdown when a room is toggled off
+            let breakdown = {};
+            try { breakdown = fd.roomPaxBreakdown ? JSON.parse(fd.roomPaxBreakdown) : {}; } catch(e){}
+            if (breakdown[rn]) {
+              delete breakdown[rn];
+              const totalPax = Object.values(breakdown).reduce((sum, p) => sum + p, 0) || 1;
+              setFd(f => ({ ...f, roomPaxBreakdown: JSON.stringify(breakdown), pax: totalPax }));
+            }
+            return nextRooms;
+          }
           
           // Before adding, check if there are enough free rooms of this type remaining
           // to satisfy other pending advance bookings.
@@ -1210,6 +1221,16 @@ return (ci < cCo && co > cCi);
                }
              }
           }
+
+          // Set initial pax breakdown to 1 for this new room if it didn't exist
+          let breakdown = {};
+          try { breakdown = fd.roomPaxBreakdown ? JSON.parse(fd.roomPaxBreakdown) : {}; } catch(e){}
+          if (!breakdown[rn]) {
+            breakdown[rn] = 1;
+            const totalPax = Object.values(breakdown).reduce((sum, p) => sum + p, 0);
+            setFd(f => ({ ...f, roomPaxBreakdown: JSON.stringify(breakdown), pax: totalPax }));
+          }
+
           return [...prev, rn];
         });
       };
@@ -1372,6 +1393,10 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
           // Check if booking already specifies physical rooms instead of types
           const isPhys = bk.roomNo && !bk.roomNo.match(/\(\d+\)/);
           setSelectedRooms(isPhys ? bk.roomNo.split(',').map(r=>r.trim()).filter(r=>r) : []);
+          let initialBreakdown = {};
+          let initialRooms = isPhys ? bk.roomNo.split(',').map(r=>r.trim()).filter(r=>r) : [];
+          initialRooms.forEach(rn => initialBreakdown[rn] = 1);
+
           setFd(p => ({
             ...p, 
             guestName: bk.guestName || '', 
@@ -1385,7 +1410,9 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
             advancePaid: bk.advancePaid || 0,
             gstType: bk.tax > 0 ? 'Including' : 'Excluding', // Infer from old or explicit new
             fixRoomRentAmount: bk.fixRoomRentAmount || '', // Sync fixed rent if present
-            discountPercent: bk.discount || 0
+            discountPercent: bk.discount || 0,
+            roomPaxBreakdown: JSON.stringify(initialBreakdown),
+            pax: initialRooms.length || 1
           }));
         } else {
           resetForm();
@@ -1394,9 +1421,9 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
 
       const [editRowIndex, setEditRowIndex] = useState(null);
 
-      const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);};
+      const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,roomPaxBreakdown:'',advancePaid:0,extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);};
 
-      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0,city:ci.city||'',state:ci.state||'',pinCode:ci.pinCode||'',country:ci.country||''});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setShowModal(true);};
+      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0,city:ci.city||'',state:ci.state||'',pinCode:ci.pinCode||'',country:ci.country||'',roomPaxBreakdown:ci.roomPaxBreakdown||''});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setShowModal(true);};
 
       const submit=(e)=>{e.preventDefault();
         if(!fd.guestName.trim()){Swal.fire({icon:'warning',text:'Guest Name is required.'});return;}
@@ -1521,7 +1548,34 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
             <div className="form-group"><label>Pin Code</label><input value={fd.pinCode} onChange={e=>setFd({...fd,pinCode:e.target.value})}/></div>
             <div className="form-group"><label>Country</label><input value={fd.country} onChange={e=>setFd({...fd,country:e.target.value})}/></div>
             <div className="form-group"><label>Purpose of Visit</label><input value={fd.purposeOfVisit} onChange={e=>setFd({...fd,purposeOfVisit:e.target.value})}/></div>
-            <div className="form-group"><label>Pax</label><input type="number" min="1" value={fd.pax} onChange={e=>setFd({...fd,pax:e.target.value})}/></div>
+            {selectedRooms.length > 0 && (
+              <div className="form-group" style={{ gridColumn: '1 / -1', background: '#f8f9fa', padding: '15px', borderRadius: '4px', border: '1px solid #dee2e6' }}>
+                <label style={{ display: 'block', marginBottom: '10px', color: 'var(--navy-primary)' }}>Pax Breakdown per Room</label>
+                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                  {selectedRooms.map(rmNo => {
+                    let breakdown = {};
+                    try { breakdown = fd.roomPaxBreakdown ? JSON.parse(fd.roomPaxBreakdown) : {}; } catch(e){}
+                    return (
+                      <div key={rmNo} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'white', padding: '5px 10px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                        <span style={{ fontWeight: 'bold' }}>Room {rmNo}:</span>
+                        <input type="number" min="1" style={{ width: '60px', padding: '4px' }}
+                          value={breakdown[rmNo] || 1}
+                          onChange={e => {
+                            const val = parseInt(e.target.value) || 1;
+                            const newBreakdown = { ...breakdown, [rmNo]: val };
+                            const totalPax = Object.values(newBreakdown).reduce((sum, p) => sum + p, 0);
+                            setFd({ ...fd, roomPaxBreakdown: JSON.stringify(newBreakdown), pax: totalPax });
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ marginTop: '10px', fontSize: '13px', color: '#555' }}>
+                  <strong>Total Pax:</strong> {fd.pax}
+                </div>
+              </div>
+            )}
             <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={fd.extraPerson} onChange={e=>setFd({...fd,extraPerson:e.target.value})}/></div>
             <div className="form-group"><label>Advance Paid ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={fd.advancePaid} onChange={e=>setFd({...fd,advancePaid:e.target.value})}/></div>
             <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
@@ -1547,7 +1601,7 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
 
     function UpdateStayModal({rec, onClose, onRefresh, allRooms, advBks, activeCis}){
       const [roomIds, setRoomIds]=useState([]);
-      const [pax, setPax]=useState(1);
+      const [roomPax, setRoomPax]=useState({});
       const [newRate, setNewRate]=useState(0);
       const [sv, setSv]=useState(false);
       const [roomStates, setRoomStates]=useState({});
@@ -1619,7 +1673,11 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       useEffect(()=>{
         if(rec){
           setRoomIds((rec.roomNumbers||'').split(',').map(s=>s.trim()).filter(s=>s));
-          setPax(parseInt(rec.pax)||1);
+          let parsedBreakdown = {};
+          try {
+            parsedBreakdown = rec.roomPaxBreakdown ? JSON.parse(rec.roomPaxBreakdown) : {};
+          } catch(e) {}
+          setRoomPax(parsedBreakdown);
         }
       }, [rec]);
 
@@ -1647,6 +1705,19 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           switchDateTime = new Date(switchDate + 'T' + switchTime).toISOString();
         }
 
+        const finalBreakdown = {};
+        let totalPax = 0;
+        roomIds.forEach(rn => {
+          const p = roomPax[rn] || 1;
+          finalBreakdown[rn] = p;
+          totalPax += p;
+        });
+
+        const paxPayload = {
+          paxTotal: totalPax,
+          roomPaxBreakdown: JSON.stringify(finalBreakdown)
+        };
+
         google.script.run.withSuccessHandler(r=>{
           setSv(false);
           if(r.success){
@@ -1656,7 +1727,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           } else { Swal.fire({icon:'error',text:r.message}); }
         }).withFailureHandler(err=>{
           setSv(false); Swal.fire({icon:'error',text:err.message});
-        }).updateStaySegment(rec.checkInId, roomIds.join(','), newRate, pax, switchDateTime);
+        }).updateStaySegment(rec.checkInId, roomIds.join(','), newRate, paxPayload, switchDateTime);
       };
 
       return(
@@ -1683,7 +1754,15 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                         const rmNoStr = rm.roomNo.toString();
 
                         setRoomIds(prev => {
-                          if (prev.includes(rmNoStr)) return prev.filter(x => x !== rmNoStr);
+                          if (prev.includes(rmNoStr)) {
+                            const nextRooms = prev.filter(x => x !== rmNoStr);
+                            setRoomPax(p => {
+                              const newP = { ...p };
+                              delete newP[rmNoStr];
+                              return newP;
+                            });
+                            return nextRooms;
+                          }
 
                           // Before adding, enforce advance booking constraints
                           if (roomStates && roomStates._typeBookings) {
@@ -1710,6 +1789,14 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                               }
                             }
                           }
+
+                          setRoomPax(p => {
+                            if (!p[rmNoStr]) {
+                              return { ...p, [rmNoStr]: 1 };
+                            }
+                            return p;
+                          });
+
                           return [...prev, rmNoStr];
                         });
                       };
@@ -1737,6 +1824,27 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                     })}
                   </div>
                 </div>
+
+                {roomIds.length > 0 && (
+                  <div className="form-group" style={{ background: '#f8f9fa', padding: '15px', borderRadius: '4px', border: '1px solid #dee2e6', marginTop: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '10px', color: 'var(--navy-primary)' }}>Pax Breakdown per Room *</label>
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                      {roomIds.map(rmNo => (
+                        <div key={rmNo} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'white', padding: '5px 10px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                          <span style={{ fontWeight: 'bold' }}>Room {rmNo}:</span>
+                          <input type="number" min="1" style={{ width: '60px', padding: '4px' }}
+                            value={roomPax[rmNo] || 1}
+                            onChange={e => {
+                              const val = parseInt(e.target.value) || 1;
+                              setRoomPax(p => ({ ...p, [rmNo]: val }));
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="form-grid" style={{marginTop:'15px'}}>
                   <div className="form-group">
                     <label>Switch Date *</label>
@@ -1745,10 +1853,6 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                   <div className="form-group">
                     <label>Switch Time *</label>
                     <input type="time" value={switchTime} onChange={e=>setSwitchTime(e.target.value)} required />
-                  </div>
-                  <div className="form-group">
-                    <label>Pax *</label>
-                    <input type="number" min="1" value={pax} onChange={e=>setPax(e.target.value)} required />
                   </div>
                   <div className="form-group">
                     <label>New Daily Rate ({APP_CURRENCY}) *</label>
