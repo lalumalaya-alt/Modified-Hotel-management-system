@@ -1428,7 +1428,6 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
       const submit=(e)=>{e.preventDefault();
         if(!fd.guestName.trim()){Swal.fire({icon:'warning',text:'Guest Name is required.'});return;}
         if(selectedRooms.length===0){Swal.fire({icon:'warning',text:'Select at least one room.'});return;}
-        if(needsRoomSelection){Swal.fire({icon:'warning',text:'Please allocate the exact number of physical rooms required by the advance booking.'});return;}
         if(!fd.checkInDate){Swal.fire({icon:'warning',text:'Check-in date is required.'});return;}
         
         // Before sending, verify room statuses again on the frontend if walk-in and not editing
@@ -1490,17 +1489,15 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
             </div>
             
             {linkedBooking && dynRooms.length > 0 && (
-              <div style={{ marginTop: '15px', padding: '15px', background: '#fff', border: '1px solid #c3e6cb', borderRadius: '4px' }}>
-                <h5 style={{ margin: '0 0 10px 0', color: '#155724' }}><i className="fas fa-info-circle"></i> Booking Requirements</h5>
+              <div style={{ marginTop: '15px', padding: '15px', background: '#fff', border: '1px solid #dee2e6', borderRadius: '4px' }}>
+                <h5 style={{ margin: '0 0 10px 0', color: 'var(--navy-primary)' }}><i className="fas fa-info-circle"></i> Original Booking Request</h5>
                 <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#555' }}>
-                  Please select physical rooms from the grid below to fulfill this booking:
+                  The guest originally requested the following. You may assign different rooms, types, or quantities below based on their current needs:
                 </p>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {dynRooms.map((dr, i) => (
-                    <div key={i} style={{ padding: '8px 12px', background: dr.fulfilled ? '#d4edda' : dr.over ? '#f8d7da' : '#fff3cd', border: `1px solid ${dr.fulfilled ? '#c3e6cb' : dr.over ? '#f5c6cb' : '#ffeeba'}`, borderRadius: '4px', fontSize: '13px', color: dr.fulfilled ? '#155724' : dr.over ? '#721c24' : '#856404' }}>
+                    <div key={i} style={{ padding: '8px 12px', background: '#e9ecef', border: '1px solid #ced4da', borderRadius: '4px', fontSize: '13px', color: '#495057' }}>
                       <strong>{dr.type}</strong>: {dr.selQty} / {dr.reqQty} selected
-                      {dr.fulfilled && <i className="fas fa-check ml-2"></i>}
-                      {dr.over && <i className="fas fa-exclamation-triangle ml-2" title="Too many selected"></i>}
                     </div>
                   ))}
                 </div>

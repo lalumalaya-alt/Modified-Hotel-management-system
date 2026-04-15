@@ -1044,6 +1044,28 @@ function addCheckIn(checkInData) {
         if ((bData[i][TICKET_ID_COL] || '').toString() === checkInData.linkedTicketId) {
           bookingsSheet.getRange(i + 1, BOOKING_STATUS_COL + 1).setValue("Checked In");
           bookingsSheet.getRange(i + 1, LINKED_CHECKIN_COL + 1).setValue(checkInId);
+
+          // Free old physical rooms that are no longer being used
+          let oldRoomsStr = (bData[i][BOOKING_ROOM_NO_COL] || '').toString();
+          let oldRooms = oldRoomsStr.split(',').map(r => r.trim()).filter(Boolean);
+
+          oldRooms.forEach(rn => {
+            const match = rn.match(/(.+?)(?:\s*\((\d+)\))?$/);
+            const isType = match && match[2]; // Check if it was just a type request e.g., 'Cottage (1)'
+            if (!isType && !roomNosArr.includes(rn)) {
+              for (let j = 1; j < roomsData.length; j++) {
+                if ((roomsData[j][ROOM_NO_COL] || '').toString() === rn) {
+                  roomsSheet.getRange(j + 1, ROOM_STATUS_COL + 1).setValue("Available");
+                  break;
+                }
+              }
+            }
+          });
+
+          // Update the Booking record to reflect the final rooms chosen at the desk
+          bookingsSheet.getRange(i + 1, BOOKING_ROOM_NO_COL + 1).setValue(roomNosArr.join(', '));
+          bookingsSheet.getRange(i + 1, NUM_ROOMS_COL + 1).setValue(roomNosArr.length);
+
           break;
         }
       }
