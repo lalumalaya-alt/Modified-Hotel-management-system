@@ -2891,6 +2891,49 @@ function getDashboardData() {
       }
     } catch (setErr) { Logger.log("Could not load settings currency: " + setErr); }
 
+    // Step 1: Aggregate todays paid sales
+    const todaysPaidSales = [];
+    try {
+      const invoicesSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(INVOICES_SHEET_NAME);
+      if (invoicesSheet && invoicesSheet.getLastRow() > 1) {
+        const invData = invoicesSheet.getDataRange().getValues();
+        const localTodayStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
+
+        for (let i = 1; i < invData.length; i++) {
+          const invDateStr = (invData[i][INV_CREATED_DATE_COL] || '').toString();
+          const invStatus = (invData[i][INV_STATUS_COL] || '').toString().trim();
+
+          if (invDateStr.includes(localTodayStr) && invStatus === 'Paid') {
+            const invoiceId = (invData[i][INV_ID_COL] || '').toString();
+            const guestName = (invData[i][INV_GUEST_NAME_COL] || '').toString();
+            const totalSales = parseFloat(invData[i][INV_NET_AMOUNT_COL]) || 0;
+            const itemsStr = (invData[i][INV_ITEMS_JSON_COL] || '').toString();
+
+            let roomRent = 0;
+            let foodRevenue = 0;
+
+            if (itemsStr) {
+              try {
+                const items = JSON.parse(itemsStr);
+                items.forEach(item => {
+                  const desc = (item.description || '').toLowerCase();
+                  const type = (item.type || '').toLowerCase();
+                  const amt = parseFloat(item.amount) || 0;
+
+                  if (type === 'room' || desc.includes('room rent')) {
+                    roomRent += amt;
+                  } else {
+                    foodRevenue += amt;
+                  }
+                });
+              } catch(e) {}
+            }
+            todaysPaidSales.push({ invoiceId, guestName, roomRent, foodRevenue, totalSales });
+          }
+        }
+      }
+    } catch (invErr) { Logger.log("Could not aggregate todays sales: " + invErr); }
+
     return {
       totalRooms,
       bookedRooms: bookedCount,
@@ -2906,6 +2949,7 @@ function getDashboardData() {
       todaysCheckIns,
       todaysCheckOuts,
       invoiceStats,
+      todaysPaidSales,
       defaultCurrency: settingsDefaultCurrency
     };
   } catch (e) {
