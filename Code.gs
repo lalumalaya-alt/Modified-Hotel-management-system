@@ -2232,7 +2232,12 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
                   if (segRoomsArr.includes(rn)) activeRoomsInSegment++;
                 }
 
-                if (activeRoomsInSegment > 0) {
+                let orphanRoomsInSegment = 0;
+                for (let rn of segRoomsArr) {
+                  if (!rNs.includes(rn)) orphanRoomsInSegment++;
+                }
+
+                if (activeRoomsInSegment > 0 || orphanRoomsInSegment > 0) {
                   let segStartDateStr = (segmentsData[s][SEG_START_DATE_COL] || '').toString();
                   let segEndDateStr = (segmentsData[s][SEG_END_DATE_COL] || '').toString();
                   let billingEndDate = segEndDateStr ? new Date(segEndDateStr) : actualCheckOutDate;
@@ -2253,7 +2258,11 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
                   if (segNights < 0) segNights = 0;
 
                   let segRate = parseFloat(segmentsData[s][SEG_RATE_COL]) || 0;
-                  let proportionedRate = (segRate / segRoomsArr.length) * activeRoomsInSegment;
+
+                  let checkoutFraction = selectedRoomNos.length / (rNs.length || 1);
+                  let rateForSelected = (segRate / segRoomsArr.length) * activeRoomsInSegment;
+                  let rateForOrphans = (segRate / segRoomsArr.length) * orphanRoomsInSegment * checkoutFraction;
+                  let proportionedRate = rateForSelected + rateForOrphans;
                   
                   staySegments.push({ rate: proportionedRate, nights: segNights, startDate: segStartDate, endDate: billingEndDate });
                 }
