@@ -3954,6 +3954,7 @@ function getAllMenuItems() {
       const itemName = (row[MENU_ITEM_NAME_COL] || "").toString().trim();
       if (itemName) {
         items.push({
+          rowIndex: i + 1,
           itemName: itemName,
           foodCategory: (row[MENU_CATEGORY_COL] || "").toString().trim(),
           defaultPrice: parseFloat(row[MENU_PRICE_COL]) || 0
@@ -3965,6 +3966,71 @@ function getAllMenuItems() {
   } catch (e) {
     Logger.log("Error in getAllMenuItems: " + e.toString());
     return [];
+  }
+}
+
+function addMenuItem(itemName, category, price) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(MENU_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Menu sheet not found." };
+
+    const data = sheet.getDataRange().getValues();
+    const cleanName = itemName.toString().trim();
+    for (let i = 1; i < data.length; i++) {
+      if ((data[i][MENU_ITEM_NAME_COL] || "").toString().trim().toLowerCase() === cleanName.toLowerCase()) {
+        return { success: false, message: "A menu item with this name already exists." };
+      }
+    }
+
+    sheet.appendRow([cleanName, category || 'Lunch', parseFloat(price) || 0]);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Menu item added successfully." };
+  } catch (e) {
+    Logger.log("Error in addMenuItem: " + e.toString());
+    return { success: false, message: e.message };
+  }
+}
+
+function updateMenuItem(rowIndex, itemName, category, price) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(MENU_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Menu sheet not found." };
+    if (rowIndex <= 1) return { success: false, message: "Invalid row index." };
+
+    const data = sheet.getDataRange().getValues();
+    const cleanName = itemName.toString().trim();
+
+    // Check duplicates, excluding the current row
+    for (let i = 1; i < data.length; i++) {
+      if ((i + 1) !== rowIndex && (data[i][MENU_ITEM_NAME_COL] || "").toString().trim().toLowerCase() === cleanName.toLowerCase()) {
+        return { success: false, message: "Another menu item with this name already exists." };
+      }
+    }
+
+    sheet.getRange(rowIndex, 1, 1, 3).setValues([[cleanName, category || 'Lunch', parseFloat(price) || 0]]);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Menu item updated successfully." };
+  } catch (e) {
+    Logger.log("Error in updateMenuItem: " + e.toString());
+    return { success: false, message: e.message };
+  }
+}
+
+function deleteMenuItem(rowIndex) {
+  try {
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(MENU_SHEET_NAME);
+    if (!sheet) return { success: false, message: "Menu sheet not found." };
+    if (rowIndex <= 1) return { success: false, message: "Invalid row index." };
+
+    sheet.deleteRow(rowIndex);
+    SpreadsheetApp.flush();
+    return { success: true, message: "Menu item deleted successfully." };
+  } catch (e) {
+    Logger.log("Error in deleteMenuItem: " + e.toString());
+    return { success: false, message: e.message };
   }
 }
 

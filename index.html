@@ -3034,6 +3034,56 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       </div>);
     }
 
+    function MenuItemModal({editItem, onClose, onSave}){
+      const [fd, setFd] = useState({
+        itemName: editItem ? editItem.itemName : '',
+        foodCategory: editItem ? editItem.foodCategory : 'Lunch',
+        defaultPrice: editItem ? editItem.defaultPrice : ''
+      });
+      const [sv, setSv] = useState(false);
+      const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'FoodBeverage'];
+      const CAT_LABELS = {Breakfast: 'Breakfast', Lunch: 'Lunch', Dinner: 'Dinner', Snacks: 'Snacks', FoodBeverage: 'Other Food & Beverage'};
+
+      const submit = (e) => {
+        e.preventDefault();
+        setSv(true);
+        onSave({...fd, rowIndex: editItem ? editItem.rowIndex : null}, () => setSv(false));
+      };
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h3><i className="fas fa-utensils"></i> {editItem ? 'Edit Menu Item' : 'Add Menu Item'}</h3>
+              <button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={submit}>
+                <div className="form-group">
+                  <label>Item Name *</label>
+                  <input value={fd.itemName} onChange={e=>setFd({...fd, itemName: e.target.value})} required />
+                </div>
+                <div className="form-group">
+                  <label>Category *</label>
+                  <select value={fd.foodCategory} onChange={e=>setFd({...fd, foodCategory: e.target.value})}>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Default Price ({APP_CURRENCY}) *</label>
+                  <input type="number" step="0.01" min="0" value={fd.defaultPrice} onChange={e=>setFd({...fd, defaultPrice: e.target.value})} required />
+                </div>
+                <div className="form-actions">
+                  <button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save</>}</button>
+                  <button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     function SettingsView({user, role}){
       const isAdmin = role === 'admin';
       const [activeSettingsTab, setActiveSettingsTab] = useState('profile');
@@ -3052,6 +3102,97 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
         
       // Users Tab States
       const [usersLd,setUsersLd]=useState(true);const [showUserModal,setShowUserModal]=useState(false);const [editUser,setEditUser]=useState(null);const tRef=useRef(null);
+
+      // Menu Tab States
+      const [menuLd, setMenuLd] = useState(true);
+      const [menuItems, setMenuItems] = useState([]);
+      const [showMenuModal, setShowMenuModal] = useState(false);
+      const [editMenu, setEditMenu] = useState(null);
+      const menuTRef = useRef(null);
+
+      useEffect(() => {
+        if(activeSettingsTab === 'menu' && isAdmin) loadMenu();
+        return () => { if(menuTRef.current) try{ menuTRef.current.destroy(); }catch(e){} };
+      }, [activeSettingsTab, isAdmin]);
+
+      const loadMenu = () => {
+        setMenuLd(true);
+        google.script.run.withSuccessHandler(r => {
+          setMenuLd(false);
+          const data = Array.isArray(r) ? r : [];
+          setMenuItems(data);
+          initMenuT(data);
+        }).withFailureHandler(e => {
+          setMenuLd(false);
+          Swal.fire({icon:'error', text:e.message});
+        }).getAllMenuItems();
+      };
+
+      const initMenuT = (data) => {
+        if(menuTRef.current){ try{ menuTRef.current.destroy(); menuTRef.current=null; $('#menuT').empty(); }catch(e){} }
+        setTimeout(()=>{
+          try {
+            const t = $('#menuT').DataTable({
+              data,
+              destroy: true,
+              columns: [
+                {data: 'itemName', title: 'Item Name'},
+                {data: 'foodCategory', title: 'Category'},
+                {data: 'defaultPrice', title: 'Default Price', render: d => fmtCur(d)},
+                {data: null, title: 'Actions', orderable: false, className: 'all', responsivePriority: 1, render: () => '<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button><button class="action-icon delete-icon" data-action="delete"><i class="fas fa-trash"></i></button>'}
+              ],
+              pageLength: 10,
+              responsive: true,
+              dom: 'Blfrtip',
+              buttons: [
+                {extend: 'csv', text: '<i class="fas fa-file-csv"></i> CSV', exportOptions: {columns: ':not(:last-child)'}},
+                {extend: 'pdf', text: '<i class="fas fa-file-pdf"></i> PDF', exportOptions: {columns: ':not(:last-child)'}},
+                {extend: 'print', text: '<i class="fas fa-print"></i> Print', exportOptions: {columns: ':not(:last-child)'}}
+              ]
+            });
+            $('#menuT').off('click', '.action-icon').on('click', '.action-icon', function(){
+              const a = $(this).data('action');
+              const tr = $(this).closest('tr');
+              const rowData = t.row(tr.hasClass('child') ? tr.prev() : tr).data();
+              if(a === 'edit'){
+                setEditMenu(rowData);
+                setShowMenuModal(true);
+              } else if(a === 'delete'){
+                delMenuItem(rowData);
+              }
+            });
+            menuTRef.current = t;
+          } catch(e) { console.error(e); }
+        }, 150);
+      };
+
+      const saveMenuItem = (data, resetSv) => {
+        if(data.rowIndex) {
+          google.script.run.withSuccessHandler(r=>{
+            resetSv();
+            if(r.success){ Swal.fire({icon:'success', text:r.message, timer:1500, showConfirmButton:false}); setShowMenuModal(false); setEditMenu(null); loadMenu(); }
+            else Swal.fire({icon:'error', text:r.message});
+          }).withFailureHandler(e=>{ resetSv(); Swal.fire({icon:'error', text:e.message}); }).updateMenuItem(data.rowIndex, data.itemName, data.foodCategory, data.defaultPrice);
+        } else {
+          google.script.run.withSuccessHandler(r=>{
+            resetSv();
+            if(r.success){ Swal.fire({icon:'success', text:r.message, timer:1500, showConfirmButton:false}); setShowMenuModal(false); loadMenu(); }
+            else Swal.fire({icon:'error', text:r.message});
+          }).withFailureHandler(e=>{ resetSv(); Swal.fire({icon:'error', text:e.message}); }).addMenuItem(data.itemName, data.foodCategory, data.defaultPrice);
+        }
+      };
+
+      const delMenuItem = (row) => {
+        Swal.fire({title: 'Delete Menu Item?', text: "This action cannot be undone.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Yes, delete it!'}).then((res) => {
+          if(res.isConfirmed) {
+            Swal.fire({title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+            google.script.run.withSuccessHandler(r => {
+              if(r.success) { Swal.fire({icon:'success', text:r.message, timer:1500, showConfirmButton:false}); loadMenu(); }
+              else { Swal.fire({icon:'error', text:r.message}); }
+            }).withFailureHandler(e => { Swal.fire({icon:'error', text:e.message}); }).deleteMenuItem(row.rowIndex);
+          }
+        });
+      };
       const [filters,setFilters]=useState({role:''});
       useEffect(()=>{if(activeSettingsTab==='users'&&isAdmin)loadUsers();return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};},[activeSettingsTab,isAdmin]);
       useEffect(()=>{if(!tRef.current)return;if(filters.role)tRef.current.column(1).search('^'+filters.role+'$',true,false);else tRef.current.column(1).search('');tRef.current.draw();},[filters]);
@@ -3078,6 +3219,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           <button className={`btn ${activeSettingsTab==='profile'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveSettingsTab('profile')}><i className="fas fa-user-circle"></i> My Profile</button>
           {isAdmin&&<button className={`btn ${activeSettingsTab==='hotel'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveSettingsTab('hotel')}><i className="fas fa-hotel"></i> Hotel Config</button>}
           {isAdmin&&<button className={`btn ${activeSettingsTab==='users'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveSettingsTab('users')}><i className="fas fa-users"></i> User Management</button>}
+            {isAdmin && <button className={`btn ${activeSettingsTab==='menu'?'btn-primary':'btn-secondary'}`} onClick={()=>setActiveSettingsTab('menu')}><i className="fas fa-utensils"></i> Menu Config</button>}
         </div>
 
         {activeSettingsTab === 'profile' && (
@@ -3117,6 +3259,21 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
             </div></div>}
             {usersLd&&<TableSkeleton rows={5} columns={3}/>}<div style={{display:usersLd?'none':'block'}}><table id="usrT" className="display" style={{width:'100%'}}></table></div>
             {showUserModal&&<UserModal editUser={editUser} onClose={()=>{setShowUserModal(false);setEditUser(null);}} onSave={loadUsers}/>}
+          </div>
+        )}
+
+        {activeSettingsTab === 'menu' && isAdmin && (
+          <div className="settings-form">
+            <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'15px'}}>
+              <button className="btn btn-success" onClick={()=>{setEditMenu(null);setShowMenuModal(true);}}>
+                <i className="fas fa-plus"></i> Add Menu Item
+              </button>
+            </div>
+            {menuLd && <TableSkeleton rows={5} columns={4}/>}
+            <div style={{display: menuLd ? 'none' : 'block'}}>
+              <table id="menuT" className="display" style={{width:'100%'}}></table>
+            </div>
+            {showMenuModal && <MenuItemModal editItem={editMenu} onClose={()=>{setShowMenuModal(false);setEditMenu(null);}} onSave={saveMenuItem}/>}
           </div>
         )}
 
