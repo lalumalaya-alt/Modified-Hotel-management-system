@@ -2232,6 +2232,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const [disc, setDisc] = useState(0);
       const [gstType, setGstType] = useState('Excluding');
       const [payMode, setPayMode] = useState('Cash');
+      const [payStatus, setPayStatus] = useState('Paid');
       const [processing, setProcessing] = useState(false);
 
       const walkinOrders = allOrders.filter(o => o.checkInId === 'Walk-in' && o.status === 'Active');
@@ -2257,7 +2258,8 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           gstType: gstType,
           sgstPercent: 8,
           cgstPercent: 8,
-          paymentMode: payMode
+          paymentMode: payMode,
+          paymentStatus: payStatus
         };
 
         google.script.run.withSuccessHandler(res => {
@@ -2332,7 +2334,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
 
                     <div style={{background: '#f8f9fa', padding: '15px', borderRadius: '4px', border: '1px solid #ddd'}}>
                       <h4 style={{marginBottom: '10px', fontSize: '14px'}}><i className="fas fa-calculator"></i> Billing Options</h4>
-                      <div className="form-grid" style={{gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px'}}>
+                      <div className="form-grid" style={{gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px'}}>
                         <div className="form-group" style={{marginBottom:0}}>
                           <label>Discount (%)</label>
                           <input type="number" min="0" max="100" value={disc} onChange={e=>setDisc(e.target.value)} />
@@ -2344,8 +2346,15 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                           </select>
                         </div>
                         <div className="form-group" style={{marginBottom:0}}>
+                          <label>Payment Status</label>
+                          <select value={payStatus} onChange={e=>setPayStatus(e.target.value)}>
+                            <option value="Paid">Paid</option>
+                            <option value="Credit">Credit</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{marginBottom:0}}>
                           <label>Payment Mode</label>
-                          <select value={payMode} onChange={e=>setPayMode(e.target.value)}>
+                          <select value={payMode} onChange={e=>setPayMode(e.target.value)} disabled={payStatus === 'Credit'}>
                             <option>Cash</option><option>Card</option><option>Bank Transfer</option><option>UPI</option><option>Online</option>
                           </select>
                         </div>
@@ -2499,6 +2508,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const [inv,setInv]=useState(null);
       const [saving,setSaving]=useState(false);
       const [payMode,setPayMode]=useState('Cash');
+      const [payStatus,setPayStatus]=useState('Paid');
       const [amtPaid,setAmtPaid]=useState('');
       const [checkOutDate,setCheckOutDate]=useState(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
       const [checkOutTime,setCheckOutTime]=useState('12:00');
@@ -2683,7 +2693,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
         setSaving(true);Swal.fire({title: isPreview ? 'Generating Preview...' : 'Processing Advanced Checkout...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         
         const payload = {
-          checkOutDate, checkOutTime, paymentMode:payMode, amountPaid:parseFloat(amtPaid)||0, 
+          checkOutDate, checkOutTime, paymentMode:payMode, paymentStatus:payStatus, amountPaid:parseFloat(amtPaid)||0,
           discountPercent, advanceToApply: parseFloat(advanceToApply)||0, isPreview
         };
         
@@ -2855,8 +2865,15 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                  <div style={{fontSize:'11px', color:'#666', marginBottom:'4px'}}>Max available: {fmtCur(totalAdvanceAvailable)}</div>
                  <input type="number" step="0.01" min="0" max={totalAdvanceAvailable} value={advanceToApply} onChange={e=>setAdvanceToApply(e.target.value)}/>
               </div>
-              <div className="form-group"><label>Payment Mode</label><select value={payMode} onChange={e=>setPayMode(e.target.value)}><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>UPI</option><option>Online</option></select></div>
-              <div className="form-group"><label>Amount Paid Now ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={amtPaid} onChange={e=>setAmtPaid(e.target.value)}/></div>
+              <div className="form-group">
+                 <label>Payment Status</label>
+                 <select value={payStatus} onChange={e=>setPayStatus(e.target.value)}>
+                    <option value="Paid">Paid</option>
+                    <option value="Credit">Credit</option>
+                 </select>
+              </div>
+              <div className="form-group"><label>Payment Mode</label><select value={payMode} onChange={e=>setPayMode(e.target.value)} disabled={payStatus === 'Credit'}><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>UPI</option><option>Online</option></select></div>
+              <div className="form-group"><label>Amount Paid Now ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" value={amtPaid} onChange={e=>setAmtPaid(e.target.value)} disabled={payStatus === 'Credit'}/></div>
             </div>
           </div>
 

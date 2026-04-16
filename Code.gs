@@ -1698,7 +1698,7 @@ function processWalkinCheckout(guestName, orderIds, checkoutData) {
     invoiceRow[5] = defaultCurrency;
     invoiceRow[6] = nowStr;
     invoiceRow[7] = nowStr;
-    invoiceRow[8] = "Paid";
+    invoiceRow[8] = checkoutData.paymentStatus === 'Credit' ? 'Unpaid' : 'Paid';
     invoiceRow[9] = JSON.stringify(invoiceItems);
     invoiceRow[10] = totalFooding;
     invoiceRow[11] = true;
@@ -2023,6 +2023,9 @@ function processFullCheckout(checkInId, checkoutData) {
 
     let paymentMode = checkoutData.paymentMode || 'Cash';
     let amountPaid = parseFloat(checkoutData.amountPaid) || 0;
+    if (checkoutData.paymentStatus === 'Credit') {
+      amountPaid = 0;
+    }
     let balance = netAmount - amountPaid;
 
     // Generate bill number
@@ -2359,6 +2362,9 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
 
     let paymentMode = checkoutData.paymentMode || 'Cash';
     let amountPaid = parseFloat(checkoutData.amountPaid) || 0;
+    if (checkoutData.paymentStatus === 'Credit') {
+      amountPaid = 0;
+    }
     let balance = netAmount - amountPaid;
 
     let billNumber = generateBillNumber();
@@ -2459,7 +2465,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
         invoiceRow[5] = defaultCurrency;
         invoiceRow[6] = nowStr;
         invoiceRow[7] = nowStr;
-        invoiceRow[8] = "Paid";
+        invoiceRow[8] = checkoutData.paymentStatus === 'Credit' ? 'Unpaid' : 'Paid';
         invoiceRow[9] = JSON.stringify(invoiceItems);
         invoiceRow[10] = subtotal;
         invoiceRow[11] = true;
