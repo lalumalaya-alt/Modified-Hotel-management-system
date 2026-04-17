@@ -2229,12 +2229,12 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
                 
                 let activeRoomsInSegment = 0;
                 for (let rn of selectedRoomNos) {
-                  if (segRoomsArr.includes(rn)) activeRoomsInSegment++;
+                  if (segRoomsArr.some(sr => sr.toString() === rn.toString())) activeRoomsInSegment++;
                 }
 
                 let orphanRoomsInSegment = 0;
                 for (let rn of segRoomsArr) {
-                  if (!rNs.includes(rn)) orphanRoomsInSegment++;
+                  if (!rNs.some(cr => cr.toString() === rn.toString())) orphanRoomsInSegment++;
                 }
 
                 if (activeRoomsInSegment > 0 || orphanRoomsInSegment > 0) {
@@ -2259,10 +2259,12 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
 
                   let segRate = parseFloat(segmentsData[s][SEG_RATE_COL]) || 0;
 
+                  let safeSegLen = segRoomsArr.length || 1;
                   let checkoutFraction = selectedRoomNos.length / (rNs.length || 1);
-                  let rateForSelected = (segRate / segRoomsArr.length) * activeRoomsInSegment;
-                  let rateForOrphans = (segRate / segRoomsArr.length) * orphanRoomsInSegment * checkoutFraction;
+                  let rateForSelected = (segRate / safeSegLen) * activeRoomsInSegment;
+                  let rateForOrphans = (segRate / safeSegLen) * orphanRoomsInSegment * checkoutFraction;
                   let proportionedRate = rateForSelected + rateForOrphans;
+                  if (isNaN(proportionedRate)) proportionedRate = 0;
                   
                   staySegments.push({ rate: proportionedRate, nights: segNights, startDate: segStartDate, endDate: billingEndDate });
                 }
