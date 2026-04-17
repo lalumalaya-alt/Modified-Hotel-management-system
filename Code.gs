@@ -2229,12 +2229,12 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
                 
                 let activeRoomsInSegment = 0;
                 for (let rn of selectedRoomNos) {
-                  if (segRoomsArr.some(sr => sr.toString() === rn.toString())) activeRoomsInSegment++;
+                  if (segRoomsArr.some(sr => sr.toString().trim() === rn.toString().trim())) activeRoomsInSegment++;
                 }
 
                 let orphanRoomsInSegment = 0;
                 for (let rn of segRoomsArr) {
-                  if (!rNs.some(cr => cr.toString() === rn.toString())) orphanRoomsInSegment++;
+                  if (!rNs.some(cr => cr.toString().trim() === rn.toString().trim())) orphanRoomsInSegment++;
                 }
 
                 if (activeRoomsInSegment > 0 || orphanRoomsInSegment > 0) {
