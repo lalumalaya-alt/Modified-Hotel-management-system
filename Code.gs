@@ -1698,7 +1698,7 @@ function processWalkinCheckout(guestName, orderIds, checkoutData) {
     invoiceRow[5] = defaultCurrency;
     invoiceRow[6] = nowStr;
     invoiceRow[7] = nowStr;
-    invoiceRow[8] = checkoutData.paymentStatus === 'Credit' ? 'Unpaid' : 'Paid';
+    invoiceRow[8] = checkoutData.paymentStatus === 'Credit' ? 'Unpaid' : (checkoutData.paymentStatus === 'Partial' ? 'Partial' : 'Paid');
     invoiceRow[9] = JSON.stringify(invoiceItems);
     invoiceRow[10] = totalFooding;
     invoiceRow[11] = true;
@@ -2474,7 +2474,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
         invoiceRow[5] = defaultCurrency;
         invoiceRow[6] = nowStr;
         invoiceRow[7] = nowStr;
-        invoiceRow[8] = checkoutData.paymentStatus === 'Credit' ? 'Unpaid' : 'Paid';
+        invoiceRow[8] = checkoutData.paymentStatus === 'Credit' ? 'Unpaid' : (checkoutData.paymentStatus === 'Partial' ? 'Partial' : 'Paid');
         invoiceRow[9] = JSON.stringify(invoiceItems);
         invoiceRow[10] = subtotal;
         invoiceRow[11] = true;

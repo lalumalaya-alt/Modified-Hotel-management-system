@@ -2349,6 +2349,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                           <label>Payment Status</label>
                           <select value={payStatus} onChange={e=>setPayStatus(e.target.value)}>
                             <option value="Paid">Paid</option>
+                            <option value="Partial">Partial</option>
                             <option value="Credit">Credit</option>
                           </select>
                         </div>
@@ -2869,6 +2870,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                  <label>Payment Status</label>
                  <select value={payStatus} onChange={e=>setPayStatus(e.target.value)}>
                     <option value="Paid">Paid</option>
+                    <option value="Partial">Partial</option>
                     <option value="Credit">Credit</option>
                  </select>
               </div>
