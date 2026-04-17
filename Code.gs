@@ -3807,32 +3807,48 @@ function generateDocumentEmailHtml(type, data, settings) {
 
   let items = [];
   try { items = JSON.parse(typeof data.items === 'string' ? data.items : '[]'); } catch (e) { items = []; }
-  const roomItems = items.filter(i => i.type === 'room');
-  const actItems = items.filter(i => i.type === 'activity');
-  const svcItems = items.filter(i => i.type === 'service');
 
-  let itemRows = '';
-  roomItems.forEach(it => {
-    itemRows += '<tr><td>' + (it.roomType || 'Room') + '</td><td>' + (it.quantity || 1) + ' room(s) x ' + (it.nights || 0) + ' night(s) x ' + cur + ' ' + (parseFloat(it.rate) || 0).toFixed(2) + '</td><td class="right">' + cur + ' ' + (parseFloat(it.amount) || 0).toFixed(2) + '</td></tr>';
-  });
-  actItems.forEach(it => {
-    itemRows += '<tr><td>' + (it.description || 'Activity') + '</td><td>' + (it.pax || 1) + ' pax x ' + cur + ' ' + (parseFloat(it.rate) || 0).toFixed(2) + '</td><td class="right">' + cur + ' ' + (parseFloat(it.amount) || 0).toFixed(2) + '</td></tr>';
-  });
-  svcItems.forEach(it => {
-    itemRows += '<tr><td>' + (it.description || 'Service') + '</td><td>-</td><td class="right">' + cur + ' ' + (parseFloat(it.amount) || 0).toFixed(2) + '</td></tr>';
+  // Re-run the global categorization math matching the frontend converter
+  let roomsAmt = 0;
+  let extraBedAmt = 0;
+  let foodBevAmt = 0;
+  let laundryAmt = 0;
+
+  items.forEach(it => {
+     let desc = (it.description || '').toLowerCase();
+     let type = (it.type || '').toLowerCase();
+
+     if (type === 'room' || desc.includes('room rent') || desc.includes('combined room')) {
+       roomsAmt += parseFloat(it.amount) || 0;
+     } else if (desc.includes('extra bed') || type === 'extrabed') {
+       extraBedAmt += parseFloat(it.amount) || 0;
+     } else if (desc.includes('laundry')) {
+       laundryAmt += parseFloat(it.amount) || 0;
+     } else {
+       foodBevAmt += parseFloat(it.amount) || 0;
+     }
   });
 
   const subTotal = parseFloat(data.subTotal) || 0;
-  const discount = parseFloat(data.discount) || 0;
+  const discountAmount = parseFloat(data.discount) || 0;
   const gstAmount = parseFloat(data.gstAmount) || 0;
-  const totalAmount = parseFloat(data.totalAmount) || 0;
+  const billAmount = parseFloat(data.totalAmount) || 0;
 
-  let totalsRows = '<tr><td colspan="2"><strong>Subtotal</strong></td><td class="right"><strong>' + cur + ' ' + subTotal.toFixed(2) + '</strong></td></tr>';
-  if (discount > 0) totalsRows += '<tr><td colspan="2">Discount</td><td class="right">- ' + cur + ' ' + discount.toFixed(2) + '</td></tr>';
-  if (data.gstEnabled) totalsRows += '<tr><td colspan="2">GST (' + (data.gstPercent || 0) + '%)</td><td class="right">' + cur + ' ' + gstAmount.toFixed(2) + '</td></tr>';
-  totalsRows += '<tr class="total"><td colspan="2"><strong>TOTAL</strong></td><td class="right"><strong>' + cur + ' ' + totalAmount.toFixed(2) + '</strong></td></tr>';
+  let totalsRows = '<tr><td><strong>Subtotal</strong></td><td class="right"><strong>' + cur + ' ' + subTotal.toFixed(2) + '</strong></td></tr>';
+  if (discountAmount > 0) totalsRows += '<tr><td>Discount</td><td class="right">- ' + cur + ' ' + discountAmount.toFixed(2) + '</td></tr>';
 
-    let dateInfo = '<p><strong>Date:</strong> ' + (data.createdDate || '') + '</p><p><strong>Due Date:</strong> ' + (data.dueDate || '') + '</p><p><strong>Status:</strong> ' + (data.status || '') + '</p>';
+  if (data.gstEnabled && gstAmount > 0) {
+      let halfGst = (gstAmount / 2).toFixed(2);
+      let halfPercent = ((parseFloat(data.gstPercent) || 0) / 2).toFixed(2);
+      totalsRows += '<tr><td>SGST (' + halfPercent + '%)</td><td class="right">' + cur + ' ' + halfGst + '</td></tr>';
+      totalsRows += '<tr><td>CGST (' + halfPercent + '%)</td><td class="right">' + cur + ' ' + halfGst + '</td></tr>';
+  } else if (data.gstEnabled) {
+      totalsRows += '<tr><td>GST (' + (data.gstPercent || 0) + '%)</td><td class="right">' + cur + ' ' + gstAmount.toFixed(2) + '</td></tr>';
+  }
+
+  totalsRows += '<tr class="total"><td><strong>Bill Amount</strong></td><td class="right"><strong>' + cur + ' ' + billAmount.toFixed(2) + '</strong></td></tr>';
+
+  let dateInfo = '<p><strong>Date:</strong> ' + (data.createdDate || '').split('T')[0] + '</p><p><strong>Status:</strong> ' + (data.status || '') + '</p>';
 
   return '<html><head><style>body{font-family:Arial,sans-serif;margin:20px;color:#333}' +
     '.doc-container{max-width:650px;margin:auto;border:1px solid #ddd;padding:30px;border-radius:4px}' +
@@ -3853,10 +3869,13 @@ function generateDocumentEmailHtml(type, data, settings) {
     '<p><strong>Guest:</strong> ' + (data.guestName || '') + '</p>' +
     '<p><strong>Email:</strong> ' + (data.email || '') + '</p>' +
     (data.phone ? '<p><strong>Phone:</strong> ' + data.phone + '</p>' : '') +
-    (data.customerTIN ? '<p><strong>Customer TIN:</strong> ' + data.customerTIN + '</p>' : '') +
     dateInfo +
-    '<table><tr><th>Description</th><th>Details</th><th class="right">Amount (' + cur + ')</th></tr>' +
-    itemRows + totalsRows + '</table>' +
+    '<table><tr><th>Category</th><th class="right">Amount (' + cur + ')</th></tr>' +
+    (roomsAmt > 0 ? '<tr><td>Room Rent</td><td class="right">' + cur + ' ' + roomsAmt.toFixed(2) + '</td></tr>' : '') +
+    (extraBedAmt > 0 ? '<tr><td>Extra Bed</td><td class="right">' + cur + ' ' + extraBedAmt.toFixed(2) + '</td></tr>' : '') +
+    (foodBevAmt > 0 ? '<tr><td>Food & Beverage</td><td class="right">' + cur + ' ' + foodBevAmt.toFixed(2) + '</td></tr>' : '') +
+    (laundryAmt > 0 ? '<tr><td>Laundry</td><td class="right">' + cur + ' ' + laundryAmt.toFixed(2) + '</td></tr>' : '') +
+    totalsRows + '</table>' +
     (data.notes ? '<p style="font-style:italic;color:#666">Notes: ' + data.notes + '</p>' : '') +
     '<div class="footer"><p>Thank you for choosing ' + hotelName + '!</p></div>' +
     '</div></body></html>';

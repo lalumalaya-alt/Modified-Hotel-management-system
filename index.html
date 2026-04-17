@@ -598,79 +598,194 @@
     const statusCls = (s) => { if(!s) return ''; const m = {available:'status-available',booked:'status-booked',checkedout:'status-checkedout',maintenance:'status-maintenance',draft:'status-draft',sent:'status-sent',accepted:'status-accepted',expired:'status-expired',income:'status-income',expense:'status-expense',paid:'status-paid',partial:'status-partial',unpaid:'status-unpaid',overdue:'status-overdue',cancelled:'status-cancelled',converted:'status-converted',reserved:'status-reserved'}; return m[s.toLowerCase().replace(/\s+/g,'')] || ''; };
     const CURRENCIES = ['MVR','USD','EUR','GBP','AED','SAR','INR','PKR','LKR','BDT','JPY','CNY','AUD','CAD','SGD','MYR','THB','IDR','PHP','VND','KRW','TWD','HKD','NZD','CHF','SEK','NOK','DKK','PLN','CZK','HUF','RON','BGN','HRK','RUB','UAH','TRY','ZAR','EGP','NGN','KES','GHS','TZS','UGX','MAD','TND','QAR','KWD','BHD','OMR','JOD','ILS','BRL','ARS','CLP','COP','PEN','MXN','UYU','DOP','CRC','GTQ','PYG','BOB','VES','TTD','JMD','BBD','BZD','BMD','BSD','KYD','XCD','FJD','PGK','WST','TOP','VUV','SBD','MWK','ZMW','BWP','MUR','SCR','NPR','BTN','MMK','KHR','LAK','MNT','KZT','UZS','GEL','AMD','AZN','AFN','IQD','IRR','SYP','LBP','YER','ETB','RWF','BIF','DJF','ERN','SOS','SDG','LSL','SZL','NAD','GMD','SLL','GNF','LRD','CVE','STN','XOF','XAF','XPF','CDF','AOA','MZN','MDL','ALL','MKD','BAM','RSD','ISK','GIP','FKP','SHP','HTG','NIO','HNL','PAB','CUP'];
 
-    const downloadInvoicePdf = (inv) => {
-      const cur = inv.currency || APP_CURRENCY;
-      const fc = (a) => fmtCur(a, cur);
+    const convertInvoiceToHotelData = (inv, settings) => {
       const items = (() => { try { return JSON.parse(typeof inv.items === 'string' ? inv.items : '[]'); } catch(e) { return []; } })();
-      const roomItems = items.filter(i=>i.type==='room');
-      const actItems = items.filter(i=>i.type==='activity');
-      const svcItems = items.filter(i=>i.type==='service');
-      const tBody = [];
-      if(roomItems.length>0){
-        tBody.push([{text:'Room Type',style:'th'},{text:'Qty',style:'th',alignment:'center'},{text:'Nights',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        roomItems.forEach(it=>{const qty=it.quantity||1;tBody.push([it.roomType||'Room',{text:String(qty),alignment:'center'},{text:String(it.nights),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]);});
+
+      let roomsAmt = 0;
+      let extraBedAmt = 0;
+      let foodBevAmt = 0;
+      let laundryAmt = 0;
+
+      items.forEach(it => {
+         let desc = (it.description || '').toLowerCase();
+         let type = (it.type || '').toLowerCase();
+
+         if (type === 'room' || desc.includes('room rent') || desc.includes('combined room')) {
+           roomsAmt += parseFloat(it.amount) || 0;
+         } else if (desc.includes('extra bed') || type === 'extrabed') {
+           extraBedAmt += parseFloat(it.amount) || 0;
+         } else if (desc.includes('laundry')) {
+           laundryAmt += parseFloat(it.amount) || 0;
+         } else {
+           foodBevAmt += parseFloat(it.amount) || 0;
+         }
+      });
+
+      const dayTotal = roomsAmt + extraBedAmt + foodBevAmt + laundryAmt;
+      const subtotal = parseFloat(inv.subTotal) || 0;
+      const discountAmount = parseFloat(inv.discount) || 0;
+      const discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
+      const gstAmount = parseFloat(inv.gstAmount) || 0;
+      const gstPercent = parseFloat(inv.gstPercent) || 0;
+
+      let gstType = 'None';
+      let sgstPercent = 0;
+      let cgstPercent = 0;
+      if (inv.gstEnabled && gstAmount > 0) {
+          gstType = 'Excluding';
+          sgstPercent = gstPercent / 2;
+          cgstPercent = gstPercent / 2;
+      } else if (inv.gstEnabled) {
+          gstType = 'Including';
       }
-      if(actItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Activity',style:'th',colSpan:2},{},{text:'Pax',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        actItems.forEach(it=>tBody.push([{text:it.description||'Activity',colSpan:2},{},{text:String(it.pax||1),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
+
+      const syntheticDayByDay = [{
+         date: (inv.createdDate || new Date().toISOString()).split('T')[0],
+         rooms: roomsAmt,
+         extraBed: extraBedAmt,
+         foodBev: foodBevAmt,
+         laundry: laundryAmt,
+         dayTotal: dayTotal,
+         grandTotal: dayTotal
+      }];
+
+      return {
+         billNumber: inv.invoiceId,
+         checkInId: '',
+         hotelName: settings?.hotelName || 'Hill View Eco Retreat',
+         hotelAddress: settings?.hotelAddress || '',
+         hotelPhone: settings?.hotelPhone || '',
+         hotelEmail: settings?.hotelEmail || '',
+         hotelTIN: settings?.hotelTIN || '',
+         hotelLogo: settings?.logoUrl || '',
+         currency: inv.currency || 'MVR',
+         guestName: inv.guestName || '',
+         companyName: '',
+         gstNumber: inv.customerTIN || '',
+         mobile: inv.phone || '',
+         email: inv.email || '',
+         address: '',
+         checkInDate: inv.createdDate || '',
+         checkInTime: '',
+         checkOutDate: inv.dueDate || '',
+         checkOutTime: '',
+         roomNumbers: items.filter(i => i.type === 'room').map(i => i.roomType || 'Room').join(', '),
+         roomTypes: '',
+         numberOfRooms: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.quantity) || 1), 0),
+         pax: 1,
+         extraPerson: 0,
+         foodPlan: 'None',
+         billTo: 'Individual',
+         nights: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.nights) || 0), 0) || 1,
+         dailyRoomRate: roomsAmt,
+         totalRoomRent: roomsAmt,
+         subtotal: subtotal,
+         discountPercent: discountPercent,
+         discountAmount: discountAmount,
+         gstType: gstType,
+         sgstPercent: sgstPercent,
+         cgstPercent: cgstPercent,
+         sgstAmount: gstAmount / 2,
+         cgstAmount: gstAmount / 2,
+         billAmount: parseFloat(inv.totalAmount) || 0,
+         advancePaid: 0,
+         netAmount: parseFloat(inv.totalAmount) || 0,
+         paymentMode: 'Cash',
+         amountPaid: 0,
+         balance: parseFloat(inv.totalAmount) || 0,
+         dayByDay: syntheticDayByDay,
+         notes: inv.notes || ''
+      };
+    };
+
+    const planLabel=(fp)=>{if(!fp||fp==='None')return'EP';if(fp.indexOf('Dinner')!==-1)return'MAP';return'CP';};
+    const numToWords=(num)=>{
+      if(!num||num===0)return'Zero';
+      const ones=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+      const tens=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+      num=Math.round(Math.abs(num));
+      const w=(n)=>{if(n<20)return ones[n];if(n<100)return tens[Math.floor(n/10)]+(n%10?' '+ones[n%10]:'');if(n<1000)return ones[Math.floor(n/100)]+' Hundred'+(n%100?' '+w(n%100):'');if(n<100000)return w(Math.floor(n/1000))+' Thousand'+(n%1000?' '+w(n%1000):'');if(n<10000000)return w(Math.floor(n/100000))+' Lakh'+(n%100000?' '+w(n%100000):'');return w(Math.floor(n/10000000))+' Crore'+(n%10000000?' '+w(n%10000000):'');};
+      return'Rupees '+w(num)+' Only';
+    };
+
+    const downloadInvoicePdf = (inv) => {
+      const d = convertInvoiceToHotelData(inv, {});
+      const fmtD=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});};
+      const fmtDShort=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});};
+      const n2=(v)=>(parseFloat(v)||0).toFixed(2);
+
+      const cats=['extraBed','foodBev','laundry'];
+      const activeDayByDay = (d.dayByDay||[]);
+      const colTotals={}; cats.forEach(c=>colTotals[c]=0); let totalRoomsCol=0;
+      activeDayByDay.forEach(row=>{totalRoomsCol+=row.rooms||0;cats.forEach(c=>colTotals[c]+=row[c]||0);});
+
+      const liveSubtotal = activeDayByDay.reduce((sum, row) => sum + row.dayTotal, 0);
+      const liveDiscount = liveSubtotal * ((parseFloat(d.discountPercent)||0) / 100);
+      const afterDiscount = liveSubtotal - liveDiscount;
+      let liveSgst = 0, liveCgst = 0;
+      if (d.gstType === 'Excluding') {
+         liveSgst = afterDiscount * ((parseFloat(d.sgstPercent)||0) / 100);
+         liveCgst = afterDiscount * ((parseFloat(d.cgstPercent)||0) / 100);
       }
-      if(svcItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Service',style:'th',colSpan:4},{},{},{},{text:'Amount ('+cur+')',style:'th',alignment:'right'}]);
-        svcItems.forEach(it=>tBody.push([{text:it.description||'Service',colSpan:4},{},{},{},{text:fc(it.amount),alignment:'right'}]));
-      }
-      tBody.push([{text:'Subtotal',bold:true,colSpan:4},{},{},{},{text:fc(inv.subTotal),alignment:'right',bold:true}]);
-      if(inv.discount>0)tBody.push([{text:'Discount',colSpan:4},{},{},{},{text:'- '+fc(inv.discount),alignment:'right'}]);
-      if(inv.gstEnabled)tBody.push([{text:'GST ('+inv.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(inv.gstAmount),alignment:'right'}]);
-      tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(inv.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
-      const guestInfo = [{text:'Bill To:\n',bold:true,fontSize:13},(inv.guestName||'')+'\n',{text:'Phone: ',bold:true},(inv.phone||'-')+'\n',{text:'Email: ',bold:true},(inv.email||'-')+'\n'];
-      if(inv.customerTIN)guestInfo.push({text:'TIN: ',bold:true},inv.customerTIN+'\n');
-      const doc = {content:[{text:inv.hotelName + ' - INVOICE',style:'hdr',alignment:'center'},{text:'Invoice #'+(inv.invoiceId||'')+'  |  Currency: '+cur,alignment:'center',color:'#666',margin:[0,0,0,15]},
-        {columns:[{text:guestInfo},{text:[{text:'Invoice Date: ',bold:true},fmtDate(inv.createdDate)+'\n',{text:'Due Date: ',bold:true},fmtDate(inv.dueDate)+'\n',{text:'Status: ',bold:true},(inv.status||'Draft')+'\n']}]},
-        {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
-        inv.notes?{text:'\nNotes: '+inv.notes,margin:[0,10,0,0],italics:true}:{text:''},
-                {text:'\nThank you for your business!',alignment:'center',margin:[0,20,0,0],italics:true}],
-        styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
-      pdfMake.createPdf(doc).download('Invoice-'+(inv.invoiceId||'new')+'.pdf');
+      const liveBillAmount = afterDiscount + liveSgst + liveCgst;
+      const liveAdvance = (parseFloat(d.advancePaid)||0);
+      const liveNetAmount = Math.max(0, liveBillAmount - liveAdvance);
+
+      const dayRows=(activeDayByDay||[]).map(row=>[fmtDShort(row.date),n2(row.rooms),n2(row.extraBed),n2(row.foodBev),n2(row.laundry),n2(row.dayTotal),'']);
+      const totRow=['Totals',n2(totalRoomsCol),...cats.map(c=>n2(colTotals[c])),n2(liveSubtotal),''];
+
+      const doc={pageSize:'A4',pageOrientation:'landscape',pageMargins:[20,20,20,20],content:[
+        {text:d.hotelName||'Hill View Eco Retreat',style:'hdr',alignment:'center'},{text:(d.hotelAddress||'')+' | '+(d.hotelPhone||'')+' | '+(d.hotelEmail||''),alignment:'center',fontSize:9,margin:[0,0,0,5]},
+        d.hotelTIN?{text:'GSTIN: '+d.hotelTIN,alignment:'center',fontSize:9,margin:[0,0,0,8]}:{text:'',margin:[0,0,0,8]},
+        {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
+        {text:'\n'},{table:{headerRows:1,widths:['auto','auto','auto','auto','auto','auto','auto'],body:[[{text:'Date',style:'th'},{text:'Rooms',style:'th'},{text:'E.Bed',style:'th'},{text:'Fds&Bvg',style:'th'},{text:'Laundry',style:'th'},{text:'Day Total',style:'th'},{text:'',style:'th'}],...dayRows,totRow.map((v,i)=>i===0?{text:v,bold:true}:{text:v,bold:true})]},fontSize:8},
+        {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(liveSubtotal),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(liveDiscount),alignment:'right'}],['SGST '+n2(d.sgstPercent||0)+'%',{text:n2(liveSgst),alignment:'right'}],['CGST '+n2(d.cgstPercent||0)+'%',{text:n2(liveCgst),alignment:'right'}],['Bill Amount',{text:n2(liveBillAmount),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(liveAdvance),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(liveNetAmount),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
+        {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(liveBillAmount),italics:true,fontSize:10,margin:[0,5,0,20]},
+        {columns:[{text:'Guest\'s Signature\n_______________',alignment:'center',fontSize:9},{text:'PLEASE DEPOSIT YOUR KEY',alignment:'center',fontSize:9,bold:true},{text:'Admin / Front Office\n_______________',alignment:'center',fontSize:9}]}
+      ],styles:{hdr:{fontSize:18,bold:true,color:'#001f3f'},th:{bold:true,fontSize:8,color:'white',fillColor:'#001f3f',alignment:'center'}},defaultStyle:{fontSize:10}};
+      pdfMake.createPdf(doc).download('Invoice-'+(d.billNumber||d.checkInId)+'.pdf');
     };
 
     const savePdfToDriveHelper = (record) => {
-      const cur = record.currency || APP_CURRENCY;
-      const fc = (a) => fmtCur(a, cur);
-      const items = (() => { try { return JSON.parse(typeof record.items === 'string' ? record.items : '[]'); } catch(e) { return []; } })();
-      const roomItems = items.filter(i=>i.type==='room');
-      const actItems = items.filter(i=>i.type==='activity');
-      const svcItems = items.filter(i=>i.type==='service');
-      const tBody = [];
-      if(roomItems.length>0){
-        tBody.push([{text:'Room Type',style:'th'},{text:'Qty',style:'th',alignment:'center'},{text:'Nights',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount',style:'th',alignment:'right'}]);
-        roomItems.forEach(it=>tBody.push([it.roomType||'Room',{text:String(it.quantity||1),alignment:'center'},{text:String(it.nights),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
+      const d = convertInvoiceToHotelData(record, {});
+      const fmtD=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});};
+      const fmtDShort=(dt)=>{if(!dt)return'-';const dd=new Date(dt);return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});};
+      const n2=(v)=>(parseFloat(v)||0).toFixed(2);
+
+      const cats=['extraBed','foodBev','laundry'];
+      const activeDayByDay = (d.dayByDay||[]);
+      const colTotals={}; cats.forEach(c=>colTotals[c]=0); let totalRoomsCol=0;
+      activeDayByDay.forEach(row=>{totalRoomsCol+=row.rooms||0;cats.forEach(c=>colTotals[c]+=row[c]||0);});
+
+      const liveSubtotal = activeDayByDay.reduce((sum, row) => sum + row.dayTotal, 0);
+      const liveDiscount = liveSubtotal * ((parseFloat(d.discountPercent)||0) / 100);
+      const afterDiscount = liveSubtotal - liveDiscount;
+      let liveSgst = 0, liveCgst = 0;
+      if (d.gstType === 'Excluding') {
+         liveSgst = afterDiscount * ((parseFloat(d.sgstPercent)||0) / 100);
+         liveCgst = afterDiscount * ((parseFloat(d.cgstPercent)||0) / 100);
       }
-      if(actItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Activity',style:'th',colSpan:2},{},{text:'Pax',style:'th',alignment:'center'},{text:'Rate',style:'th',alignment:'right'},{text:'Amount',style:'th',alignment:'right'}]);
-        actItems.forEach(it=>tBody.push([{text:it.description||'Activity',colSpan:2},{},{text:String(it.pax||1),alignment:'center'},{text:fc(it.rate),alignment:'right'},{text:fc(it.amount),alignment:'right'}]));
-      }
-      if(svcItems.length>0){
-        if(tBody.length>0)tBody.push([{text:'',colSpan:5,border:[false,false,false,false]},{},{},{},{}]);
-        tBody.push([{text:'Service',style:'th',colSpan:4},{},{},{},{text:'Amount',style:'th',alignment:'right'}]);
-        svcItems.forEach(it=>tBody.push([{text:it.description||'Service',colSpan:4},{},{},{},{text:fc(it.amount),alignment:'right'}]));
-      }
-      tBody.push([{text:'Subtotal',bold:true,colSpan:4},{},{},{},{text:fc(record.subTotal),alignment:'right',bold:true}]);
-      if(record.discount>0)tBody.push([{text:'Discount',colSpan:4},{},{},{},{text:'- '+fc(record.discount),alignment:'right'}]);
-      if(record.gstEnabled)tBody.push([{text:'GST ('+record.gstPercent+'%)',colSpan:4},{},{},{},{text:fc(record.gstAmount),alignment:'right'}]);
-      tBody.push([{text:'TOTAL',bold:true,fillColor:'#f0f0f0',colSpan:4},{},{},{},{text:fc(record.totalAmount),bold:true,alignment:'right',fillColor:'#f0f0f0'}]);
-      const id = record.invoiceId;
-      const title = 'INVOICE';
-      const doc = {content:[{text:record.hotelName + ' - '+title,style:'hdr',alignment:'center'},{text:'#'+id,alignment:'center',color:'#666',margin:[0,0,0,15]},
-        {columns:[{text:[{text:'Guest: ',bold:true},(record.guestName||'')+'\n',{text:'Phone: ',bold:true},(record.phone||'-')+'\n',{text:'Email: ',bold:true},(record.email||'-')]},{text:[{text:'Date: ',bold:true},fmtDate(record.createdDate)+'\n',{text:'Status: ',bold:true},(record.status||'Draft')]}]},
-        {text:'\n'},{table:{headerRows:1,widths:['*','auto','auto','auto','auto'],body:tBody}},
-        record.notes?{text:'\nNotes: '+record.notes,margin:[0,10,0,0],italics:true}:{text:''}],
-        styles:{hdr:{fontSize:22,bold:true,color:'#001f3f'},th:{bold:true,fontSize:12,color:'white',fillColor:'#001f3f'}},defaultStyle:{fontSize:11}};
+      const liveBillAmount = afterDiscount + liveSgst + liveCgst;
+      const liveAdvance = (parseFloat(d.advancePaid)||0);
+      const liveNetAmount = Math.max(0, liveBillAmount - liveAdvance);
+
+      const dayRows=(activeDayByDay||[]).map(row=>[fmtDShort(row.date),n2(row.rooms),n2(row.extraBed),n2(row.foodBev),n2(row.laundry),n2(row.dayTotal),'']);
+      const totRow=['Totals',n2(totalRoomsCol),...cats.map(c=>n2(colTotals[c])),n2(liveSubtotal),''];
+
+      const doc={pageSize:'A4',pageOrientation:'landscape',pageMargins:[20,20,20,20],content:[
+        {text:d.hotelName||'Hill View Eco Retreat',style:'hdr',alignment:'center'},{text:(d.hotelAddress||'')+' | '+(d.hotelPhone||'')+' | '+(d.hotelEmail||''),alignment:'center',fontSize:9,margin:[0,0,0,5]},
+        d.hotelTIN?{text:'GSTIN: '+d.hotelTIN,alignment:'center',fontSize:9,margin:[0,0,0,8]}:{text:'',margin:[0,0,0,8]},
+        {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
+        {text:'\n'},{table:{headerRows:1,widths:['auto','auto','auto','auto','auto','auto','auto'],body:[[{text:'Date',style:'th'},{text:'Rooms',style:'th'},{text:'E.Bed',style:'th'},{text:'Fds&Bvg',style:'th'},{text:'Laundry',style:'th'},{text:'Day Total',style:'th'},{text:'',style:'th'}],...dayRows,totRow.map((v,i)=>i===0?{text:v,bold:true}:{text:v,bold:true})]},fontSize:8},
+        {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(liveSubtotal),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(liveDiscount),alignment:'right'}],['SGST '+n2(d.sgstPercent||0)+'%',{text:n2(liveSgst),alignment:'right'}],['CGST '+n2(d.cgstPercent||0)+'%',{text:n2(liveCgst),alignment:'right'}],['Bill Amount',{text:n2(liveBillAmount),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(liveAdvance),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(liveNetAmount),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
+        {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(liveBillAmount),italics:true,fontSize:10,margin:[0,5,0,20]},
+        {columns:[{text:'Guest\'s Signature\n_______________',alignment:'center',fontSize:9},{text:'PLEASE DEPOSIT YOUR KEY',alignment:'center',fontSize:9,bold:true},{text:'Admin / Front Office\n_______________',alignment:'center',fontSize:9}]}
+      ],styles:{hdr:{fontSize:18,bold:true,color:'#001f3f'},th:{bold:true,fontSize:8,color:'white',fillColor:'#001f3f',alignment:'center'}},defaultStyle:{fontSize:10}};
+
       Swal.fire({title:'Saving to Drive...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
       pdfMake.createPdf(doc).getBase64((base64)=>{
-        const fileName = title+'-'+id+'.pdf';
+        const fileName = 'Invoice-'+(d.billNumber||d.checkInId)+'.pdf';
+        const id = d.billNumber||d.checkInId;
         google.script.run.withSuccessHandler((r)=>{Swal.close();if(r.success)Swal.fire({icon:'success',title:'Saved!',text:'PDF saved to Google Drive.',timer:2000,showConfirmButton:false});else Swal.fire({icon:'error',title:'Error',text:r.message});}).withFailureHandler((e)=>{Swal.close();Swal.fire({icon:'error',title:'Error',text:e.message});}).savePdfToDrive(base64,fileName,id,'invoice');
       });
     };
@@ -2958,107 +3073,6 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
     }
 
     function InvoicePreviewModal({invoice, onClose, sysSettings}){
-      const convertInvoiceToHotelData = (inv, settings) => {
-        const items = (() => { try { return JSON.parse(typeof inv.items === 'string' ? inv.items : '[]'); } catch(e) { return []; } })();
-
-        let roomsAmt = 0;
-        let extraBedAmt = 0;
-        let foodBevAmt = 0;
-        let laundryAmt = 0;
-
-        items.forEach(it => {
-           let desc = (it.description || '').toLowerCase();
-           let type = (it.type || '').toLowerCase();
-
-           if (type === 'room' || desc.includes('room rent') || desc.includes('combined room')) {
-             roomsAmt += parseFloat(it.amount) || 0;
-           } else if (desc.includes('extra bed') || type === 'extrabed') {
-             extraBedAmt += parseFloat(it.amount) || 0;
-           } else if (desc.includes('laundry')) {
-             laundryAmt += parseFloat(it.amount) || 0;
-           } else {
-             foodBevAmt += parseFloat(it.amount) || 0;
-           }
-        });
-
-        const dayTotal = roomsAmt + extraBedAmt + foodBevAmt + laundryAmt;
-        const subtotal = parseFloat(inv.subTotal) || 0;
-        const discountAmount = parseFloat(inv.discount) || 0;
-        const discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
-        const gstAmount = parseFloat(inv.gstAmount) || 0;
-        const gstPercent = parseFloat(inv.gstPercent) || 0;
-
-        // Infer GST Type: if GST amount > 0, it's 'Excluding', else 'Including' or 'None'
-        let gstType = 'None';
-        let sgstPercent = 0;
-        let cgstPercent = 0;
-        if (inv.gstEnabled && gstAmount > 0) {
-            gstType = 'Excluding';
-            sgstPercent = gstPercent / 2;
-            cgstPercent = gstPercent / 2;
-        } else if (inv.gstEnabled) {
-            gstType = 'Including';
-        }
-
-        const syntheticDayByDay = [{
-           date: (inv.createdDate || new Date().toISOString()).split('T')[0],
-           rooms: roomsAmt,
-           extraBed: extraBedAmt,
-           foodBev: foodBevAmt,
-           laundry: laundryAmt,
-           dayTotal: dayTotal,
-           grandTotal: dayTotal
-        }];
-
-        return {
-           billNumber: inv.invoiceId,
-           checkInId: '',
-           hotelName: settings?.hotelName || 'Hill View Eco Retreat',
-           hotelAddress: settings?.hotelAddress || '',
-           hotelPhone: settings?.hotelPhone || '',
-           hotelEmail: settings?.hotelEmail || '',
-           hotelTIN: settings?.hotelTIN || '',
-           hotelLogo: settings?.logoUrl || '',
-           currency: inv.currency || 'MVR',
-           guestName: inv.guestName || '',
-           companyName: '',
-           gstNumber: inv.customerTIN || '',
-           mobile: inv.phone || '',
-           email: inv.email || '',
-           address: '',
-           checkInDate: inv.createdDate || '',
-           checkInTime: '',
-           checkOutDate: inv.dueDate || '',
-           checkOutTime: '',
-           roomNumbers: items.filter(i => i.type === 'room').map(i => i.roomType || 'Room').join(', '),
-           roomTypes: '',
-           numberOfRooms: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.quantity) || 1), 0),
-           pax: 1,
-           extraPerson: 0,
-           foodPlan: 'None',
-           billTo: 'Individual',
-           nights: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.nights) || 0), 0) || 1,
-           dailyRoomRate: roomsAmt,
-           totalRoomRent: roomsAmt,
-           subtotal: subtotal,
-           discountPercent: discountPercent,
-           discountAmount: discountAmount,
-           gstType: gstType,
-           sgstPercent: sgstPercent,
-           cgstPercent: cgstPercent,
-           sgstAmount: gstAmount / 2,
-           cgstAmount: gstAmount / 2,
-           billAmount: parseFloat(inv.totalAmount) || 0,
-           advancePaid: 0,
-           netAmount: parseFloat(inv.totalAmount) || 0,
-           paymentMode: 'Cash',
-           amountPaid: 0,
-           balance: parseFloat(inv.totalAmount) || 0,
-           dayByDay: syntheticDayByDay,
-           notes: inv.notes || ''
-        };
-      };
-
       return <HotelInvoiceModal data={convertInvoiceToHotelData(invoice, sysSettings)} onClose={onClose} />;
     }
 
