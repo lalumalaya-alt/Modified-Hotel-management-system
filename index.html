@@ -601,12 +601,15 @@
     const convertInvoiceToHotelData = (inv, settings) => {
       const items = (() => { try { return JSON.parse(typeof inv.items === 'string' ? inv.items : '[]'); } catch(e) { return []; } })();
 
+      const meta = items.find(i => i.isMeta) || {};
+
       let roomsAmt = 0;
       let extraBedAmt = 0;
       let foodBevAmt = 0;
       let laundryAmt = 0;
 
       items.forEach(it => {
+         if (it.isMeta) return; // Skip metadata block in itemization loops
          let desc = (it.description || '').toLowerCase();
          let type = (it.type || '').toLowerCase();
 
@@ -660,23 +663,27 @@
          hotelLogo: settings?.logoUrl || '',
          currency: inv.currency || 'MVR',
          guestName: inv.guestName || '',
-         companyName: '',
+         companyName: meta.companyName || '',
          gstNumber: inv.customerTIN || '',
          mobile: inv.phone || '',
          email: inv.email || '',
-         address: '',
-         checkInDate: inv.createdDate || '',
-         checkInTime: '',
-         checkOutDate: inv.dueDate || '',
-         checkOutTime: '',
-         roomNumbers: items.filter(i => i.type === 'room').map(i => i.roomType || 'Room').join(', '),
-         roomTypes: '',
-         numberOfRooms: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.quantity) || 1), 0),
-         pax: 1,
-         extraPerson: 0,
-         foodPlan: 'None',
-         billTo: 'Individual',
-         nights: items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.nights) || 0), 0) || 1,
+         address: meta.address || '',
+         city: meta.city || '',
+         state: meta.state || '',
+         pinCode: meta.pinCode || '',
+         country: meta.country || '',
+         checkInDate: meta.checkInDate || inv.createdDate || '',
+         checkInTime: meta.checkInTime || '',
+         checkOutDate: meta.checkOutDate || inv.dueDate || '',
+         checkOutTime: meta.checkOutTime || '',
+         roomNumbers: meta.roomNumbers || items.filter(i => i.type === 'room').map(i => i.roomType || 'Room').join(', '),
+         roomTypes: meta.roomTypes || '',
+         numberOfRooms: meta.numberOfRooms || items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.quantity) || 1), 0),
+         pax: meta.pax || 1,
+         extraPerson: meta.extraPerson || 0,
+         foodPlan: meta.foodPlan || 'None',
+         billTo: meta.billTo || 'Individual',
+         nights: meta.nights || items.filter(i => i.type === 'room').reduce((acc, it) => acc + (parseInt(it.nights) || 0), 0) || 1,
          dailyRoomRate: roomsAmt,
          totalRoomRent: roomsAmt,
          subtotal: subtotal,
@@ -688,12 +695,12 @@
          sgstAmount: gstAmount / 2,
          cgstAmount: gstAmount / 2,
          billAmount: parseFloat(inv.totalAmount) || 0,
-         advancePaid: 0,
+         advancePaid: meta.advancePaid || 0,
          netAmount: parseFloat(inv.totalAmount) || 0,
-         paymentMode: 'Cash',
-         amountPaid: 0,
-         balance: parseFloat(inv.totalAmount) || 0,
-         dayByDay: syntheticDayByDay,
+         paymentMode: meta.paymentMode || 'Cash',
+         amountPaid: meta.amountPaid || 0,
+         balance: meta.balance || parseFloat(inv.totalAmount) || 0,
+         dayByDay: meta.dayByDay || syntheticDayByDay,
          notes: inv.notes || ''
       };
     };

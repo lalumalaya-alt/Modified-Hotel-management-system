@@ -2466,6 +2466,34 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
           invoiceItems.push({ description: 'Extra Bed / Person Charge', amount: totalExtraBedCalculated });
         }
 
+        const invoiceMeta = {
+          isMeta: true,
+          companyName: primaryGuestData.companyName,
+          address: primaryGuestData.address,
+          city: primaryGuestData.city,
+          state: primaryGuestData.state,
+          pinCode: primaryGuestData.pinCode,
+          country: primaryGuestData.country,
+          checkInDate: earliestCheckInDate ? earliestCheckInDate.toISOString() : '',
+          checkInTime: latestCheckInTime,
+          checkOutDate: actualCheckOutDate.toISOString(),
+          checkOutTime: checkOutTime,
+          roomNumbers: allRoomNosArr.join(', '),
+          roomTypes: combinedRoomTypes.join(', '),
+          numberOfRooms: allRoomNosArr.length,
+          pax: totalPax,
+          extraPerson: primaryGuestData.extraPerson,
+          foodPlan: primaryGuestData.foodPlan,
+          billTo: primaryGuestData.billTo,
+          nights: combinedNights,
+          advancePaid: advanceToApply,
+          paymentMode: paymentMode,
+          amountPaid: amountPaid,
+          balance: balance,
+          dayByDay: dayByDay
+        };
+        invoiceItems.push(invoiceMeta);
+
         const nowStr = new Date().toISOString();
         const invoiceRow = new Array(20).fill('');
         invoiceRow[0] = billNumber;
