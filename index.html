@@ -2970,7 +2970,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
            let desc = (it.description || '').toLowerCase();
            let type = (it.type || '').toLowerCase();
 
-           if (type === 'room') {
+           if (type === 'room' || desc.includes('room rent') || desc.includes('combined room')) {
              roomsAmt += parseFloat(it.amount) || 0;
            } else if (desc.includes('extra bed') || type === 'extrabed') {
              extraBedAmt += parseFloat(it.amount) || 0;
