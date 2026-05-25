@@ -2379,22 +2379,27 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', alignItems: 'start' }}>
             <div>
               <div className="form-group">
+                <label>Select Room</label>
+                <select value={searchRoom} onChange={e => setSearchRoom(e.target.value)}>
+                  <option value="">Please Select</option>
+                  {[...new Set(allOrders.filter(o => o.status === 'Active').map(o => o.roomNo))].map(rn => {
+                    // Find the active room details to get the check-in date
+                    const activeRoomInfo = activeRooms.find(ar => ar.roomNo.toString() === rn.toString());
+                    const dateStr = activeRoomInfo && activeRoomInfo.checkInDate ? fmtDate(activeRoomInfo.checkInDate) : 'Unknown';
+                    return (
+                      <option key={rn} value={rn}>Room {rn} (Check-in: {dateStr})</option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Date</label>
                 <input type="date" value={searchDate} onChange={e => setSearchDate(e.target.value)} />
               </div>
               <div className="form-group">
-                <label>Select Room</label>
-                <select value={searchRoom} onChange={e => setSearchRoom(e.target.value)}>
-                  <option value="">Please Select</option>
-                  {[...new Set(allOrders.filter(o => o.status === 'Active').map(o => o.roomNo))].map(rn => (
-                    <option key={rn} value={rn}>Room {rn}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
                 <label>Meal Period</label>
                 <select value={searchPeriod} onChange={e => setSearchPeriod(e.target.value)}>
-                  <option value="">Please Select</option>
+                  <option value="">All</option>
                   {CATEGORIES.map(c => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
                 </select>
               </div>
