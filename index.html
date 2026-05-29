@@ -2097,7 +2097,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const [editOrder,setEditOrder]=useState(null);
       const [searchRoom, setSearchRoom] = useState('');
       const [searchPeriod, setSearchPeriod] = useState('');
-      const [searchDate, setSearchDate] = useState(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
+      const [searchDate, setSearchDate] = useState('');
       const [orderType,setOrderType]=useState('checkin');
       const [walkinName,setWalkinName]=useState('');
       const [walkinMobile, setWalkinMobile] = useState('');
@@ -2379,22 +2379,27 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', alignItems: 'start' }}>
             <div>
               <div className="form-group">
+                <label>Select Room</label>
+                <select value={searchRoom} onChange={e => setSearchRoom(e.target.value)}>
+                  <option value="">Please Select</option>
+                  {[...new Set(allOrders.filter(o => o.status === 'Active').map(o => o.roomNo))].map(rn => {
+                    // Find the active room details to get the check-in date
+                    const activeRoomInfo = activeRooms.find(ar => ar.roomNo.toString() === rn.toString());
+                    const dateStr = activeRoomInfo && activeRoomInfo.checkInDate ? fmtDate(activeRoomInfo.checkInDate) : 'Unknown';
+                    return (
+                      <option key={rn} value={rn}>Room {rn} (Check-in: {dateStr})</option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Date</label>
                 <input type="date" value={searchDate} onChange={e => setSearchDate(e.target.value)} />
               </div>
               <div className="form-group">
-                <label>Select Room</label>
-                <select value={searchRoom} onChange={e => setSearchRoom(e.target.value)}>
-                  <option value="">Please Select</option>
-                  {[...new Set(allOrders.filter(o => o.status === 'Active').map(o => o.roomNo))].map(rn => (
-                    <option key={rn} value={rn}>Room {rn}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
                 <label>Meal Period</label>
                 <select value={searchPeriod} onChange={e => setSearchPeriod(e.target.value)}>
-                  <option value="">Please Select</option>
+                  <option value="">All</option>
                   {CATEGORIES.map(c => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
                 </select>
               </div>
@@ -2416,8 +2421,8 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                 {!isSearchActive ? (
                   <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}><i className="fas fa-search" style={{fontSize: '24px', display: 'block', marginBottom: '10px', opacity: 0.5}}></i>Please select a Date, Room, or Meal Period to view orders.</td></tr>
                 ) : (
-                  allOrders.filter(o => o.status === 'Active' && (searchRoom === '' || o.roomNo === searchRoom) && (searchPeriod === '' || o.mealPeriod === searchPeriod) && (searchDate === '' || (o.orderDate && o.orderDate.startsWith(searchDate)))).length > 0 ? 
-                    allOrders.filter(o => o.status === 'Active' && (searchRoom === '' || o.roomNo === searchRoom) && (searchPeriod === '' || o.mealPeriod === searchPeriod) && (searchDate === '' || (o.orderDate && o.orderDate.startsWith(searchDate)))).map((o, i) => (
+                  allOrders.filter(o => o.status === 'Active' && (searchRoom === '' || String(o.roomNo) === String(searchRoom)) && (searchPeriod === '' || o.mealPeriod === searchPeriod) && (searchDate === '' || (o.orderDate && String(o.orderDate).startsWith(String(searchDate))))).length > 0 ?
+                    allOrders.filter(o => o.status === 'Active' && (searchRoom === '' || String(o.roomNo) === String(searchRoom)) && (searchPeriod === '' || o.mealPeriod === searchPeriod) && (searchDate === '' || (o.orderDate && String(o.orderDate).startsWith(String(searchDate))))).map((o, i) => (
                       <tr key={i}>
                         <td style={{ fontWeight: 'bold' }}>{o.roomNo}</td>
                         <td>{o.mealPeriod}</td>
