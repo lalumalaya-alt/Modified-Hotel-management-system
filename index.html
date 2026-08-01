@@ -1305,18 +1305,26 @@ return (ci < cCo && co > cCi);
       },[]);
 
       const loadCheckIns=()=>{
-        if(!tRef.current) setLd(true); // Only show skeleton on first load
+        if (!tRef.current) setLd(true);
         google.script.run.withSuccessHandler(r=>{
-          if(!tRef.current) setLd(false);
+          setLd(false);
+
+          // If the backend returned an explicit error, show it!
+          if (r && r.error) {
+            console.error("Backend Error Caught:", r.error);
+            Swal.fire({icon: 'error', title: 'Data Sync Error', text: r.error});
+            return;
+          }
+
           const data = Array.isArray(r) ? r : [];
           const activeOnly = data.filter(ci => ci.status === 'Active');
-          console.log('Fetched CheckIns:', activeOnly); // Aggressive Frontend Logging
           setActiveCis(activeOnly);
           initT(activeOnly);
-        }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getActiveCheckInsWithStats();
-      };
-
-      const initT=(data)=>{
+        }).withFailureHandler(e=>{
+          setLd(false);
+          Swal.fire({icon:'error',text:e.message});
+        }).getActiveCheckInsWithStats();
+      };     const initT=(data)=>{
         if(tRef.current){
           try {
             $('#ciT').DataTable().destroy();

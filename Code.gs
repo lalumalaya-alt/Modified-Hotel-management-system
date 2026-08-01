@@ -1168,9 +1168,15 @@ function addCheckIn(checkInData) {
 
 function getActiveCheckInsWithStats() {
   try {
-    autoExtendOverstayingCheckIns();
+    try { autoExtendOverstayingCheckIns(); } catch(extErr) {} // Prevent this from crashing the main fetch
+
     const checkIns = getAllCheckIns();
-    if (checkIns.error || !Array.isArray(checkIns)) return [];
+
+    // If the base fetch failed, return the actual error so the frontend can see it
+    if (checkIns.error) {
+      return { error: "getAllCheckIns failed: " + checkIns.error };
+    }
+    if (!Array.isArray(checkIns)) return [];
 
     const activeCis = checkIns.filter(ci => ci.status === 'Active');
 
@@ -1260,8 +1266,9 @@ function getActiveCheckInsWithStats() {
           liveBalance,
           staySegments: ciSegments
         };
-      } catch (innerErr) {
-        Logger.log("Error calculating stats for CheckIn ID " + ci.checkInId + ": " + innerErr.message);
+      } catch (innerError) {
+        // FALLBACK: If a single row fails math calculation, don't crash the whole table.
+        Logger.log("Row calculation error for " + ci.checkInId + ": " + innerError.message);
         return {
           ...ci,
           nightsStayed: 1,
@@ -1270,10 +1277,12 @@ function getActiveCheckInsWithStats() {
           liveBalance: 0,
           staySegments: []
         };
-      }    });
+      }
+    });
   } catch (e) {
-    Logger.log("Error in getActiveCheckInsWithStats: " + e.toString());
-    return [];
+    Logger.log("Critical Error in getActiveCheckInsWithStats: " + e.toString());
+    // Return the actual error object so the frontend triggers an alert, instead of returning []
+    return { error: "Backend crash: " + e.toString() };
   }
 }
 
