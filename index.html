@@ -1304,28 +1304,28 @@ return (ci < cCo && co > cCi);
         return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};
       },[]);
 
-      const loadCheckIns=()=>{if(!tRef.current)setLd(true);google.script.run.withSuccessHandler(r=>{
-        setLd(false);
-        const data = Array.isArray(r) ? r : [];
-        const activeOnly = data.filter(ci => ci.status === 'Active');
-        setActiveCis(activeOnly);
-        initT(activeOnly);
-      }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getActiveCheckInsWithStats();};
+      const loadCheckIns=()=>{
+        if(!tRef.current) setLd(true); // Only show skeleton on first load
+        google.script.run.withSuccessHandler(r=>{
+          if(!tRef.current) setLd(false);
+          const data = Array.isArray(r) ? r : [];
+          const activeOnly = data.filter(ci => ci.status === 'Active');
+          console.log('Fetched CheckIns:', activeOnly); // Aggressive Frontend Logging
+          setActiveCis(activeOnly);
+          initT(activeOnly);
+        }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getActiveCheckInsWithStats();
+      };
 
       const initT=(data)=>{
         if(tRef.current){
           try {
-            // Safely clear and add new rows without destroying the table structure
-            tRef.current.clear().rows.add(data).draw();
-          } catch(e) {
-            tRef.current.destroy();
-            tRef.current=null;
-            $('#ciT').empty();
-          }
+            $('#ciT').DataTable().destroy();
+          } catch(e) {}
+          tRef.current=null;
+          $('#ciT').empty();
         }
 
-        if(!tRef.current) {
-          setTimeout(()=>{
+        setTimeout(()=>{
             try{
               const t=$('#ciT').DataTable({
                 data,
@@ -1396,7 +1396,6 @@ return (ci < cCo && co > cCi);
               tRef.current=t;
             }catch(e){console.error(e);}
           },150);
-        }
       };
 
       const toggleRoom=(rn)=>{
