@@ -1318,8 +1318,9 @@ return (ci < cCo && co > cCi);
 
           const data = Array.isArray(r) ? r : [];
           const activeOnly = data.filter(ci => ci.status === 'Active');
+          console.log('Fetched CheckIns:', activeOnly); // Aggressive Frontend Logging
           setActiveCis(activeOnly);
-          initT(activeOnly);
+          initT(data); // Pass ALL checkins to initT to fix the All Check-ins scope
         }).withFailureHandler(e=>{
           setLd(false);
           Swal.fire({icon:'error',text:e.message});
@@ -1362,7 +1363,7 @@ return (ci < cCo && co > cCi);
                     return html||'-';
                   }}
                 ],
-                pageLength:10,responsive:true,dom:'Blfrtip',
+                pageLength: -1, lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]], responsive:true, dom:'Blfrtip',
                 buttons:[
                   {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
                   {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
