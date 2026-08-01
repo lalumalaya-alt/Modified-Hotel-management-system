@@ -1642,7 +1642,7 @@ function getActiveCheckInRooms() {
       if (ci.status === 'Active') {
         let roomNos = ci.roomNumbers.split(',').map(r => r.trim()).filter(r => r);
         roomNos.forEach(rn => {
-          rooms.push({ roomNo: rn, checkInId: ci.checkInId, guestName: ci.guestName });
+          rooms.push({ roomNo: rn, checkInId: ci.checkInId, guestName: ci.guestName, checkInDate: ci.checkInDate });
         });
       }
     });
