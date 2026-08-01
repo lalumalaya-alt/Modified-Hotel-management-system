@@ -1304,50 +1304,108 @@ return (ci < cCo && co > cCi);
         return()=>{if(tRef.current)try{tRef.current.destroy();}catch(e){}};
       },[]);
 
-      const loadCheckIns=()=>{setLd(true);google.script.run.withSuccessHandler(r=>{
-        setLd(false);
-        const data = Array.isArray(r) ? r : [];
-        const activeOnly = data.filter(ci => ci.status === 'Active');
-        setActiveCis(activeOnly);
-        initT(activeOnly);
-      }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getActiveCheckInsWithStats();};
+      const loadCheckIns=()=>{
+        if (!tRef.current) setLd(true);
+        google.script.run.withSuccessHandler(r=>{
+          setLd(false);
 
-      const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#ciT').empty();}catch(e){}}
-        setTimeout(()=>{try{const t=$('#ciT').DataTable({data,destroy:true,columns:[
-          {data:'checkInId',title:'ID'},
-          {data:null,title:'Guest Details',render:(d,tp,row)=>`<div style="font-weight:600;color:var(--navy-primary)">${row.guestName} <span style="font-size:12px;color:#888;font-weight:normal">(${row.mobile})</span></div><div style="font-size:13px;color:#555;margin-top:3px"><i class="fas fa-bed"></i> Room(s): ${row.roomNumbers}</div>`},
-          {data:'checkInDate',title:'Check-In',render:d=>fmtDate(d)},
-          {data:'checkOutDate',title:'Expected Out',render:d=>d?fmtDate(d):'-'},
-          {data:'pax',title:'Pax'},
-          {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase().replace(/\s+/g,'-')+'">'+d+'</span>'},
-          {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{let html='';if(row.status==='Active'){html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';html+='<button class="action-icon edit-icon" data-action="edit"><i class="fas fa-edit"></i></button>';html+='<button class="action-icon" data-action="add_advance" style="color:#27ae60" title="Add Mid-Stay Advance"><i class="fas fa-hand-holding-usd"></i></button>';}return html||'-';}}
-        ],pageLength:10,responsive:true,dom:'Blrtip',buttons:[
-          {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
-          {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
-        ],order:[[0,'desc']]});$('#ciT').off('click','.action-icon').on('click','.action-icon',function(){const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();if(a==='switch'){setUpdateRec(rd);}else if(a==='edit'){handleEdit(rd);}else if (a === 'add_advance') {
-           Swal.fire({
-             title: 'Add Mid-Stay Advance',
-             html: '<input type="number" id="swal-adv-amt" class="swal2-input" placeholder="Amount"> <select id="swal-adv-mode" class="swal2-input"><option>Cash</option><option>Card</option><option>UPI</option><option>Bank Transfer</option></select>',
-             focusConfirm: false,
-             showCancelButton: true,
-             preConfirm: () => {
-               const amount = document.getElementById('swal-adv-amt').value;
-               const mode = document.getElementById('swal-adv-mode').value;
-               if (!amount || parseFloat(amount) <= 0) { Swal.showValidationMessage('Enter a valid amount'); return false; }
-               return { amount: parseFloat(amount), mode: mode };
-             }
-           }).then((result) => {
-             if (result.isConfirmed) {
-               Swal.fire({title:'Processing...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-               google.script.run.withSuccessHandler(res => {
-                 if (res.success) { Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false}); loadCheckIns(); }
-                 else { Swal.fire({icon:'error',text:res.message}); }
-               }).withFailureHandler(err => { Swal.fire({icon:'error',text:err.message}); })
-               .addMidStayAdvance(rd.checkInId, result.value.amount, result.value.mode, user);
-             }
-           });
-        }});tRef.current=t;}catch(e){console.error(e);}},150);};
+          // If the backend returned an explicit error, show it!
+          if (r && r.error) {
+            console.error("Backend Error Caught:", r.error);
+            Swal.fire({icon: 'error', title: 'Data Sync Error', text: r.error});
+            return;
+          }
+
+          const data = Array.isArray(r) ? r : [];
+          const activeOnly = data.filter(ci => ci.status === 'Active');
+          console.log('Fetched CheckIns:', activeOnly); // Aggressive Frontend Logging
+          setActiveCis(activeOnly);
+          initT(data); // Pass ALL checkins to initT to fix the All Check-ins scope
+        }).withFailureHandler(e=>{
+          setLd(false);
+          Swal.fire({icon:'error',text:e.message});
+        }).getActiveCheckInsWithStats();
+      };     const initT=(data)=>{
+        if(tRef.current){
+          try {
+            $('#ciT').DataTable().destroy();
+          } catch(e) {}
+          tRef.current=null;
+          $('#ciT').empty();
+        }
+
+        setTimeout(()=>{
+            try{
+              const t=$('#ciT').DataTable({
+                data,
+                destroy:true,
+                columns:[
+                  {data:'checkInId',title:'ID'},
+                  {data:null,title:'Guest Details',render:(d,tp,row)=>`<div style="font-weight:600;color:var(--navy-primary)">${row.guestName} <span style="font-size:12px;color:#888;font-weight:normal">(${row.mobile})</span></div><div style="font-size:13px;color:#555;margin-top:3px"><i class="fas fa-bed"></i> Room(s): ${row.roomNumbers}</div>`},
+                  {data:'checkInDate',title:'Check-In',render:d=>fmtDate(d)},
+                  {data:'nightsStayed',title:'Nights'},
+                  {data:null,title:'Live Folio', render:(d,tp,row)=>`
+                    <div style="font-size:12px; min-width: 140px;">
+                      <div style="display:flex; justify-content:space-between;"><span>Room Rent:</span> <span>${fmtCur(row.liveRoomRent)}</span></div>
+                      <div style="display:flex; justify-content:space-between;"><span>F&B / POS:</span> <span>${fmtCur(row.liveFoodBill)}</span></div>
+                      <div style="display:flex; justify-content:space-between; color:var(--success);"><span>Advance:</span> <span>-${fmtCur(row.advancePaid)}</span></div>
+                      <div style="display:flex; justify-content:space-between; font-weight:bold; margin-top:4px; padding-top:4px; border-top:1px solid #ddd; color:${row.liveBalance > 0 ? 'var(--danger)' : 'var(--success)'}"><span>Balance:</span> <span>${fmtCur(row.liveBalance)}</span></div>
+                    </div>
+                  `},
+                  {data:'status',title:'Status',render:d=>'<span class="status-badge status-'+(d||'active').toLowerCase().replace(/\s+/g,'-')+'">'+d+'</span>'},
+                  {data:null,title:'Actions',orderable:false,className:'all',responsivePriority:1,render:(d,tp,row)=>{
+                    let html='';
+                    if(row.status==='Active'){
+                      html+='<button class="action-icon edit-icon" data-action="switch" title="Switch Room / Update Pax"><i class="fas fa-exchange-alt"></i></button>';
+                      html+='<button class="action-icon edit-icon" data-action="edit" title="Edit Guest Details"><i class="fas fa-edit"></i></button>';
+                      html+='<button class="action-icon" data-action="add_advance" style="color:#27ae60" title="Add Mid-Stay Advance"><i class="fas fa-hand-holding-usd"></i></button>';
+                    }
+                    return html||'-';
+                  }}
+                ],
+                pageLength: -1, lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]], responsive:true, dom:'Blfrtip',
+                buttons:[
+                  {extend:'csv',text:'<i class="fas fa-file-csv"></i> CSV',exportOptions:{columns:':not(:last-child)'}},
+                  {extend:'pdf',text:'<i class="fas fa-file-pdf"></i> PDF',exportOptions:{columns:':not(:last-child)'}},
+                  {extend:'print',text:'<i class="fas fa-print"></i> Print',exportOptions:{columns:':not(:last-child)'}}
+                ],
+                order:[[0,'desc']]
+              });
+
+              $('#ciT').off('click','.action-icon').on('click','.action-icon',function(){
+                const a=$(this).data('action');const tr=$(this).closest('tr');const rd=t.row(tr.hasClass('child')?tr.prev():tr).data();
+                if(a==='switch'){
+                  setUpdateRec(rd);
+                } else if(a==='edit'){
+                  handleEdit(rd);
+                } else if (a === 'add_advance') {
+                  Swal.fire({
+                    title: 'Add Mid-Stay Advance',
+                    html: '<input type="number" id="swal-adv-amt" class="swal2-input" placeholder="Amount"> <select id="swal-adv-mode" class="swal2-input"><option>Cash</option><option>Card</option><option>UPI</option><option>Bank Transfer</option></select>',
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    preConfirm: () => {
+                      const amount = document.getElementById('swal-adv-amt').value;
+                      const mode = document.getElementById('swal-adv-mode').value;
+                      if (!amount || parseFloat(amount) <= 0) { Swal.showValidationMessage('Enter a valid amount'); return false; }
+                      return { amount: parseFloat(amount), mode: mode };
+                    }
+                  }).then((result) => {
+                    if (result.isConfirmed) {
+                      Swal.fire({title:'Processing...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+                      google.script.run.withSuccessHandler(res => {
+                        if (res.success) { Swal.fire({icon:'success',text:res.message,timer:2000,showConfirmButton:false}); loadCheckIns(); }
+                        else { Swal.fire({icon:'error',text:res.message}); }
+                      }).withFailureHandler(err => { Swal.fire({icon:'error',text:err.message}); })
+                      .addMidStayAdvance(rd.checkInId, result.value.amount, result.value.mode, user);
+                    }
+                  });
+                }
+              });
+              tRef.current=t;
+            }catch(e){console.error(e);}
+          },150);
+      };
 
       const toggleRoom=(rn)=>{
         setSelectedRooms(prev => {

@@ -1168,9 +1168,15 @@ function addCheckIn(checkInData) {
 
 function getActiveCheckInsWithStats() {
   try {
-    autoExtendOverstayingCheckIns();
+    try { autoExtendOverstayingCheckIns(); } catch(extErr) {} // Prevent this from crashing the main fetch
+
     const checkIns = getAllCheckIns();
-    if (checkIns.error || !Array.isArray(checkIns)) return [];
+
+    // If the base fetch failed, return the actual error so the frontend can see it
+    if (checkIns.error) {
+      return { error: "getAllCheckIns failed: " + checkIns.error };
+    }
+    if (!Array.isArray(checkIns)) return [];
 
     const activeCis = checkIns.filter(ci => ci.status === 'Active');
 
@@ -1194,75 +1200,89 @@ function getActiveCheckInsWithStats() {
     const now = new Date();
 
     return activeCis.map(ci => {
-      // Find StaySegments for this check-in
-      const ciSegments = [];
-      for (let i = 1; i < segmentsData.length; i++) {
-        if ((segmentsData[i][SEG_CHECKIN_ID_COL] || '').toString() === ci.checkInId) {
-          let sStart = new Date(segmentsData[i][SEG_START_DATE_COL]);
-          if (isNaN(sStart.getTime())) sStart = new Date(ci.checkInDate);
+      try {
+        // Find StaySegments for this check-in
+        const ciSegments = [];
+        for (let i = 1; i < segmentsData.length; i++) {
+          if ((segmentsData[i][SEG_CHECKIN_ID_COL] || '').toString() === ci.checkInId) {
+            let sStart = new Date(segmentsData[i][SEG_START_DATE_COL]);
+            if (isNaN(sStart.getTime())) sStart = new Date(ci.checkInDate);
 
-          let endDateStr = (segmentsData[i][SEG_END_DATE_COL] || '').toString();
-          let sEnd = endDateStr ? new Date(endDateStr) : now;
-          if (isNaN(sEnd.getTime())) sEnd = now;
+            let endDateStr = (segmentsData[i][SEG_END_DATE_COL] || '').toString();
+            let sEnd = endDateStr ? new Date(endDateStr) : now;
+            if (isNaN(sEnd.getTime())) sEnd = now;
 
-          // Default minimum of 1 night for calculating
-          let sDays = daysBetween(sStart, sEnd);
-          if (isNaN(sDays) || sDays < 1) sDays = 1;
+            // Default minimum of 1 night for calculating
+            let sDays = daysBetween(sStart, sEnd);
+            if (isNaN(sDays) || sDays < 1) sDays = 1;
 
-          let rate = parseFloat(segmentsData[i][SEG_RATE_COL]) || 0;
-          let roomNos = (segmentsData[i][SEG_ROOM_NOS_COL] || '').toString();
+            let rate = parseFloat(segmentsData[i][SEG_RATE_COL]) || 0;
+            let roomNos = (segmentsData[i][SEG_ROOM_NOS_COL] || '').toString();
 
-          ciSegments.push({
-             roomNos: roomNos,
-             rate: rate,
-             nights: sDays,
-             segmentTotal: rate * sDays
+            ciSegments.push({
+               roomNos: roomNos,
+               rate: rate,
+               nights: sDays,
+               segmentTotal: rate * sDays
+            });
+          }
+        }
+
+        // Calculate nightsStayed based on billing format
+        const nightsStayed = calculateStayDuration(ci.checkInDate, ci.checkInTime, now, null, ci.billingFormat);
+
+        // Calculate liveRoomRent
+        let liveRoomRent = 0;
+        if (ciSegments.length > 0) {
+          ciSegments.forEach(seg => {
+            liveRoomRent += seg.segmentTotal;
+          });
+        } else {
+          const assignedRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
+          assignedRooms.forEach(rn => {
+            liveRoomRent += (roomRates[rn] || 0) * nightsStayed;
           });
         }
-      }
 
-      // Calculate nightsStayed based on billing format
-      const nightsStayed = calculateStayDuration(ci.checkInDate, ci.checkInTime, now, null, ci.billingFormat);
-
-      // Calculate liveRoomRent
-      let liveRoomRent = 0;
-      if (ciSegments.length > 0) {
-        ciSegments.forEach(seg => {
-          liveRoomRent += seg.segmentTotal;
-        });
-      } else {
-        const assignedRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
-        assignedRooms.forEach(rn => {
-          liveRoomRent += (roomRates[rn] || 0) * nightsStayed;
-        });
-      }
-
-      // Calculate liveFoodBill
-      let liveFoodBill = 0;
-      for (let i = 1; i < restData.length; i++) {
-        const cId = (restData[i][REST_CHECKIN_ID_COL] || '').toString();
-        const status = (restData[i][REST_STATUS_COL] || '').toString();
-        if (cId === ci.checkInId && status === 'Active') {
-           liveFoodBill += parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0;
+        // Calculate liveFoodBill
+        let liveFoodBill = 0;
+        for (let i = 1; i < restData.length; i++) {
+          const cId = (restData[i][REST_CHECKIN_ID_COL] || '').toString();
+          const status = (restData[i][REST_STATUS_COL] || '').toString();
+          if (cId === ci.checkInId && status === 'Active') {
+             liveFoodBill += parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0;
+          }
         }
+
+        // Calculate liveBalance
+        const advancePaid = parseFloat(ci.advancePaid) || 0;
+        const liveBalance = (liveRoomRent + liveFoodBill) - advancePaid;
+
+        return {
+          ...ci,
+          nightsStayed,
+          liveRoomRent,
+          liveFoodBill,
+          liveBalance,
+          staySegments: ciSegments
+        };
+      } catch (innerError) {
+        // FALLBACK: If a single row fails math calculation, don't crash the whole table.
+        Logger.log("Row calculation error for " + ci.checkInId + ": " + innerError.message);
+        return {
+          ...ci,
+          nightsStayed: 1,
+          liveRoomRent: 0,
+          liveFoodBill: 0,
+          liveBalance: 0,
+          staySegments: []
+        };
       }
-
-      // Calculate liveBalance
-      const advancePaid = parseFloat(ci.advancePaid) || 0;
-      const liveBalance = (liveRoomRent + liveFoodBill) - advancePaid;
-
-      return {
-        ...ci,
-        nightsStayed,
-        liveRoomRent,
-        liveFoodBill,
-        liveBalance,
-        staySegments: ciSegments
-      };
     });
   } catch (e) {
-    Logger.log("Error in getActiveCheckInsWithStats: " + e.toString());
-    return [];
+    Logger.log("Critical Error in getActiveCheckInsWithStats: " + e.toString());
+    // Return the actual error object so the frontend triggers an alert, instead of returning []
+    return { error: "Backend crash: " + e.toString() };
   }
 }
 
@@ -1323,17 +1343,126 @@ function getAllCheckIns() {
 
 function getCheckInByRoomNo(roomNo) {
   try {
-    const checkIns = getActiveCheckInsWithStats();
-    if (!checkIns.error && Array.isArray(checkIns)) {
+    Logger.log("Requested CheckIn for roomNo: " + roomNo);
+    const searchRoomStr = String(roomNo).trim().toLowerCase();
+
+    // Bypass getActiveCheckInsWithStats to prevent cascading failures
+    const checkIns = getAllCheckIns();
+
+    if (checkIns.error) {
+       Logger.log("getAllCheckIns returned an error: " + checkIns.error);
+    } else if (Array.isArray(checkIns)) {
+
+      // 1. Robust Room Matching
+      let matchedCi = null;
       for (let i = 0; i < checkIns.length; i++) {
         if (checkIns[i].status === 'Active') {
-          let rooms = (checkIns[i].roomNumbers || '').split(',').map(r => r.trim());
-          if (rooms.indexOf(roomNo.toString().trim()) !== -1) {
-            return checkIns[i];
+          let roomsArr = (checkIns[i].roomNumbers || '').split(',').map(r => r.trim().toLowerCase());
+          if (roomsArr.includes(searchRoomStr)) {
+            matchedCi = checkIns[i];
+            break;
           }
         }
       }
+
+      if (matchedCi) {
+        Logger.log("Match found! CheckIn ID: " + matchedCi.checkInId);
+
+        // 2. Calculate Stats Manually to isolate failures
+        try {
+          const ss = SpreadsheetApp.openById(SS_ID);
+          const roomsSheet = ss.getSheetByName(ROOMS_SHEET_NAME);
+          const restSheet = ss.getSheetByName(RESTAURANT_SHEET_NAME);
+          const staySegmentsSheet = ss.getSheetByName(STAY_SEGMENTS_SHEET_NAME);
+
+          const roomsData = roomsSheet && roomsSheet.getLastRow() > 1 ? roomsSheet.getDataRange().getValues() : [];
+          const restData = restSheet && restSheet.getLastRow() > 1 ? restSheet.getDataRange().getValues() : [];
+          const segmentsData = staySegmentsSheet && staySegmentsSheet.getLastRow() > 1 ? staySegmentsSheet.getDataRange().getValues() : [];
+
+          // Map room rates for quick lookup
+          const roomRates = {};
+          for (let i = 1; i < roomsData.length; i++) {
+            const rNo = (roomsData[i][ROOM_NO_COL] || '').toString();
+            const rate = parseFloat(roomsData[i][ROOM_RATE_COL]) || 0;
+            roomRates[rNo] = rate;
+          }
+
+          const now = new Date();
+          const ciSegments = [];
+
+          for (let i = 1; i < segmentsData.length; i++) {
+            if ((segmentsData[i][SEG_CHECKIN_ID_COL] || '').toString() === matchedCi.checkInId) {
+              let sStart = new Date(segmentsData[i][SEG_START_DATE_COL]);
+              if (isNaN(sStart.getTime())) sStart = new Date(matchedCi.checkInDate);
+
+              let endDateStr = (segmentsData[i][SEG_END_DATE_COL] || '').toString();
+              let sEnd = endDateStr ? new Date(endDateStr) : now;
+              if (isNaN(sEnd.getTime())) sEnd = now;
+
+              let sDays = daysBetween(sStart, sEnd);
+              if (isNaN(sDays) || sDays < 1) sDays = 1;
+
+              let rate = parseFloat(segmentsData[i][SEG_RATE_COL]) || 0;
+              let roomNos = (segmentsData[i][SEG_ROOM_NOS_COL] || '').toString();
+
+              ciSegments.push({
+                 roomNos: roomNos,
+                 rate: rate,
+                 nights: sDays,
+                 segmentTotal: rate * sDays
+              });
+            }
+          }
+
+          const nightsStayed = calculateStayDuration(matchedCi.checkInDate, matchedCi.checkInTime, now, null, matchedCi.billingFormat);
+
+          let liveRoomRent = 0;
+          if (ciSegments.length > 0) {
+            ciSegments.forEach(seg => { liveRoomRent += seg.segmentTotal; });
+          } else {
+            const assignedRooms = (matchedCi.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
+            assignedRooms.forEach(rn => {
+              liveRoomRent += (roomRates[rn] || 0) * nightsStayed;
+            });
+          }
+
+          let liveFoodBill = 0;
+          for (let i = 1; i < restData.length; i++) {
+            const cId = (restData[i][REST_CHECKIN_ID_COL] || '').toString();
+            const status = (restData[i][REST_STATUS_COL] || '').toString();
+            if (cId === matchedCi.checkInId && status === 'Active') {
+               liveFoodBill += parseFloat(restData[i][REST_TOTAL_AMOUNT_COL]) || 0;
+            }
+          }
+
+          const advancePaid = parseFloat(matchedCi.advancePaid) || 0;
+          const liveBalance = (liveRoomRent + liveFoodBill) - advancePaid;
+
+          return {
+            ...matchedCi,
+            nightsStayed,
+            liveRoomRent,
+            liveFoodBill,
+            liveBalance,
+            staySegments: ciSegments
+          };
+
+        } catch (mathErr) {
+          Logger.log("Math Calculation failed for " + matchedCi.checkInId + " : " + mathErr.message);
+          return {
+            ...matchedCi,
+            nightsStayed: 1,
+            liveRoomRent: 0,
+            liveFoodBill: 0,
+            liveBalance: 0,
+            staySegments: []
+          };
+        }
+      } else {
+        Logger.log("No active CheckIn found containing room: " + searchRoomStr);
+      }
     }
+
     // Fallback: search Bookings for a room with active booking but no check-in record
     const ss = SpreadsheetApp.openById(SS_ID);
     const bookingsSheet = ss.getSheetByName(BOOKINGS_SHEET_NAME);
@@ -1342,8 +1471,9 @@ function getCheckInByRoomNo(roomNo) {
       for (let i = 1; i < bData.length; i++) {
         let bStatus = (bData[i][BOOKING_STATUS_COL] || '').toString();
         if (bStatus !== 'Booked' && bStatus !== 'Checked In') continue;
-        let bRooms = (bData[i][BOOKING_ROOM_NO_COL] || '').toString().split(',').map(r => r.trim());
-        if (bRooms.indexOf(roomNo.toString().trim()) !== -1) {
+        let bRooms = (bData[i][BOOKING_ROOM_NO_COL] || '').toString().split(',').map(r => r.trim().toLowerCase());
+        if (bRooms.includes(searchRoomStr)) {
+          Logger.log("Fallback match found in Bookings for room: " + roomNo);
           return {
             checkInId: (bData[i][TICKET_ID_COL] || '').toString(),
             linkedTicketId: (bData[i][TICKET_ID_COL] || '').toString(),
@@ -1377,7 +1507,7 @@ function getCheckInByRoomNo(roomNo) {
     }
     return null;
   } catch (e) {
-    Logger.log("Error in getCheckInByRoomNo: " + e.toString());
+    Logger.log("Critical Error in getCheckInByRoomNo: " + e.toString());
     return null;
   }
 }
