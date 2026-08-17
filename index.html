@@ -667,6 +667,7 @@
          gstNumber: inv.customerTIN || '',
          mobile: inv.phone || '',
          email: inv.email || '',
+         billingMode: meta.billingMode || 'Standard',
          address: meta.address || '',
          city: meta.city || '',
          state: meta.state || '',
@@ -704,6 +705,29 @@
          items: items,
          notes: inv.notes || ''
       };
+    };
+
+
+    const calculateChargeableBlocks = (checkInDateStr, checkInTimeStr, checkOutDateStr, checkOutTimeStr, gracePeriodHours) => {
+      if (!checkInDateStr || !checkOutDateStr) return 1;
+      const ciStr = checkInDateStr.split('T')[0] + 'T' + (checkInTimeStr || '14:00') + ':00';
+      const coStr = checkOutDateStr.split('T')[0] + 'T' + (checkOutTimeStr || '12:00') + ':00';
+
+      const ci = new Date(ciStr);
+      const co = new Date(coStr);
+
+      if (isNaN(ci.getTime()) || isNaN(co.getTime()) || co <= ci) return 1;
+
+      const diffMs = co - ci;
+      const totalHours = diffMs / (1000 * 60 * 60);
+
+      const gp = parseFloat(gracePeriodHours) || 0;
+      let remainingHours = totalHours - gp;
+
+      if (remainingHours <= 0) return 1; // At least 1 block even if checked out within grace period
+
+      let blocks = Math.ceil(remainingHours / 24);
+      return blocks < 1 ? 1 : blocks;
     };
 
     const planLabel=(fp)=>{if(!fp||fp==='None')return'EP';if(fp.indexOf('Dinner')!==-1)return'MAP';return'CP';};
@@ -744,7 +768,7 @@
       const doc={pageSize:'A4',pageOrientation:'landscape',pageMargins:[20,20,20,20],content:[
         {text:d.hotelName||'Hill View Eco Retreat',style:'hdr',alignment:'center'},{text:(d.hotelAddress||'')+' | '+(d.hotelPhone||'')+' | '+(d.hotelEmail||''),alignment:'center',fontSize:9,margin:[0,0,0,5]},
         d.hotelTIN?{text:'GSTIN: '+d.hotelTIN,alignment:'center',fontSize:9,margin:[0,0,0,8]}:{text:'',margin:[0,0,0,8]},
-        {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
+        {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],[d.billingMode === '24-Hour Block' ? '24H Blocks#' : 'Nights#',(d.nights||1).toString()],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
         {text:'\n'},{table:{headerRows:1,widths:['auto','auto','auto','auto','auto','auto','auto'],body:[[{text:'Date',style:'th'},{text:'Rooms',style:'th'},{text:'E.Bed',style:'th'},{text:'Fds&Bvg',style:'th'},{text:'Laundry',style:'th'},{text:'Day Total',style:'th'},{text:'',style:'th'}],...dayRows,totRow.map((v,i)=>i===0?{text:v,bold:true}:{text:v,bold:true})]},fontSize:8},
         {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(liveSubtotal),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(liveDiscount),alignment:'right'}],[(d.gstType==='Including'?'(Incl) ':'')+'SGST '+n2(d.sgstPercent||0)+'%',{text:n2(liveSgst),alignment:'right'}],[(d.gstType==='Including'?'(Incl) ':'')+'CGST '+n2(d.cgstPercent||0)+'%',{text:n2(liveCgst),alignment:'right'}],['Bill Amount',{text:n2(liveBillAmount),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(liveAdvance),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(liveNetAmount),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
         {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(liveBillAmount),italics:true,fontSize:10,margin:[0,5,0,20]},
@@ -781,7 +805,7 @@
       const doc={pageSize:'A4',pageOrientation:'landscape',pageMargins:[20,20,20,20],content:[
         {text:d.hotelName||'Hill View Eco Retreat',style:'hdr',alignment:'center'},{text:(d.hotelAddress||'')+' | '+(d.hotelPhone||'')+' | '+(d.hotelEmail||''),alignment:'center',fontSize:9,margin:[0,0,0,5]},
         d.hotelTIN?{text:'GSTIN: '+d.hotelTIN,alignment:'center',fontSize:9,margin:[0,0,0,8]}:{text:'',margin:[0,0,0,8]},
-        {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
+        {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['GR No',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],[d.billingMode === '24-Hour Block' ? '24H Blocks#' : 'Nights#',(d.nights||1).toString()],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
         {text:'\n'},{table:{headerRows:1,widths:['auto','auto','auto','auto','auto','auto','auto'],body:[[{text:'Date',style:'th'},{text:'Rooms',style:'th'},{text:'E.Bed',style:'th'},{text:'Fds&Bvg',style:'th'},{text:'Laundry',style:'th'},{text:'Day Total',style:'th'},{text:'',style:'th'}],...dayRows,totRow.map((v,i)=>i===0?{text:v,bold:true}:{text:v,bold:true})]},fontSize:8},
         {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(liveSubtotal),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(liveDiscount),alignment:'right'}],['SGST '+n2(d.sgstPercent||0)+'%',{text:n2(liveSgst),alignment:'right'}],['CGST '+n2(d.cgstPercent||0)+'%',{text:n2(liveCgst),alignment:'right'}],['Bill Amount',{text:n2(liveBillAmount),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(liveAdvance),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(liveNetAmount),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
         {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(liveBillAmount),italics:true,fontSize:10,margin:[0,5,0,20]},
@@ -1087,6 +1111,10 @@
     }
 
     function BookingModal({rooms,booking,onClose,onBooked,role,allBookings=[],allCheckIns=[]}){
+      const [sysSettings, setSysSettings] = useState(null);
+      useEffect(() => {
+        google.script.run.withSuccessHandler(r=>{ if(r.success) setSysSettings(r.data); }).getSettings();
+      }, []);
       const isEdit=!!booking;
       const isAdmin=role==='admin';
       // If editing, parsing is tricky if the format changed. We will support both room numbers and types.
@@ -1107,7 +1135,7 @@
           }
           return acc;
         }, {}) : {});
-      const [fd,setFd]=useState({guestName:booking?.guestName||'',phone:booking?.phone||'',email:booking?.email||'',checkIn:booking?.checkIn?booking.checkIn.slice(0,10):'',checkOut:booking?.checkOut?booking.checkOut.slice(0,10):'',checkInTime:booking?.checkInTime||'14:00',checkOutTime:booking?.checkOutTime||'12:00',advancePaid:booking?.advancePaid||'0',paymentMethod:booking?.paymentMethod||'',foodPlan:booking?.foodPlan||'None',discountPercent:booking?.discountPercent||'0',gstType:booking?.gstType||'Excluding',extraPerson:booking?.extraPerson||'0'});
+      const [fd,setFd]=useState({guestName:booking?.guestName||'',phone:booking?.phone||'',email:booking?.email||'',checkIn:booking?.checkIn?booking.checkIn.slice(0,10):'',checkOut:booking?.checkOut?booking.checkOut.slice(0,10):'',checkInTime:booking?.checkInTime||'14:00',checkOutTime:booking?.checkOutTime||'12:00',advancePaid:booking?.advancePaid||'0',paymentMethod:booking?.paymentMethod||'',foodPlan:booking?.foodPlan||'None',discountPercent:booking?.discountPercent||'0',gstType:booking?.gstType||'Excluding',extraPerson:booking?.extraPerson||'0', billingMode:booking?.billingMode||'Standard'});
       const [sv,setSv]=useState(false);
       const [customers,setCustomers]=useState([]);const [selCust,setSelCust]=useState('');
       useEffect(()=>{google.script.run.withSuccessHandler(r=>{setCustomers(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getAllCustomers();},[]);
@@ -1213,10 +1241,10 @@ return (ci < cCo && co > cCi);
       const submit=(e)=>{e.preventDefault();if(selectedCount===0){Swal.fire({icon:'warning',text:'Please select at least one room'});return;}setSv(true);
         const roomNosStr = Object.entries(selectedRoomsByType).map(([type, qty]) => `${type} (${qty})`).join(', ');
         const calcTotals = calcTotal();
-        const payload={...fd, roomNos:roomNosStr, roomRate:(combinedRate/selectedCount), totalAmount:calcTotals?.total||0, tax:calcTotals?.tax||0};
+        const payload={...fd, roomNos:roomNosStr, roomRate:(combinedRate/selectedCount), totalAmount:calcTotals?.total||0, tax:calcTotals?.tax||0, billingMode: fd.billingMode};
         if(isEdit){google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});onClose();setTimeout(onBooked,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(err=>{setSv(false);Swal.fire({icon:'error',text:err.message});}).updateBooking(booking.rowIndex,payload);}
         else{google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2500,showConfirmButton:false});onClose();setTimeout(onBooked,100);}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(err=>{setSv(false);Swal.fire({icon:'error',text:err.message});}).bookRoom(payload);}};
-      const calcTotal=()=>{if(!fd.checkIn||!fd.checkOut)return null;const ci=new Date(fd.checkIn);const co=new Date(fd.checkOut);if(isNaN(ci)||isNaN(co)||co<=ci)return null;let n=Math.ceil((co-ci)/(1000*3600*24));if(n<1)n=1;const epCharge = (parseInt(fd.extraPerson) || 0) * 500 * n;const base=(combinedRate*n) + epCharge;const d=(parseFloat(fd.discountPercent)||0)*base/100;const sub=base-d;let t=0;if(fd.gstType==='Including'){t=sub-(sub/(1+0.16));}else if(fd.gstType==='Excluding'){t=sub*0.16;}return{nights:n,base,epCharge,disc:d,tax:t,total:fd.gstType==='Excluding'?sub+t:sub};};
+      const calcTotal=()=>{if(!fd.checkIn||!fd.checkOut)return null;const ci=new Date(fd.checkIn);const co=new Date(fd.checkOut);if(isNaN(ci)||isNaN(co)||co<=ci)return null;let n=1; if (fd.billingMode === '24-Hour Block') { n = calculateChargeableBlocks(fd.checkIn, fd.checkInTime, fd.checkOut, fd.checkOutTime, sysSettings?.gracePeriodHours || 2); } else { n=Math.ceil((co-ci)/(1000*3600*24)); if(n<1)n=1; } const epCharge = (parseInt(fd.extraPerson) || 0) * 500 * n;const base=(combinedRate*n) + epCharge;const d=(parseFloat(fd.discountPercent)||0)*base/100;const sub=base-d;let t=0;if(fd.gstType==='Including'){t=sub-(sub/(1+0.16));}else if(fd.gstType==='Excluding'){t=sub*0.16;}return{nights:n,base,epCharge,disc:d,tax:t,total:fd.gstType==='Excluding'?sub+t:sub};};
       const ct=calcTotal();
       return(<div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className={`fas ${isEdit?'fa-edit':'fa-calendar-plus'}`}></i> {isEdit?'Edit':'New Advance'} Booking</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body"><form onSubmit={submit}>
         <div className="form-grid">
@@ -1239,8 +1267,9 @@ return (ci < cCo && co > cCi);
           <div className="form-group"><label>Food Plan</label><select value={fd.foodPlan} onChange={e=>setFd({...fd,foodPlan:e.target.value})}><option value="None">None</option><option value="Including Breakfast">Including Breakfast</option><option value="Including Breakfast and Dinner">Including Breakfast and Dinner</option></select></div>
           <div className="form-group"><label>Discount (%)</label><input type="number" step="0.01" min="0" max="100" value={fd.discountPercent} onChange={e=>setFd({...fd,discountPercent:e.target.value})}/></div>
           <div className="form-group"><label>GST Type</label><select value={fd.gstType} onChange={e=>setFd({...fd,gstType:e.target.value})}><option>Excluding</option><option>Including</option><option>None</option></select></div>
+          <div className="form-group"><label>Billing Mode</label><select value={fd.billingMode} onChange={e=>setFd({...fd,billingMode:e.target.value})}><option>Standard</option><option>24-Hour Block</option></select></div>
         </div>
-        {ct&&<div className="totals-section" style={{marginTop:'15px'}}><div className="totals-row"><span>Combined Room Rate x {ct.nights} night(s)</span><span>{fmtCur(ct.base - (ct.epCharge || 0))}</span></div>{(ct.epCharge > 0) && <div className="totals-row"><span>Extra Person Charge</span><span>{fmtCur(ct.epCharge)}</span></div>}{ct.disc>0&&<div className="totals-row"><span>Discount ({fd.discountPercent}%)</span><span style={{color:'var(--danger)'}}>- {fmtCur(ct.disc)}</span></div>}{ct.tax>0&&<div className="totals-row"><span>GST (16%) {fd.gstType==='Including'?'(Incl)':''}</span><span>{fmtCur(ct.tax)}</span></div>}<div className="totals-row grand-total"><span>Estimated Total</span><span>{fmtCur(ct.total)}</span></div>{parseFloat(fd.advancePaid)>0&&<div className="totals-row"><span>Advance Paid</span><span style={{color:'var(--success)'}}>- {fmtCur(parseFloat(fd.advancePaid))}</span></div>}</div>}
+        {ct&&<div className="totals-section" style={{marginTop:'15px'}}><div className="totals-row"><span>Combined Room Rate x {ct.nights} {fd.billingMode === '24-Hour Block' ? '24H Block(s)' : 'night(s)'}</span><span>{fmtCur(ct.base - (ct.epCharge || 0))}</span></div>{(ct.epCharge > 0) && <div className="totals-row"><span>Extra Person Charge</span><span>{fmtCur(ct.epCharge)}</span></div>}{ct.disc>0&&<div className="totals-row"><span>Discount ({fd.discountPercent}%)</span><span style={{color:'var(--danger)'}}>- {fmtCur(ct.disc)}</span></div>}{ct.tax>0&&<div className="totals-row"><span>GST (16%) {fd.gstType==='Including'?'(Incl)':''}</span><span>{fmtCur(ct.tax)}</span></div>}<div className="totals-row grand-total"><span>Estimated Total</span><span>{fmtCur(ct.total)}</span></div>{parseFloat(fd.advancePaid)>0&&<div className="totals-row"><span>Advance Paid</span><span style={{color:'var(--success)'}}>- {fmtCur(parseFloat(fd.advancePaid))}</span></div>}</div>}
         <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> {isEdit?'Updating...':'Booking...'}</>:<><i className={`fas ${isEdit?'fa-save':'fa-check'}`}></i> {isEdit?'Update Booking':'Book Room(s)'}</>}</button><button type="button" className="btn btn-secondary" onClick={onClose}><i className="fas fa-times"></i> Cancel</button></div>
       </form></div></div></div>);
     }
@@ -1286,6 +1315,10 @@ return (ci < cCo && co > cCi);
 
 
     function CheckInView({user,role}){
+      const [sysSettings, setSysSettings] = useState(null);
+      useEffect(() => {
+        google.script.run.withSuccessHandler(r=>{ if(r.success) setSysSettings(r.data); }).getSettings();
+      }, []);
       const [mode,setMode]=useState('walkin');
       const [rooms,setRooms]=useState([]);
       const [selectedRooms,setSelectedRooms]=useState([]);
@@ -1294,7 +1327,7 @@ return (ci < cCo && co > cCi);
       const [saving,setSaving]=useState(false);
       const tRef=useRef(null);
       const [updateRec,setUpdateRec]=useState(null);
-      const [fd,setFd]=useState({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,roomPaxBreakdown:'',advancePaid:0,paymentMethod:'',extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});
+      const [fd,setFd]=useState({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,roomPaxBreakdown:'',advancePaid:0,paymentMethod:'',extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0, billingMode: 'Standard'});
       const [activeCis, setActiveCis] = useState([]);
       const [showModal, setShowModal] = useState(false);
       const [customers, setCustomers] = useState([]);
@@ -1585,6 +1618,7 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
             foodPlan: bk.foodPlan || 'None', 
             advancePaid: bk.advancePaid || 0,
             gstType: bk.tax > 0 ? 'Including' : 'Excluding', // Infer from old or explicit new
+            billingMode: bk.billingMode || 'Standard',
             fixRoomRentAmount: bk.fixRoomRentAmount || '', // Sync fixed rent if present
             discountPercent: bk.discount || 0,
             roomPaxBreakdown: JSON.stringify(initialBreakdown),
@@ -1620,9 +1654,9 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
         }
       };
 
-      const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,roomPaxBreakdown:'',advancePaid:0,paymentMethod:'',extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);setSelCust('');};
+      const resetForm=()=>{setFd({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,roomPaxBreakdown:'',advancePaid:0,paymentMethod:'',extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0,billingMode:'Standard'});setSelectedRooms([]);setLinkedBooking(null);setSelAdvBkId('');setEditRowIndex(null);setSelCust('');};
 
-      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0,city:ci.city||'',state:ci.state||'',pinCode:ci.pinCode||'',country:ci.country||'',roomPaxBreakdown:ci.roomPaxBreakdown||'',paymentMethod:ci.paymentMethod||''});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setShowModal(true);};
+      const handleEdit=(ci)=>{setFd({...ci,checkInDate:ci.checkInDate?ci.checkInDate.split('T')[0]:'',checkOutDate:ci.checkOutDate?ci.checkOutDate.split('T')[0]:'',checkInTime:ci.checkInTime||'14:00',checkOutTime:ci.checkOutTime||'12:00',fixRoomRentAmount:ci.fixRoomRentAmount||'',discountPercent:ci.discountPercent||0,city:ci.city||'',state:ci.state||'',pinCode:ci.pinCode||'',country:ci.country||'',roomPaxBreakdown:ci.roomPaxBreakdown||'',paymentMethod:ci.paymentMethod||'',billingMode:ci.billingMode||'Standard'});setSelectedRooms(ci.roomNumbers?ci.roomNumbers.split(','):[]);setLinkedBooking({ticketId:ci.linkedTicketId});setEditRowIndex(ci.rowIndex);setMode('walkin');setShowModal(true);};
 
 
       const submit=(e)=>{e.preventDefault();
@@ -1644,7 +1678,7 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
         setSaving(true);Swal.fire({title:'Processing Check-In...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         
         const payload = {
-          linkedTicketId:linkedBooking?linkedBooking.ticketId:'',guestName:fd.guestName,companyName:fd.companyName,gstNumber:fd.gstNumber,identityProof:fd.identityProof,mobile:fd.mobile,email:fd.email,address:fd.address,city:fd.city,state:fd.state,pinCode:fd.pinCode,country:fd.country,purposeOfVisit:fd.purposeOfVisit,checkInDate:fd.checkInDate,checkInTime:fd.checkInTime,checkOutDate:fd.checkOutDate,checkOutTime:fd.checkOutTime,roomNumbers:selectedRooms.join(','),pax:fd.pax,roomPaxBreakdown:fd.roomPaxBreakdown,advancePaid:fd.advancePaid,paymentMethod:fd.paymentMethod,extraPerson:fd.extraPerson,foodPlan:fd.foodPlan,gstType:fd.gstType,fixRoomRent:fd.fixRoomRentAmount?'Yes':'No',fixRoomRentAmount:fd.fixRoomRentAmount,billTo:fd.billTo,discountPercent:fd.discountPercent
+          linkedTicketId:linkedBooking?linkedBooking.ticketId:'',guestName:fd.guestName,companyName:fd.companyName,gstNumber:fd.gstNumber,identityProof:fd.identityProof,mobile:fd.mobile,email:fd.email,address:fd.address,city:fd.city,state:fd.state,pinCode:fd.pinCode,country:fd.country,purposeOfVisit:fd.purposeOfVisit,checkInDate:fd.checkInDate,checkInTime:fd.checkInTime,checkOutDate:fd.checkOutDate,checkOutTime:fd.checkOutTime,roomNumbers:selectedRooms.join(','),pax:fd.pax,roomPaxBreakdown:fd.roomPaxBreakdown,advancePaid:fd.advancePaid,paymentMethod:fd.paymentMethod,extraPerson:fd.extraPerson,foodPlan:fd.foodPlan,gstType:fd.gstType,fixRoomRent:fd.fixRoomRentAmount?'Yes':'No',fixRoomRentAmount:fd.fixRoomRentAmount,billTo:fd.billTo,discountPercent:fd.discountPercent,billingMode:fd.billingMode
         };
 
         if (editRowIndex) {
@@ -1802,6 +1836,8 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
             <div className="form-group"><label>Bill To</label><select value={fd.billTo} onChange={e=>setFd({...fd,billTo:e.target.value})}><option value="Individual">Individual</option><option value="Company">Company</option><option value="Agent">Agent</option></select></div>
             <div className="form-group"><label>Discount %</label><input type="number" step="0.01" min="0" max="100" value={fd.discountPercent} onChange={e=>setFd({...fd,discountPercent:e.target.value})}/></div>
             <div className="form-group"><label>Fixed Rent Amount ({APP_CURRENCY})</label><input type="number" step="0.01" min="0" placeholder="Leave blank for standard rent" value={fd.fixRoomRentAmount} onChange={e=>setFd({...fd,fixRoomRentAmount:e.target.value})}/></div>
+            <div className="form-group"><label>GST Type</label><select value={fd.gstType} onChange={e=>setFd({...fd,gstType:e.target.value})}><option>Excluding</option><option>Including</option><option>None</option></select></div>
+            <div className="form-group"><label>Billing Mode</label><select value={fd.billingMode} onChange={e=>setFd({...fd,billingMode:e.target.value})}><option>Standard</option><option>24-Hour Block</option></select></div>
           </div>
 
           <div className="form-actions"><button type="submit" className="btn btn-primary" disabled={saving}>{saving?<><i className="fas fa-spinner fa-spin"></i> Processing...</>:<><i className="fas fa-door-open"></i> {editRowIndex ? 'Update Check-In' : 'Complete Check-In'}</>}</button><button type="button" className="btn btn-secondary" onClick={()=>{resetForm(); setShowModal(false);}}><i className="fas fa-times"></i> Cancel</button></div>
@@ -2635,7 +2671,30 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const liveNetAmount = Math.max(0, liveBillAmount - liveAdvance);
 
 
-      const planLabel=(fp)=>{if(!fp||fp==='None')return'EP';if(fp.indexOf('Dinner')!==-1)return'MAP';return'CP';};
+
+    const calculateChargeableBlocks = (checkInDateStr, checkInTimeStr, checkOutDateStr, checkOutTimeStr, gracePeriodHours) => {
+      if (!checkInDateStr || !checkOutDateStr) return 1;
+      const ciStr = checkInDateStr.split('T')[0] + 'T' + (checkInTimeStr || '14:00') + ':00';
+      const coStr = checkOutDateStr.split('T')[0] + 'T' + (checkOutTimeStr || '12:00') + ':00';
+
+      const ci = new Date(ciStr);
+      const co = new Date(coStr);
+
+      if (isNaN(ci.getTime()) || isNaN(co.getTime()) || co <= ci) return 1;
+
+      const diffMs = co - ci;
+      const totalHours = diffMs / (1000 * 60 * 60);
+
+      const gp = parseFloat(gracePeriodHours) || 0;
+      let remainingHours = totalHours - gp;
+
+      if (remainingHours <= 0) return 1; // At least 1 block even if checked out within grace period
+
+      let blocks = Math.ceil(remainingHours / 24);
+      return blocks < 1 ? 1 : blocks;
+    };
+
+    const planLabel=(fp)=>{if(!fp||fp==='None')return'EP';if(fp.indexOf('Dinner')!==-1)return'MAP';return'CP';};
 
       const numToWords=(num)=>{
         if(!num||num===0)return'Zero';
@@ -2669,7 +2728,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
         const doc={pageSize:'A4',pageOrientation:'landscape',pageMargins:[20,20,20,20],content:[
           {text:d.hotelName||'Hill View Eco Retreat',style:'hdr',alignment:'center'},{text:(d.hotelAddress||'')+' | '+(d.hotelPhone||'')+' | '+(d.hotelEmail||''),alignment:'center',fontSize:9,margin:[0,0,0,5]},
           d.hotelTIN?{text:'GSTIN: '+d.hotelTIN,alignment:'center',fontSize:9,margin:[0,0,0,8]}:{text:'',margin:[0,0,0,8]},
-          {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['Check-In ID',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
+          {columns:[{width:'60%',text:[{text:'Guest: ',bold:true},d.guestName+'\n',d.companyName?{text:'Company: '+d.companyName+'\n'}:'',(d.address || d.city || d.state || d.pinCode || d.country)?{text:'Address: '+[d.address, d.city, d.state ? d.state + (d.pinCode ? '-' + d.pinCode : '') : d.pinCode, d.country].filter(Boolean).join(', ')+'\n'}:'',d.gstNumber?{text:'GSTIN: '+d.gstNumber+'\n'}:'',{text:'Mobile: '+(d.mobile||'-')+'\n'}],fontSize:10},{width:'40%',table:{widths:['auto','*'],body:[['Bill No#',d.billNumber||''],['Check-In ID',d.checkInId||''],['Check In',fmtD(d.checkInDate)+' '+d.checkInTime],['Check Out',fmtD(d.checkOutDate)+' '+d.checkOutTime],['Plan',planLabel(d.foodPlan)],[d.billingMode === '24-Hour Block' ? '24H Blocks#' : 'Nights#',(d.nights||1).toString()],['Pax#',(d.pax||1).toString()],['Room#',(d.numberOfRooms||1).toString()]]},fontSize:9}]},
           {text:'\n'}, dynamicTableBlock,
           {text:'\n'},{columns:[{width:'60%',text:''},{width:'40%',table:{widths:['*','auto'],body:[['Total Amount',{text:n2(liveSubtotal),alignment:'right'}],['Discount ('+n2(d.discountPercent||0)+'%)',{text:'- '+n2(liveDiscount),alignment:'right'}],[(d.gstType==='Including'?'(Incl) ':'')+'SGST '+n2(d.sgstPercent||0)+'%',{text:n2(liveSgst),alignment:'right'}],[(d.gstType==='Including'?'(Incl) ':'')+'CGST '+n2(d.cgstPercent||0)+'%',{text:n2(liveCgst),alignment:'right'}],['Bill Amount',{text:n2(liveBillAmount),alignment:'right',bold:true}],['Less Advance',{text:'- '+n2(liveAdvance),alignment:'right'}],[{text:'Net Amount',bold:true},{text:n2(liveNetAmount),alignment:'right',bold:true,fontSize:12}]]},fontSize:10}]},
           {text:'\nRooms: '+(d.roomNumbers||''),fontSize:9,margin:[0,5,0,0]},{text:numToWords(liveBillAmount),italics:true,fontSize:10,margin:[0,5,0,20]},
@@ -2701,6 +2760,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
               <tr><td>Check In</td><td>{fmtD(d.checkInDate)} {d.checkInTime||''}</td></tr>
               <tr><td>Check Out</td><td>{fmtD(d.checkOutDate)} {d.checkOutTime||''}</td></tr>
               <tr><td>Plan</td><td>{planLabel(d.foodPlan)}</td></tr>
+              <tr><td>{d.billingMode === '24-Hour Block' ? '24H Blocks#' : 'Nights#'}</td><td>{d.nights||1}</td></tr>
               <tr><td>Pax#</td><td>{d.pax||1}</td></tr>
               <tr><td>Room#</td><td>{d.numberOfRooms||1}</td></tr>
             </tbody></table></div>
@@ -2738,6 +2798,38 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
     }
 
     function CheckoutView({user}){
+      const [sysSettings, setSysSettings] = useState(null);
+      useEffect(() => {
+        google.script.run.withSuccessHandler(r=>{ if(r.success) setSysSettings(r.data); }).getSettings();
+      }, []);
+
+      const getRecalculatedCart = (ci) => {
+        const gracePeriod = sysSettings?.gracePeriodHours || 2;
+        let finalNights = 1;
+        const cInDate = ci.checkInDate ? ci.checkInDate.split('T')[0] : '';
+        const cInTime = ci.checkInTime || '14:00';
+        if (mg.billingMode === '24-Hour Block') {
+           finalNights = calculateChargeableBlocks(cInDate + 'T' + cInTime, cInTime, checkOutDate + 'T' + checkOutTime, checkOutTime, gracePeriod);
+        } else {
+           const ciD = new Date(cInDate);
+           const coD = new Date(checkOutDate);
+           let days = Math.ceil((coD - ciD) / (1000 * 3600 * 24));
+           finalNights = days < 1 ? 1 : days;
+        }
+
+        const segments = ci.staySegments || [];
+        let totalCalendarNights = 0;
+        if (segments.length > 0) {
+          segments.forEach(seg => { totalCalendarNights += seg.nights; });
+        } else {
+          totalCalendarNights = ci.nightsStayed || 1;
+        }
+        if (totalCalendarNights === 0) totalCalendarNights = 1;
+
+        const scaleFactor = (mg.billingMode === '24-Hour Block') ? (finalNights / totalCalendarNights) : 1;
+
+        return { newNights: finalNights, scaleFactor: scaleFactor };
+      };
       const [activeRooms, setActiveRooms] = useState([]);
       const [fetching,setFetching]=useState(false);
       
@@ -2758,7 +2850,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const [checkOutTime,setCheckOutTime]=useState('12:00');
       const [discountPercent,setDiscountPercent]=useState(0);
       const [advanceToApply,setAdvanceToApply]=useState(0);
-      const [mg, setMg] = useState({ guestName:'', companyName:'', gstNumber:'', mobile:'', email:'', address:'', city:'', state:'', pinCode:'', country:'', gstType:'Excluding', billTo:'Individual', extraPerson: 0 });
+      const [mg, setMg] = useState({ guestName:'', companyName:'', gstNumber:'', mobile:'', email:'', address:'', city:'', state:'', pinCode:'', country:'', gstType:'Excluding', billTo:'Individual', extraPerson: 0, billingMode: 'Standard' });
 
       useEffect(()=>{
         google.script.run.withSuccessHandler(r=>{setActiveRooms(Array.isArray(r)?r:[]);}).withFailureHandler(()=>{}).getActiveCheckInRooms();
@@ -2791,7 +2883,8 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                  country: res.country || '',
                  gstType: res.gstType || 'Excluding',
                  billTo: res.billTo || 'Individual',
-                 extraPerson: res.extraPerson || 0
+                 extraPerson: res.extraPerson || 0,
+                 billingMode: res.billingMode || 'Standard'
                });
                setDiscountPercent(res.discountPercent || 0); 
             }
@@ -2834,7 +2927,8 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
             country: pCi.country || '',
             gstType: pCi.gstType || 'Excluding',
             billTo: pCi.billTo || 'Individual',
-            extraPerson: pCi.extraPerson || 0
+            extraPerson: pCi.extraPerson || 0,
+            billingMode: pCi.billingMode || 'Standard'
           });
         }
       };
@@ -2938,7 +3032,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
         
         const payload = {
           checkOutDate, checkOutTime, paymentMode:payMode, paymentStatus:payStatus, amountPaid:parseFloat(amtPaid)||0, 
-          discountPercent, advanceToApply: parseFloat(advanceToApply)||0, isPreview
+          discountPercent, advanceToApply: parseFloat(advanceToApply)||0, isPreview, billingMode: mg.billingMode, gracePeriod: sysSettings?.gracePeriodHours || 2
         };
         
         const primaryGuestData = { ...mg };
@@ -3041,7 +3135,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                        {ciRooms.map(rn => (
                          <label key={rn} style={{display:'flex',alignItems:'center',gap:'8px',marginTop:'5px',cursor:'pointer',fontSize:'13px'}}>
                            <input type="checkbox" checked={(selectedRoomsMap[ci.checkInId]||[]).includes(rn)} onChange={()=>toggleRoom(ci.checkInId, rn)} />
-                           Room {rn} ({roomStats[rn]?.nights || ci.nightsStayed || 1} Nights - Rent: {fmtCur(roomStats[rn]?.rent || ci.liveRoomRent || 0)})
+                           Room {rn} ({getRecalculatedCart(ci).newNights} {mg.billingMode === '24-Hour Block' ? '24H Blocks' : 'Nights'} - Rent: {fmtCur((roomStats[rn]?.rent || (ci.liveRoomRent / ciRooms.length) || 0) * getRecalculatedCart(ci).scaleFactor)})
                          </label>
                        ))}
                      </div>
@@ -3052,7 +3146,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                        {Object.keys(roomStats).filter(rn => !ciRooms.includes(rn)).map(rn => (
                          <div key={rn} style={{fontSize:'12px', color:'#555', marginTop:'4px'}}>
                            <i className="fas fa-history" style={{marginRight:'5px', color:'#999'}}></i>
-                           Room {rn}: {roomStats[rn].nights} Nights - Rent: {fmtCur(roomStats[rn].rent)}
+                           Room {rn}: {roomStats[rn].nights * getRecalculatedCart(ci).scaleFactor} {mg.billingMode === '24-Hour Block' ? '24H Blocks' : 'Nights'} - Rent: {fmtCur(roomStats[rn].rent * getRecalculatedCart(ci).scaleFactor)}
                          </div>
                        ))}
                      </div>
@@ -3099,6 +3193,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
               <div className="form-group"><label>Extra Person</label><input type="number" min="0" value={mg.extraPerson} onChange={e=>setMg({...mg,extraPerson:e.target.value})}/></div>
               <div className="form-group"><label>Bill To</label><select value={mg.billTo} onChange={e=>setMg({...mg,billTo:e.target.value})}><option>Individual</option><option>Company</option><option>Agent</option></select></div>
               <div className="form-group"><label>GST Type</label><select value={mg.gstType} onChange={e=>setMg({...mg,gstType:e.target.value})}><option>Excluding</option><option>Including</option><option>None</option></select></div>
+              <div className="form-group"><label>Billing Mode</label><select value={mg.billingMode} onChange={e=>setMg({...mg,billingMode:e.target.value})}><option>Standard</option><option>24-Hour Block</option></select></div>
             </div>
             <div className="form-grid">
               <div className="form-group"><label>Check-Out Date</label><input type="date" value={checkOutDate} onChange={e=>setCheckOutDate(e.target.value)}/></div>
@@ -3182,7 +3277,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           <div className="form-group"><label>Currency</label><select value={fd.currency} onChange={e=>setFd({...fd,currency:e.target.value})} style={{fontSize:'16px'}}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
         </div>
         <div className="line-items-section"><h4>Room Items <button type="button" className="btn btn-sm btn-primary" onClick={addRoom}><i className="fas fa-plus"></i> Room</button></h4>
-          {items.filter(i=>i.type==='room').map((it,i)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row room-item"><div><label>Room Type</label><select value={it.roomType||''} onChange={e=>upd(ri,'roomType',e.target.value)}><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div><div><label>Qty</label><input type="number" min="1" value={it.quantity||1} onChange={e=>upd(ri,'quantity',e.target.value)}/></div><div><label>Nights</label><input type="number" min="1" value={it.nights||''} onChange={e=>upd(ri,'nights',e.target.value)}/></div><div><label>Rate</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-times"></i></button></div>);})}
+          {items.filter(i=>i.type==='room').map((it,i)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row room-item"><div><label>Room Type</label><select value={it.roomType||''} onChange={e=>upd(ri,'roomType',e.target.value)}><option>Standard</option><option>Deluxe</option><option>Suite</option><option>Family</option><option>Single</option><option>Double</option></select></div><div><label>Qty</label><input type="number" min="1" value={it.quantity||1} onChange={e=>upd(ri,'quantity',e.target.value)}/></div><div><label>{fd.billingMode === '24-Hour Block' ? '24H Blocks' : 'Nights'}</label><input type="number" min="1" value={it.nights||''} onChange={e=>upd(ri,'nights',e.target.value)}/></div><div><label>Rate</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-times"></i></button></div>);})}
         </div>
         <div className="line-items-section"><h4>Activity Items <button type="button" className="btn btn-sm btn-primary" onClick={addActivity}><i className="fas fa-plus"></i> Activity</button></h4>
           {items.filter(i=>i.type==='activity').map((it)=>{const ri=items.indexOf(it);return(<div key={ri} className="line-item-row activity-item"><div><label>Description</label><input value={it.description||''} onChange={e=>upd(ri,'description',e.target.value)} placeholder="e.g. Snorkeling Trip"/></div><div><label>Pax</label><input type="number" min="1" value={it.pax||''} onChange={e=>upd(ri,'pax',e.target.value)}/></div><div><label>Rate/Person</label><input type="number" step="0.01" min="0" value={it.rate||''} onChange={e=>upd(ri,'rate',e.target.value)}/></div><div><label>Amount</label><input value={fmtCur(it.amount,fd.currency)} readOnly style={{background:'#f0f0f0'}}/></div><button type="button" className="remove-item" onClick={()=>rem(ri)}><i className="fas fa-times"></i></button></div>);})}
@@ -3308,7 +3403,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
       const isAdmin = role === 'admin';
       const [activeSettingsTab, setActiveSettingsTab] = useState('profile');
       const [ld,setLd]=useState(true);const [sv,setSv]=useState(false);
-      const [fd,setFd]=useState({hotelName:'Hill View Eco Retreat',hotelAddress:'',hotelPhone:'',hotelEmail:'',hotelTIN:'',logoUrl:'',gstDefaultPercent:16});
+      const [fd,setFd]=useState({hotelName:'Hill View Eco Retreat',hotelAddress:'',hotelPhone:'',hotelEmail:'',hotelTIN:'',logoUrl:'',gstDefaultPercent:16, gracePeriodHours: 2});
       useEffect(()=>{google.script.run.withSuccessHandler(r=>{setLd(false);if(r.success){setFd({...fd,...r.data});}}).withFailureHandler(()=>setLd(false)).getSettings();},[]);
       const save=()=>{setSv(true);google.script.run.withSuccessHandler(r=>{setSv(false);if(r.success){Swal.fire({icon:'success',text:r.message,timer:2000,showConfirmButton:false});}else Swal.fire({icon:'error',text:r.message});}).withFailureHandler(e=>{setSv(false);Swal.fire({icon:'error',text:e.message});}).updateSettings(fd);};
       const uploadLogo=(e)=>{const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024)return Swal.fire({icon:'warning',text:'Max 2MB file size.'});
@@ -3466,6 +3561,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
             <div className="form-group"><label>Logo</label><input type="file" accept="image/*" onChange={uploadLogo}/>{fd.logoUrl&&<img src={fd.logoUrl} alt="Logo" className="logo-preview"/>}</div>
             <div className="form-grid">
               <div className="form-group"><label>Default GST %</label><input type="number" step="0.01" value={fd.gstDefaultPercent} onChange={e=>setFd({...fd,gstDefaultPercent:e.target.value})}/></div>
+              <div className="form-group"><label>Grace Period (Hours)</label><input type="number" step="0.01" value={fd.gracePeriodHours} onChange={e=>setFd({...fd,gracePeriodHours:e.target.value})}/></div>
             </div>
             <button className="btn btn-primary" onClick={save} disabled={sv}>{sv?<><i className="fas fa-spinner fa-spin"></i> Saving...</>:<><i className="fas fa-save"></i> Save Settings</>}</button>
           </div>
@@ -3542,7 +3638,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
 
     function BookingDetailModal({booking,onClose}){
       const ci=new Date(booking.checkIn);const co=new Date(booking.checkOut);
-      let nights=Math.ceil((co-ci)/(1000*3600*24));if(nights<1)nights=1;
+      let nights=1; if (booking.billingMode === '24-Hour Block') { nights = calculateChargeableBlocks(booking.checkIn, booking.checkInTime, booking.checkOut, booking.checkOutTime, 2); } else { nights=Math.ceil((co-ci)/(1000*3600*24)); if(nights<1)nights=1; }
       return(<div className="modal-overlay" onClick={onClose}><div className="modal" style={{maxWidth:'500px'}} onClick={e=>e.stopPropagation()}><div className="modal-header"><h3><i className="fas fa-calendar-check"></i> Booking Details</h3><button className="close-btn" onClick={onClose}><i className="fas fa-times"></i></button></div><div className="modal-body">
         <div className="invoice-detail-grid">
           <p><strong>Ticket:</strong> {booking.ticketId}</p>
@@ -3553,7 +3649,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
           <p><strong>Email:</strong> {booking.email||'-'}</p>
           <p><strong>Check-in:</strong> {fmtDate(booking.checkIn)}</p>
           <p><strong>Check-out:</strong> {fmtDate(booking.checkOut)}</p>
-          <p><strong>Nights:</strong> {nights}</p>
+          <p><strong>{booking.billingMode === '24-Hour Block' ? '24H Blocks' : 'Nights'}:</strong> {nights}</p>
           <p><strong>Rate/Night:</strong> {fmtCur(booking.roomRate)}</p>
           <p><strong>Discount:</strong> {fmtCur(booking.discount)}</p>
           <p><strong>Tax:</strong> {fmtCur(booking.tax)}</p>

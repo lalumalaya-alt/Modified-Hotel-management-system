@@ -66,6 +66,7 @@ const BOOKING_GST_TYPE_COL = 22;
 const BOOKING_FIX_RENT_COL = 23;
 const BOOKING_FIX_RENT_AMT_COL = 24;
 const BOOKING_DISC_PCT_COL = 25; // Added back to prevent ReferenceError in Booking.gs
+const BOOKING_BILLING_MODE_COL = 26;
 
 // LOGIN sheet columns (0-based)
 const LOGIN_USERNAME_COL   = 0;
@@ -108,6 +109,7 @@ const SET_PDF_FOLDER_ID_COL    = 9;
 const SET_LOGO_FOLDER_ID_COL   = 10;
 const SET_NEXT_CHECKIN_COL     = 11;
 const SET_NEXT_BILL_COL        = 12;
+const SET_GRACE_PERIOD_COL     = 13;
 
 // BUDGETS sheet columns (0-based)
 const BDG_ID_COL           = 0;
@@ -167,6 +169,7 @@ const CI_BILL_TO_COL        = 30;
 const CI_DISCOUNT_COL       = 31;
 const CI_STATUS_COL         = 32;
 const CI_CREATED_AT_COL     = 33;
+const CI_BILLING_MODE_COL   = 34;
 
 // RESTAURANT sheet columns (0-based)
 const REST_ORDER_ID_COL          = 0;
@@ -318,6 +321,37 @@ function generateFinanceId() {
   return `${prefix}${timestamp}${random}`;
 }
 
+
+function getLocalDateString(dateObj) {
+  if (!dateObj || isNaN(dateObj.getTime())) return '';
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+
+function calculateChargeableBlocks(checkInDateStr, checkInTimeStr, checkOutDateStr, checkOutTimeStr, gracePeriodHours) {
+  if (!checkInDateStr || !checkOutDateStr) return 1;
+  const ciStr = checkInDateStr.split('T')[0] + 'T' + (checkInTimeStr || '14:00') + ':00';
+  const coStr = checkOutDateStr.split('T')[0] + 'T' + (checkOutTimeStr || '12:00') + ':00';
+
+  const ci = new Date(ciStr);
+  const co = new Date(coStr);
+
+  if (isNaN(ci.getTime()) || isNaN(co.getTime()) || co <= ci) return 1;
+
+  const diffMs = co - ci;
+  const totalHours = diffMs / (1000 * 60 * 60);
+
+  const gp = parseFloat(gracePeriodHours) || 0;
+  let remainingHours = totalHours - gp;
+
+  if (remainingHours <= 0) return 1; // At least 1 block even if checked out within grace period
+
+  let blocks = Math.ceil(remainingHours / 24);
+  return blocks < 1 ? 1 : blocks;
+}
+
 function daysBetween(d1, d2) {
   // Strip out the time component to compare strict calendar days
   let date1 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
@@ -425,8 +459,20 @@ function bookRoom(bookingDetails) {
     let tax = parseFloat(bookingDetails.tax || "0") || 0;
     let paymentMethod = bookingDetails.paymentMethod || "Cash";
 
-    let nights = daysBetween(checkInDate, checkOutDate);
-    if (nights < 1) nights = 1;
+    let sysGracePeriod = 2;
+    try {
+      const setSheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
+      if (setSheet && setSheet.getLastRow() > 1) {
+        sysGracePeriod = parseFloat(setSheet.getRange(2, SET_GRACE_PERIOD_COL + 1).getValue()) || 2;
+      }
+    } catch(e) {}
+    let nights = 1;
+    if (bookingDetails.billingMode === '24-Hour Block') {
+      nights = calculateChargeableBlocks(getLocalDateString(checkInDate), checkInTime, getLocalDateString(checkOutDate), checkOutTime, sysGracePeriod);
+    } else {
+      nights = daysBetween(checkInDate, checkOutDate);
+      if (nights < 1) nights = 1;
+    }
 
     let discountPercent = parseFloat(bookingDetails.discountPercent || "0") || 0; 
     let discount = (totalRoomRate * totalRoomsCount * nights * discountPercent) / 100;
@@ -460,7 +506,8 @@ function bookRoom(bookingDetails) {
       bookingDetails.gstType || 'Excluding',
       bookingDetails.fixRoomRent || 'No',
       parseFloat(bookingDetails.fixRoomRentAmount) || 0,
-      discountPercent
+      discountPercent,
+      bookingDetails.billingMode || "Standard"
     ]);
 
     // Mark all selected physical rooms as Booked
@@ -550,8 +597,23 @@ function checkoutRoom(ticketId, paymentOverride) {
     let actualCheckOut = new Date();
     checkOutDate = actualCheckOut;
 
-    let nights = daysBetween(checkInDate, checkOutDate);
-    if (nights < 1) nights = 1;
+    let sysGracePeriod = 2;
+    try {
+      const setSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(SETTINGS_SHEET_NAME);
+      if (setSheet && setSheet.getLastRow() > 1) {
+        sysGracePeriod = parseFloat(setSheet.getRange(2, SET_GRACE_PERIOD_COL + 1).getValue()) || 2;
+      }
+    } catch(e) {}
+    let nights = 1;
+    let bDataMode = (data[rowIndex][BOOKING_BILLING_MODE_COL] || "Standard").toString();
+    if (bDataMode === '24-Hour Block') {
+      const ciT = (data[rowIndex][CHECKIN_TIME_COL] || "14:00").toString();
+      const coT = (data[rowIndex][CHECKOUT_TIME_COL] || "12:00").toString();
+      nights = calculateChargeableBlocks(getLocalDateString(checkInDate), ciT, getLocalDateString(checkOutDate), coT, sysGracePeriod);
+    } else {
+      nights = daysBetween(checkInDate, checkOutDate);
+      if (nights < 1) nights = 1;
+    }
     let baseAmount = roomRate * nights;
     let finalAmount = (baseAmount - discount) + tax;
 
@@ -672,8 +734,21 @@ function processCheckoutPayment(ticketId, amountPaid, paymentMethod) {
       return { success: false, message: `Ticket ID ${ticketId} not found.` };
     }
 
-    let nights = daysBetween(checkInDate, checkOutDate);
-    if (nights < 1) nights = 1;
+    let sysGracePeriod = 2;
+    try {
+      const ss2 = SpreadsheetApp.openById(SS_ID);
+      const setSheet = ss2.getSheetByName(SETTINGS_SHEET_NAME);
+      if (setSheet && setSheet.getLastRow() > 1) {
+        sysGracePeriod = parseFloat(setSheet.getRange(2, SET_GRACE_PERIOD_COL + 1).getValue()) || 2;
+      }
+    } catch(e) {}
+    let nights = 1;
+    if (bookingData.billingMode === '24-Hour Block') {
+      nights = calculateChargeableBlocks(getLocalDateString(checkInDate), bookingData.checkInTime || existingCheckInTime, getLocalDateString(checkOutDate), bookingData.checkOutTime || existingCheckOutTime, sysGracePeriod);
+    } else {
+      nights = daysBetween(checkInDate, checkOutDate);
+      if (nights < 1) nights = 1;
+    }
     const finalAmount = (roomRate * nights) - discount + tax;
     const paid = parseFloat(amountPaid) || 0;
 
@@ -754,8 +829,20 @@ function updateBooking(rowIndex, bookingData) {
       }
     });
 
-    let nights = daysBetween(checkInDate, checkOutDate);
-    if (nights < 1) nights = 1;
+    let sysGracePeriod = 2;
+    try {
+      const setSheet = ss.getSheetByName(SETTINGS_SHEET_NAME);
+      if (setSheet && setSheet.getLastRow() > 1) {
+        sysGracePeriod = parseFloat(setSheet.getRange(2, SET_GRACE_PERIOD_COL + 1).getValue()) || 2;
+      }
+    } catch(e) {}
+    let nights = 1;
+    if (bookingData.billingMode === '24-Hour Block') {
+      nights = calculateChargeableBlocks(getLocalDateString(checkInDate), bookingData.checkInTime || existingCheckInTime, getLocalDateString(checkOutDate), bookingData.checkOutTime || existingCheckOutTime, sysGracePeriod);
+    } else {
+      nights = daysBetween(checkInDate, checkOutDate);
+      if (nights < 1) nights = 1;
+    }
     const totalRoomRate = bookingData.roomRate !== undefined ? parseFloat(bookingData.roomRate) : existingRate;
     const finalAmount = bookingData.totalAmount !== undefined ? parseFloat(bookingData.totalAmount) : 0;
     const tax = bookingData.tax !== undefined ? parseFloat(bookingData.tax) : 0;
@@ -799,10 +886,11 @@ function updateBooking(rowIndex, bookingData) {
       bookingData.gstType || 'Excluding',
       bookingData.fixRoomRent || 'No',
       parseFloat(bookingData.fixRoomRentAmount) || 0,
-      discountPercent
+      discountPercent,
+      bookingData.billingMode || "Standard"
     ];
 
-    sheet.getRange(rowIndex, 1, 1, 26).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 27).setValues([row]);
     
     // Update room statuses for the new set of rooms
     if (existingStatus !== 'Cancelled' && existingStatus !== 'Checked Out') {
@@ -1034,7 +1122,8 @@ function addCheckIn(checkInData) {
       checkInData.billTo || 'Individual',
       parseFloat(checkInData.discountPercent) || 0,
       'Active',
-      now
+      now,
+      checkInData.billingMode || 'Standard'
     ]);
 
     // If linked to advance booking, update booking status
@@ -1155,6 +1244,14 @@ function getActiveCheckInsWithStats() {
       roomRates[rNo] = rate;
     }
 
+    let sysGracePeriod = 2;
+    try {
+      const setSheet = SpreadsheetApp.openById(SS_ID).getSheetByName(SETTINGS_SHEET_NAME);
+      if (setSheet && setSheet.getLastRow() > 1) {
+        sysGracePeriod = parseFloat(setSheet.getRange(2, SET_GRACE_PERIOD_COL + 1).getValue()) || 2;
+      }
+    } catch(e) {}
+
     const now = new Date();
 
     return activeCis.map(ci => {
@@ -1188,16 +1285,31 @@ function getActiveCheckInsWithStats() {
       // Calculate nightsStayed
       let ciDate = new Date(ci.checkInDate);
       if (isNaN(ciDate.getTime())) ciDate = now; // Fallback
-      let days = daysBetween(ciDate, now);
-      if (days < 1) days = 1;
+      let days = 1;
+
+      const billingMode = ci.billingMode || 'Standard';
+      if (billingMode === '24-Hour Block') {
+        const ciT = ci.checkInTime || '14:00';
+        const nowH = String(now.getHours()).padStart(2, '0');
+        const nowM = String(now.getMinutes()).padStart(2, '0');
+        days = calculateChargeableBlocks(ci.checkInDate, ciT, getLocalDateString(now), `${nowH}:${nowM}`, sysGracePeriod);
+      } else {
+        days = daysBetween(ciDate, now);
+        if (days < 1) days = 1;
+      }
 
       const nightsStayed = days;
 
       // Calculate liveRoomRent
       let liveRoomRent = 0;
       if (ciSegments.length > 0) {
+        let totalCalendarNights = 0;
+        ciSegments.forEach(seg => { totalCalendarNights += seg.nights; });
+        if (totalCalendarNights === 0) totalCalendarNights = 1;
+        let scaleFactor = (billingMode === '24-Hour Block') ? (nightsStayed / totalCalendarNights) : 1;
+
         ciSegments.forEach(seg => {
-          liveRoomRent += seg.segmentTotal;
+          liveRoomRent += (seg.segmentTotal / (seg.nights || 1)) * (seg.nights * scaleFactor);
         });
       } else {
         const assignedRooms = (ci.roomNumbers || '').split(',').map(r => r.trim()).filter(Boolean);
@@ -1279,7 +1391,8 @@ function getAllCheckIns() {
         billTo: (row[CI_BILL_TO_COL] || 'Individual').toString(),
         discountPercent: parseFloat(row[CI_DISCOUNT_COL]) || 0,
         status: (row[CI_STATUS_COL] || 'Active').toString(),
-        createdAt: (row[CI_CREATED_AT_COL] || '').toString()
+        createdAt: (row[CI_CREATED_AT_COL] || '').toString(),
+        billingMode: (row[CI_BILLING_MODE_COL] || 'Standard').toString()
       });
     }
     return checkIns;
@@ -1418,10 +1531,11 @@ function updateCheckIn(rowIndex, checkInData) {
       parseInt(checkInData.extraPerson) || 0, checkInData.foodPlan || 'None',
       checkInData.gstType || 'Excluding', checkInData.fixRoomRent || 'No',
       parseFloat(checkInData.fixRoomRentAmount) || 0, checkInData.billTo || 'Individual',
-      parseFloat(checkInData.discountPercent) || 0, existingStatus, existingCreatedAt
+      parseFloat(checkInData.discountPercent) || 0, existingStatus, existingCreatedAt,
+      checkInData.billingMode || 'Standard'
     ];
 
-    sheet.getRange(rowIndex, 1, 1, 34).setValues([row]);
+    sheet.getRange(rowIndex, 1, 1, 35).setValues([row]);
     SpreadsheetApp.flush();
     return { success: true, message: "Check-in updated successfully." };
   } catch (e) {
@@ -1891,8 +2005,15 @@ function processFullCheckout(checkInId, checkoutData) {
     const actualCheckOutDate = checkoutData.checkOutDate ? new Date(checkoutData.checkOutDate) : new Date();
     const checkOutTime = checkoutData.checkOutTime || (ci[CI_CHECKOUT_TIME_COL] || '12:00').toString();
 
-    let nights = daysBetween(checkInDate, actualCheckOutDate);
-    if (nights < 1) nights = 1;
+    const billingMode = checkoutData.billingMode || ci[CI_BILLING_MODE_COL] || 'Standard';
+    const gracePeriod = checkoutData.gracePeriod || 2;
+    let nights = 1;
+    if (billingMode === '24-Hour Block') {
+      nights = calculateChargeableBlocks(getLocalDateString(checkInDate), checkInTime, getLocalDateString(actualCheckOutDate), checkOutTime, gracePeriod);
+    } else {
+      nights = daysBetween(checkInDate, actualCheckOutDate);
+      if (nights < 1) nights = 1;
+    }
 
     // Calculate room rent using StaySegments if available
     let roomNosArr = roomNumbers.split(',').map(r => r.trim()).filter(r => r);
@@ -1953,7 +2074,19 @@ function processFullCheckout(checkInId, checkoutData) {
         staySegments[0].nights = 1;
       }
       
+      let calendarNightsTotal = 0;
       for (let s of staySegments) {
+        calendarNightsTotal += s.nights;
+      }
+      if (calendarNightsTotal === 0) calendarNightsTotal = 1;
+
+      let scaleFactor = 1;
+      if (billingMode === '24-Hour Block') {
+        scaleFactor = nights / calendarNightsTotal;
+      }
+
+      for (let s of staySegments) {
+        s.nights = s.nights * scaleFactor;
         totalRoomRent += s.rate * s.nights;
       }
     }
@@ -2258,8 +2391,16 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
              latestCheckInTime = (ciData[i][CI_CHECKIN_TIME_COL] || '14:00').toString();
           }
 
-          let nights = daysBetween(cidDate, actualCheckOutDate);
-          if (nights < 1) nights = 1;
+          const bMode = ciData[i][CI_BILLING_MODE_COL] || 'Standard';
+          let nights = 1;
+          if (bMode === '24-Hour Block') {
+            const graceP = checkoutData.gracePeriod || 2;
+            const cInT = (ciData[i][CI_CHECKIN_TIME_COL] || '14:00').toString();
+            nights = calculateChargeableBlocks(getLocalDateString(cidDate), cInT, getLocalDateString(actualCheckOutDate), checkOutTime, graceP);
+          } else {
+            nights = daysBetween(cidDate, actualCheckOutDate);
+            if (nights < 1) nights = 1;
+          }
           
           let staySegments = [];
           if (staySegmentsSheet) {
@@ -2318,7 +2459,19 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
           }
 
           if (staySegments.length > 0) {
+             let calendarNightsTotal = 0;
              for (let s of staySegments) {
+               calendarNightsTotal += s.nights;
+             }
+             if (calendarNightsTotal === 0) calendarNightsTotal = 1;
+
+             let scaleFactor = 1;
+             if (checkoutData.billingMode === '24-Hour Block') {
+               scaleFactor = nights / calendarNightsTotal;
+             }
+
+             for (let s of staySegments) {
+                s.nights = s.nights * scaleFactor;
                 totalRoomRent += s.rate * s.nights;
                 allSegments.push(s);
              }
@@ -2390,8 +2543,15 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
 
     // Calculate global Extra Bed total before subtotal
     if (!earliestCheckInDate) { earliestCheckInDate = actualCheckOutDate; }
-    let combinedNights = daysBetween(earliestCheckInDate, actualCheckOutDate);
-    if (combinedNights < 1) combinedNights = 1;
+    let combinedNights = 1;
+    const billingMode = checkoutData.billingMode || 'Standard';
+    const gracePeriod = checkoutData.gracePeriod || 2;
+    if (billingMode === '24-Hour Block') {
+      combinedNights = calculateChargeableBlocks(getLocalDateString(earliestCheckInDate), latestCheckInTime, getLocalDateString(actualCheckOutDate), checkOutTime, gracePeriod);
+    } else {
+      combinedNights = daysBetween(earliestCheckInDate, actualCheckOutDate);
+      if (combinedNights < 1) combinedNights = 1;
+    }
     let totalExtraBedCalculated = combinedNights * (parseInt(primaryGuestData.extraPerson) || 0) * DEFAULT_EXTRA_PERSON_RATE;
 
     let taxDivisor = primaryGuestData.gstType === 'Including' ? (1 + (gstPercent / 100)) : 1;
@@ -2538,6 +2698,7 @@ function processAdvancedCheckout(primaryGuestData, selectedRoomsFlat, selectedOr
           foodPlan: primaryGuestData.foodPlan,
           billTo: primaryGuestData.billTo,
           nights: combinedNights,
+          billingMode: billingMode,
           advancePaid: advanceToApply,
           paymentMode: paymentMode,
           amountPaid: amountPaid,
@@ -3178,7 +3339,8 @@ function getAllBookings() {
         gstType: (row[BOOKING_GST_TYPE_COL] || "Excluding").toString(),
         fixRoomRent: (row[BOOKING_FIX_RENT_COL] || "No").toString(),
         fixRoomRentAmount: parseFloat(row[BOOKING_FIX_RENT_AMT_COL]) || 0,
-        discountPercent: parseFloat(row[BOOKING_DISC_PCT_COL]) || 0
+        discountPercent: parseFloat(row[BOOKING_DISC_PCT_COL]) || 0,
+        billingMode: (row[BOOKING_BILLING_MODE_COL] || 'Standard').toString()
       });
     }
     return bookings;
@@ -3577,7 +3739,8 @@ function getSettings() {
       gstDefaultPercent: parseFloat(row[SET_GST_DEFAULT_COL]) || 16,
       nextInvoiceNum: parseInt(row[SET_NEXT_INVOICE_COL]) || 1,
       pdfFolderId: (row[SET_PDF_FOLDER_ID_COL] || '').toString(),
-      logoFolderId: (row[SET_LOGO_FOLDER_ID_COL] || '').toString()
+      logoFolderId: (row[SET_LOGO_FOLDER_ID_COL] || '').toString(),
+      gracePeriodHours: parseFloat(row[SET_GRACE_PERIOD_COL]) || 2
     }};
   } catch (err) {
     return { success: false, message: err.message };
@@ -3594,11 +3757,15 @@ function updateSettings(settingsData) {
     let currentInvoiceNum = 1;
     let currentPdfFolderId = settingsData.pdfFolderId || '';
     let currentLogoFolderId = settingsData.logoFolderId || '';
+    let currentNextCheckinNum = 1;
+    let currentNextBillNum = 1;
     if (sheet.getLastRow() >= 2) {
-      const existing = sheet.getRange(2, 1, 1, 11).getValues()[0];
+      const existing = sheet.getRange(2, 1, 1, 14).getValues()[0];
       currentInvoiceNum = parseInt(existing[SET_NEXT_INVOICE_COL]) || 1;
       currentPdfFolderId = (existing[SET_PDF_FOLDER_ID_COL] || '').toString() || currentPdfFolderId;
       currentLogoFolderId = (existing[SET_LOGO_FOLDER_ID_COL] || '').toString() || currentLogoFolderId;
+      currentNextCheckinNum = parseInt(existing[SET_NEXT_CHECKIN_COL]) || 1;
+      currentNextBillNum = parseInt(existing[SET_NEXT_BILL_COL]) || 1;
     }
 
     const row = [
@@ -3612,13 +3779,16 @@ function updateSettings(settingsData) {
       parseFloat(settingsData.gstDefaultPercent) || 16,
       currentInvoiceNum,
       currentPdfFolderId,
-      currentLogoFolderId
+      currentLogoFolderId,
+      currentNextCheckinNum,
+      currentNextBillNum,
+      parseFloat(settingsData.gracePeriodHours) || 2
     ];
 
     if (sheet.getLastRow() < 2) {
       sheet.appendRow(row);
     } else {
-      sheet.getRange(2, 1, 1, 11).setValues([row]);
+      sheet.getRange(2, 1, 1, 14).setValues([row]);
     }
 
     return { success: true, message: "Settings updated successfully!" };
@@ -4096,11 +4266,11 @@ function initDataStructure() {
   const config = [
     { sheetName: LOGIN_SHEET_NAME, headers: ["Username", "Password", "Role"] },
     { sheetName: ROOMS_SHEET_NAME, headers: ["Room No", "Room Type", "Room Rate", "Room Status"] },
-    { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Extra Person", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent"] },
+    { sheetName: BOOKINGS_SHEET_NAME, headers: ["Ticket ID", "Room No", "Guest Name", "Phone", "Email", "Check-In", "Check-Out", "Status", "Room Rate", "Discount", "Tax", "Payment Method", "Total Amount", "Payment Status", "Amount Paid", "CheckIn Time", "CheckOut Time", "Food Plan", "Extra Person", "Advance Paid", "Num Rooms", "Linked CheckIn", "GST Type", "Fix Rent", "Fix Rent Amount", "Discount Percent", "Billing Mode"] },
     { sheetName: INVOICES_SHEET_NAME, headers: ["InvoiceID", "GuestName", "Phone", "Email", "CustomerTIN", "Currency", "CreatedDate", "DueDate", "Status", "Items", "SubTotal", "GSTEnabled", "GSTPercent", "GSTAmount", "Discount", "TotalAmount", "Notes", "PDFDriveLink", "CreatedBy", "UpdatedAt"] },
-    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "GSTDefaultPercent", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum"] },
+    { sheetName: SETTINGS_SHEET_NAME, headers: ["HotelName", "HotelAddress", "HotelPhone", "HotelEmail", "HotelTIN", "LogoFileId", "LogoUrl", "GSTDefaultPercent", "NextInvoiceNum", "PDFDriveFolderId", "LogoDriveFolderId", "NextCheckInNum", "NextBillNum", "Grace Period (Hours)"] },
     { sheetName: CUSTOMERS_SHEET_NAME, headers: ["Customer ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Village/Street", "City", "State", "Pin Code", "Country", "Linked Username", "Created Date"] },
-    { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Village/Street", "City", "State", "Pin Code", "Country", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Room Pax Breakdown", "Advance Paid", "Payment Method", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At"] },
+    { sheetName: CHECKIN_SHEET_NAME, headers: ["CheckIn ID", "Linked Ticket ID", "Guest Name", "Company Name", "GST Number", "Identity Proof", "Mobile", "Email", "Village/Street", "City", "State", "Pin Code", "Country", "Purpose of Visit", "Check-In Date", "Check-In Time", "Check-Out Date", "Check-Out Time", "Room Numbers", "Room Types", "Number of Rooms", "Pax", "Room Pax Breakdown", "Advance Paid", "Payment Method", "Extra Person", "Food Plan", "GST Type", "Fix Room Rent", "Fix Room Rent Amount", "Bill To", "Discount Percent", "Status", "Created At", "Billing Mode"] },
     { sheetName: RESTAURANT_SHEET_NAME, headers: ["OrderID", "CheckInID", "RoomNo", "Date", "MealPeriod", "ItemName", "Quantity", "Rate", "TotalAmount", "Status", "BilledCheckInID", "AddedBy"] },
     { sheetName: STAY_SEGMENTS_SHEET_NAME, headers: ["Segment ID", "CheckIn ID", "Room Numbers", "Rate", "Pax", "Start Date", "End Date", "Created By", "Timestamp"] },
     { sheetName: MENU_SHEET_NAME, headers: ["ItemName", "FoodCategory", "DefaultPrice"] }
