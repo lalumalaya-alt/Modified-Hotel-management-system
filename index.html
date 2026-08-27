@@ -1293,6 +1293,7 @@ return (ci < cCo && co > cCi);
       const [ld,setLd]=useState(true);
       const [saving,setSaving]=useState(false);
       const tRef=useRef(null);
+      const dtTimer=useRef(null);
       const [updateRec,setUpdateRec]=useState(null);
       const [fd,setFd]=useState({guestName:'',companyName:'',gstNumber:'',identityProof:'',mobile:'',email:'',address:'',city:'',state:'',pinCode:'',country:'',purposeOfVisit:'',checkInDate:new Date().toISOString().split('T')[0],checkInTime:'14:00',checkOutDate:'',checkOutTime:'12:00',pax:1,roomPaxBreakdown:'',advancePaid:0,paymentMethod:'',extraPerson:0,foodPlan:'None',gstType:'Excluding',fixRoomRentAmount:'',billTo:'Individual',discountPercent:0});
       const [activeCis, setActiveCis] = useState([]);
@@ -1315,8 +1316,10 @@ return (ci < cCo && co > cCi);
         initT(activeOnly);
       }).withFailureHandler(e=>{setLd(false);Swal.fire({icon:'error',text:e.message});}).getActiveCheckInsWithStats();};
 
-      const initT=(data)=>{if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#ciT').empty();}catch(e){}}
-        setTimeout(()=>{try{const t=$('#ciT').DataTable({data,destroy:true,columns:[
+      const initT=(data)=>{
+        if(dtTimer.current) clearTimeout(dtTimer.current);
+        if(tRef.current){try{tRef.current.destroy();tRef.current=null;$('#ciT').empty();}catch(e){}}
+        dtTimer.current = setTimeout(()=>{try{const t=$('#ciT').DataTable({data,destroy:true,columns:[
           {data:'checkInId',title:'ID'},
           {data:null,title:'Guest Details',render:(d,tp,row)=>`<div style="font-weight:600;color:var(--navy-primary)">${row.guestName} <span style="font-size:12px;color:#888;font-weight:normal">(${row.mobile})</span></div><div style="font-size:13px;color:#555;margin-top:3px"><i class="fas fa-bed"></i> Room(s): ${row.roomNumbers}</div>`},
           {data:'checkInDate',title:'Check-In',render:d=>fmtDate(d)},
@@ -1648,16 +1651,26 @@ const actualCiOutStart = new Date(ciOut.getFullYear(), ciOut.getMonth(), ciOut.g
         };
 
         if (editRowIndex) {
-          google.script.run.withSuccessHandler(res=>{Swal.close();setSaving(false);
-            if(res.success){Swal.fire({icon:'success',title:'Update Successful!',text:res.message,timer:2500,showConfirmButton:false});resetForm();setShowModal(false);loadCheckIns();loadAdvanceBookings();
-              google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();
-            }else Swal.fire({icon:'error',text:res.message});
+          google.script.run.withSuccessHandler(res=>{
+            if(res.success){
+              setTimeout(() => {
+                Swal.close();setSaving(false);
+                Swal.fire({icon:'success',title:'Update Successful!',text:res.message,timer:2500,showConfirmButton:false});
+                resetForm();setShowModal(false);loadCheckIns();loadAdvanceBookings();
+                google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();
+              }, 1500);
+            }else{ Swal.close();setSaving(false);Swal.fire({icon:'error',text:res.message}); }
           }).withFailureHandler(e=>{Swal.close();setSaving(false);Swal.fire({icon:'error',text:e.message});}).updateCheckIn(editRowIndex, payload);
         } else {
-          google.script.run.withSuccessHandler(res=>{Swal.close();setSaving(false);
-            if(res.success){Swal.fire({icon:'success',title:'Check-In Successful!',text:res.message,timer:2500,showConfirmButton:false});resetForm();setShowModal(false);loadCheckIns();loadAdvanceBookings();
-              google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();
-            }else Swal.fire({icon:'error',text:res.message});
+          google.script.run.withSuccessHandler(res=>{
+            if(res.success){
+              setTimeout(() => {
+                Swal.close();setSaving(false);
+                Swal.fire({icon:'success',title:'Check-In Successful!',text:res.message,timer:2500,showConfirmButton:false});
+                resetForm();setShowModal(false);loadCheckIns();loadAdvanceBookings();
+                google.script.run.withSuccessHandler(r=>{setRooms(Array.isArray(r)?r:[]);}).getAllRooms();
+              }, 1500);
+            }else{ Swal.close();setSaving(false);Swal.fire({icon:'error',text:res.message}); }
           }).withFailureHandler(e=>{Swal.close();setSaving(false);Swal.fire({icon:'error',text:e.message});}).addCheckIn(payload);
         }
       };
