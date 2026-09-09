@@ -831,11 +831,29 @@
       const normalized = (options || []).map(o => ({ value: String(o.value ?? ''), label: String(o.label ?? '') }));
       const selected = normalized.find(o => o.value === String(value ?? ''));
 
-      const searchTerms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const searchStr = search.trim().toLowerCase();
+      const searchTerms = searchStr.split(/\s+/).filter(Boolean);
+
       const filtered = searchTerms.length > 0
         ? normalized.filter(o => {
             const lbl = o.label.toLowerCase();
             return searchTerms.every(term => lbl.includes(term));
+          }).sort((a, b) => {
+            const lblA = a.label.toLowerCase();
+            const lblB = b.label.toLowerCase();
+
+            const getRank = (lbl) => {
+              if (lbl.startsWith(searchStr)) return 1;
+              if (lbl.includes(searchStr)) return 2;
+              return 3;
+            };
+
+            const rankA = getRank(lblA);
+            const rankB = getRank(lblB);
+
+            if (rankA !== rankB) return rankA - rankB;
+
+            return lblA.localeCompare(lblB);
           })
         : normalized;
 
