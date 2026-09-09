@@ -799,14 +799,44 @@
     function TableSkeleton({rows=5,columns=6}){return(<div className="skeleton-table"><div className="skeleton-table-row">{[...Array(columns)].map((_,i)=><div key={i} className="skeleton skeleton-table-cell" style={{flex:1}}></div>)}</div>{[...Array(rows)].map((_,r)=><div key={r} className="skeleton-table-row">{[...Array(columns)].map((_,c)=><div key={c} className="skeleton skeleton-table-cell" style={{flex:1}}></div>)}</div>)}</div>);}
     function DashboardCardSkeleton(){return(<div className="skeleton-card"><div className="skeleton skeleton-icon"></div><div className="skeleton skeleton-text-large" style={{width:'60%'}}></div><div className="skeleton skeleton-text" style={{width:'80%'}}></div></div>);}
 
-    function SearchableSelect({ value, onChange, options, placeholder, className, required, disabled }) {
+    function SearchableSelect({ value, onChange, options, placeholder, className, required, disabled, allowCustom }) {
       const [isOpen, setIsOpen] = useState(false);
       const [search, setSearch] = useState('');
       const wrapperRef = useRef(null);
       const searchRef = useRef(null);
       const normalized = (options || []).map(o => ({ value: String(o.value ?? ''), label: String(o.label ?? '') }));
       const selected = normalized.find(o => o.value === String(value ?? ''));
-      const filtered = search.trim() ? normalized.filter(o => o.label.toLowerCase().includes(search.toLowerCase())) : normalized;
+
+      const searchStr = search.trim().toLowerCase();
+      const searchTerms = searchStr.split(/\s+/).filter(Boolean);
+
+      let filtered = normalized;
+      if (searchTerms.length > 0) {
+        filtered = normalized.filter(o => {
+          const lbl = o.label.toLowerCase();
+          return searchTerms.every(term => lbl.includes(term));
+        });
+      }
+
+      if (searchStr) {
+        filtered = filtered.sort((a, b) => {
+          const lblA = a.label.toLowerCase();
+          const lblB = b.label.toLowerCase();
+
+          let rankA = 3;
+          if (lblA.startsWith(searchStr)) rankA = 1;
+          else if (lblA.includes(searchStr)) rankA = 2;
+
+          let rankB = 3;
+          if (lblB.startsWith(searchStr)) rankB = 1;
+          else if (lblB.includes(searchStr)) rankB = 2;
+
+          if (rankA !== rankB) return rankA - rankB;
+          return lblA.localeCompare(lblB);
+        });
+      }
+
+      const showCustom = allowCustom && search.trim() !== '' && !normalized.some(o => o.label.toLowerCase() === search.trim().toLowerCase());
       useEffect(() => { if (!isOpen) return; const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) { setIsOpen(false); setSearch(''); } }; document.addEventListener('mousedown', handler); return () => document.removeEventListener('mousedown', handler); }, [isOpen]);
       useEffect(() => { if (isOpen && searchRef.current) searchRef.current.focus(); }, [isOpen]);
       const toggle = () => { if (!disabled) { setIsOpen(o => !o); setSearch(''); } };
@@ -825,7 +855,7 @@
                 {search && (<button className="ss-search-clear" onClick={(e) => { e.stopPropagation(); setSearch(''); }}><i className="fas fa-times"></i></button>)}
               </div>
               <div className="ss-options-list">
-                {filtered.length === 0
+                {filtered.length === 0 && !showCustom
                   ? <div className="ss-no-results"><i className="fas fa-search"></i> No results</div>
                   : filtered.map(o => (
                       <div key={o.value} className={'ss-option' + (o.value === String(value ?? '') ? ' selected' : '')} onClick={() => pick(o.value)}>
@@ -834,6 +864,11 @@
                       </div>
                     ))
                 }
+                {showCustom && (
+                  <div className="ss-option" style={{fontWeight: 'bold', color: 'var(--navy-accent)'}} onClick={() => pick(search.trim())}>
+                    <i className="fas fa-plus-circle" style={{marginRight: '8px'}}></i> Add custom item: "{search.trim()}"
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2131,7 +2166,48 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
         if (qty < 1) { Swal.fire({icon:'warning',text:'Quantity must be at least 1.'}); return; }
         
         const mItem = menuItems.find(m => m.itemName === selMenuItem);
-        if (!mItem) return;
+        if (!mItem) {
+          Swal.fire({
+            title: 'Custom Item Price',
+            text: `Enter the price for "${selMenuItem}":`,
+            input: 'number',
+            inputAttributes: {
+              min: 0,
+              step: 'any'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Add to Order',
+            preConfirm: (price) => {
+              if (!price || parseFloat(price) < 0) {
+                Swal.showValidationMessage('Please enter a valid price');
+              }
+              return parseFloat(price);
+            }
+          }).then((result) => {
+            if (result.isConfirmed) {
+              const customPrice = result.value;
+              setOrderItems(prev => {
+                const ex = prev.findIndex(p => p.itemName === selMenuItem);
+                if (ex >= 0) {
+                  const up = [...prev];
+                  up[ex].quantity += qty;
+                  up[ex].totalAmount = up[ex].quantity * customPrice;
+                  return up;
+                } else {
+                  return [...prev, {
+                    itemName: selMenuItem,
+                    quantity: qty,
+                    defaultPrice: customPrice,
+                    totalAmount: customPrice * qty
+                  }];
+                }
+              });
+              setSelMenuItem('');
+              setSelMenuQty(1);
+            }
+          });
+          return;
+        }
 
         setOrderItems(prev => {
           const ex = prev.findIndex(p => p.itemName === mItem.itemName);
@@ -2327,6 +2403,7 @@ if (cIn < actualCiOutStart && cOut > new Date(ci.checkInDate)) {
                         onChange={setSelMenuItem}
                         options={menuItems.map(m => ({ value: m.itemName, label: `${m.itemName} - ${fmtCur(m.defaultPrice)}` }))}
                         placeholder="Search for an item..."
+                        allowCustom={true}
                       />
                     </div>
                     <div className="form-group">
