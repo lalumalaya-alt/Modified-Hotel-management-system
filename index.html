@@ -808,17 +808,17 @@
       const selected = normalized.find(o => o.value === String(value ?? ''));
 
       const searchStr = search.trim().toLowerCase();
-      const searchTerms = searchStr.split(/\s+/).filter(Boolean);
+      const searchWords = searchStr.split(/\s+/).filter(Boolean);
 
-      let filtered = normalized;
-      if (searchTerms.length > 0) {
+      let filtered;
+      if (!searchStr) {
+        filtered = [...normalized];
+      } else {
         filtered = normalized.filter(o => {
           const lbl = o.label.toLowerCase();
-          return searchTerms.every(term => lbl.includes(term));
+          return searchWords.every(term => lbl.includes(term));
         });
-      }
 
-      if (searchStr) {
         filtered = filtered.sort((a, b) => {
           const lblA = a.label.toLowerCase();
           const lblB = b.label.toLowerCase();
